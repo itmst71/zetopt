@@ -151,6 +151,8 @@ zetopt()
             _zetopt::def::paramidx "${@-}";;
         paramlen | plen)
             _zetopt::def::paramlen "${@-}";;
+        hasval)
+            _zetopt::data::hasvalue "${@-}";;
         value | val)
             _zetopt::data::argvalue "${@-}";;
         length | len)
@@ -1457,6 +1459,27 @@ _zetopt::data::validx()
     echo ${output_list[@]}
 }
 
+# Check if it has value
+# _zetopt::data:hasvalue {ID} [ONE-DIMENSIONAL-KEYS]
+# _zetopt::data::hasvalue /foo 0
+# STDOUT: NONE
+_zetopt::data::hasvalue()
+{
+    if [[ -z ${1-} ]]; then
+        return 1
+    fi
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    if [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*::[^:]*:[^:]*:[^:]* ]]; then
+        return 1
+    fi
+    local len=$(_zetopt::data::arglength "$@")
+    if [[ -z $len ]]; then
+        return 1
+    fi
+    [[ $len -ne 0 ]]
+    return $?
+}
+
 # Print option arguments index list to refer $ZETOPT_OPTVALS
 # _zetopt::data::argidx {ID} [TWO-DIMENSIONAL-KEYS]
 # _zetopt::data::argidx /foo $ZETOPT_FILED_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz
@@ -1730,6 +1753,8 @@ SUB-COMMANDS
     isset
 
     isok
+
+    hasval
 
     value, val
 
