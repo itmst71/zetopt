@@ -15,6 +15,7 @@
     * [count, cnt](#count-cnt)
     * [status, stat](#status-stat)
     * [isok](#isok)
+    * [hasval](#hasval)
     * [value, val](#value-val)
     * [length, len](#length-len)
     * [index, idx](#index-idx)
@@ -239,6 +240,22 @@ $ cmd -f A -f B
 All OK
 $ cmd -f -f B
 zetopt: Error: Missing Required Option Argument(s): -f
+```
+
+### hasval
+Checks if the option has any value.
+Supports only the one-dementional keys (cf. [2. Value Keys](#2-value-keys)).
+```bash
+zetopt def "foo:f %"
+zetopt parse "$@"
+if zetopt hasval foo; then
+    zetopt val foo
+fi
+```
+```console
+$ cmd -f A
+A
+$ cmd -f
 ```
 
 ### value, val
