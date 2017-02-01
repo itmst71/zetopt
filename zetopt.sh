@@ -3,7 +3,7 @@
 #------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.0.0 (2017-01-31)"
+declare -r ZETOPT_VERSION="1.1.0 (2017-02-02)"
 
 # data field numbers
 declare -r ZETOPT_FIELD_ALL=0
