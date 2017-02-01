@@ -5,7 +5,7 @@ An option parser for shell scripts.
 `zetopt` is a command-line option parser for all `Bash`/`Zsh` scriptors who are not satisfied with `getopt`/`getopts`.  
 It is no longer necessary to handle troublesome processing using `for/while-loop` or `case` statements to analyze complicated options,
 or prepare variables to store flags and arguments.  
-`zetopt` supports sub-commands in addition to the option specification method in almost all formats.
+In addition to almost all option formats, `zetopt` also supports sub-commands.
 
 # :computer: Demo
 
@@ -17,8 +17,8 @@ export IFS=$' \t\n'
 export LC_ALL=C LANG=C
 
 if [[ -n ${ZSH_VERSION-} ]]; then
-    setopt NO_EXTENDED_GLOB ||:
-    setopt KSHARRAYS ||:
+    setopt NO_EXTENDED_GLOB
+    setopt KSHARRAYS
 fi
 
 # source zetopt.sh in the parent directory
