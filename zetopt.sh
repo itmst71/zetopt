@@ -70,7 +70,7 @@ zetopt()
         fi
         setopt localoptions SH_WORD_SPLIT
         setopt localoptions BSD_ECHO
-        setopt localoptions NONOMATCH
+        setopt localoptions NO_NOMATCH
         setopt localoptions GLOB_SUBST
         setopt localoptions NO_EXTENDED_GLOB
     else
@@ -1679,18 +1679,25 @@ _zetopt::utils::msg()
 
 _zetopt::utils::is_true()
 {
+    local rtn=1
+    if [[ $# -eq 0 || -z ${1-} ]]; then
+        return $rtn
+    fi
+
     local stdout=false
     if [[ $1 == --stdout ]]; then
         stdout=true
         shift
     fi
-    local rtn=0
-    local var="$(<<< "${1-}" \tr "[:upper:]" "[:lower:]")"
-    case "$var" in
-        0 | true | yes | y | enabled | enable | on)     rtn=0;;
-        1 | false | no | n | disabled | disable | off)  rtn=1;;
-        *)                                              rtn=2;;
-    esac
+    
+    local longest="enabled"
+    if [[ -n ${1-} && ${#1} -le ${#longest} ]]; then
+        case "$(<<< "${1-}" \tr "[:upper:]" "[:lower:]")" in
+            0 | true | yes | y | enabled | enable | on)     rtn=0;;
+            #1 | false | no | n | disabled | disable | off)  rtn=1;;
+            #*)                                              rtn=1;;
+        esac
+    fi
     if [[ $stdout == true ]]; then
         echo $rtn
     fi
