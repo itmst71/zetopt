@@ -123,6 +123,8 @@ zetopt()
             _zetopt::def::define "${@-}";;
         defined)
             _zetopt::def::defined "${@-}";;
+        defined-field)
+            _zetopt::def::get "${@-}";;
         load)
             _zetopt::def::load "${@-}";;
         parse)
@@ -143,6 +145,8 @@ zetopt()
             _zetopt::data::count "${@-}";;
         status | stat)
             _zetopt::data::status "${@-}";;
+        setids)
+            _zetopt::data::setids;;
         index | idx)
             _zetopt::data::argidx "${@-}";;
         type)
@@ -1640,6 +1644,27 @@ _zetopt::data::type()
 _zetopt::data::count()
 {
     _zetopt::data::get "${1-}" $ZETOPT_FIELD_COUNT || echo 0
+}
+
+
+# Print the list of IDs set
+# _zetopt::data::setids
+# _zetopt::data::setids
+# STDOUT: string separated with spaces
+_zetopt::data::setids()
+{
+    local line= ids
+    ids=()
+    local IFS=:
+    for line in "${_ZETOPT_PARSED_LIST[@]}"
+    do
+        set -- $line
+        if [[ $7 -ne 0 ]]; then
+            ids+=("$1")
+        fi
+    done
+    IFS=' '
+    echo "${ids[*]}"
 }
 
 
