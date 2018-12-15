@@ -25,11 +25,12 @@ declare -r ZETOPT_TYPE_PLUS=3
 declare -r ZETOPT_STATUS_NORMAL=0
 declare -r ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS=$((1 << 0))
 declare -r ZETOPT_STATUS_MISSING_OPTIONAL_ARGS=$((1 << 1))
-declare -r ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 2))
-declare -r ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 3))
-declare -r ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 4))
-declare -r ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 5))
-declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 6))
+declare -r ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 2))
+declare -r ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 3))
+declare -r ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 4))
+declare -r ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 5))
+declare -r ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 6))
+declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 7))
 
 # misc
 declare -r ZETOPT_IDX_NOT_FOUND=-1
@@ -204,17 +205,17 @@ _zetopt::def::define()
         namedef="${line%% *}"
         paramdef="${line#* }"
 
-        # no parameter definition
-        if [[ $namedef == $paramdef ]]; then
-            paramdef=
-        fi
-
         # only parameters
         if [[ $namedef =~ ^-{0,2}[@%] ]]; then
             paramdef="$namedef $paramdef"
             namedef=/
         fi
 
+        # no parameter definition
+        if [[ $namedef == $paramdef ]]; then
+            paramdef=
+        fi
+        
         # add an omittable root /
         if [[ ! $namedef =~ ^/ ]]; then
             namedef="/$namedef"
@@ -280,6 +281,9 @@ _zetopt::def::define()
 
         # options
         if [[ $line =~ : ]]; then
+            IFS=,
+            set -- $*
+
             while [[ $# -ne 0 ]]
             do
                 if [[ -z $1 ]]; then
@@ -338,7 +342,7 @@ _zetopt::def::define()
         if [[ -n $paramdef ]]; then
             IFS=$' ' read paramdef <<< "$paramdef" # trim spaces
             
-            if [[ ! $paramdef =~ ^(\ *-{0,2}[@%]([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3})?)+$ ]]; then
+            if [[ ! $paramdef =~ ^(\ *-{0,2}[@%]([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)*)?)+$ ]]; then
                 _zetopt::utils::msg Error "Invalid Parameter Definition:" "$paramdef"
                 return 1
 
@@ -346,7 +350,7 @@ _zetopt::def::define()
                 _zetopt::utils::msg Error "Required Parameter after Optional:" "$paramdef"
                 return 1
 
-            elif [[ $paramdef =~ [.]{3,3} && ! ${paramdef//[\ -]/} =~ [%@][a-zA-Z0-9_]*[.]{3,3}$ ]]; then
+            elif [[ $paramdef =~ [.]{3,3} && ! ${paramdef//[\ -]/} =~ [%@][a-zA-Z0-9_]*[.]{3,3}([1-9][0-9]*)*$ ]]; then
                 _zetopt::utils::msg Error "Variable-length parameter must be at the last:" "$paramdef"
                 return 1
             fi
@@ -641,8 +645,8 @@ _zetopt::def::paramidx()
 }
 
 # Print the length of parameters
-# _zetopt::def::paramlen {ID} [all | required | @ | optional | %]
-# _zetopt::def::paramlen /foo true
+# _zetopt::def::paramlen {ID} [all | required | @ | optional | % | max]
+# _zetopt::def::paramlen /foo required
 # STDOUT: an integer
 _zetopt::def::paramlen()
 {
@@ -652,16 +656,34 @@ _zetopt::def::paramlen()
         echo 0
         return 0
     fi
-    local IFS=$' '
-    case ${2-} in
-        required | @) set -- ${paramdef_str//[! @]/};;
-        optional | %) set -- ${paramdef_str//[! %]/};;
-        "" | all)     set -- $paramdef_str;;
-        *)            set -- $paramdef_str;;
-    esac
-    echo $#
-}
 
+    local tmp= reqcnt= optcnt= out=
+    tmp=${paramdef_str//[!@]/}
+    reqcnt=${#tmp} 
+    tmp=${paramdef_str//[!%]/}
+    optcnt=${#tmp}
+
+    case ${2-} in
+        required | @)
+                out=$reqcnt;;
+        optional | %)
+                out=$optcnt;;
+        max)
+            if [[ ! $paramdef_str =~ [.]{3,3}([1-9][0-9]*)*$ ]]; then
+                out=$((reqcnt + optcnt))
+            elif [[ $paramdef_str =~ [.]{3,3}$ ]]; then
+                out=$((1<<31))
+            elif [[ $paramdef_str =~ [.]{3,3}([1-9][0-9]*)$ ]]; then
+                out=$((reqcnt + optcnt + ${paramdef_str##*...} - 1))
+            fi
+            ;;
+        "" | all)
+                out=$((reqcnt + optcnt));;
+        *)      
+                out=$((reqcnt + optcnt));;
+    esac
+    echo $out
+}
 
 #------------------------------------------------
 # _zetopt::parser
@@ -913,6 +935,12 @@ _zetopt::parser::parse()
             msg=($subcmdstr "$(_zetopt::def::paramlen $namespace required) Argument(s) Required")
             _zetopt::utils::msg Error "Missing Required Argument(s):" "${msg[*]}"
         fi
+
+        # Too Match Positional Arguments
+        if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_TOO_MATCH_ARGS)) -ne 0 ]]; then
+            msg=($subcmdstr "Given ${#ZETOPT_ARGS[@]} Arguments (Up To "$(_zetopt::def::paramlen $namespace max)")")
+            _zetopt::utils::msg Error "Too Match Arguments:" "${msg[*]}"
+        fi
     fi
 
     IFS=$'\n'
@@ -982,7 +1010,7 @@ _zetopt::parser::setopt()
     else
         IFS=$' '
         \set -- $paramdef_str
-        local def= defarr deflen=$# defidx=$IDX_OFFSET varlen_mode=false
+        local def= defarr deflen=$# defidx=$IDX_OFFSET varlen_mode=false argcnt=0 argmax=$(_zetopt::def::paramlen $id max)
         defarr=($@)
 
         while [[ $defidx -lt $(($deflen + $IDX_OFFSET)) ]]
@@ -1022,6 +1050,7 @@ _zetopt::parser::setopt()
             ]]; then
                 ZETOPT_OPTVALS+=("$arg")
                 refs+=($optarg_idx)
+                : $((argcnt++))
             
             # error: missing required arguments 
             elif [[ $def =~ @ && $varlen_mode == false ]]; then
@@ -1045,6 +1074,10 @@ _zetopt::parser::setopt()
 
             if [[ $varlen_mode == false && $def =~ [%@]([a-zA-Z_][0-9a-zA-Z_]*)?[.]{3,3} ]]; then
                 varlen_mode=true
+            fi
+
+            if [[ $varlen_mode == true && $argcnt -ge $argmax ]]; then
+                \break
             fi
 
             # increment defidx if def is not a variable-length argument
@@ -1100,6 +1133,8 @@ _zetopt::parser::assign_args()
         return 0
     fi
 
+    local rtn=$ZETOPT_STATUS_NORMAL
+
     IFS=$' '
     local defarr
     defarr=($paramdef_str)
@@ -1107,21 +1142,31 @@ _zetopt::parser::assign_args()
     local len=$(($arglen > $deflen ? $deflen : $arglen))
     
     if [[ $len -ne 0 ]]; then
-        if [[ ${defarr[$((deflen - 1 + $IDX_OFFSET))]} =~ [.]{3,3}$ ]]; then
-            refsstr=$(\eval "\echo {$IDX_OFFSET..$((arglen - 1 + $IDX_OFFSET))}")
+        # variable length
+        local lastdef=${defarr[$((deflen - 1 + $IDX_OFFSET))]}
+        if [[ $lastdef =~ [.]{3,3}([1-9][0-9]*)*$ ]]; then
+            local defmaxlen=${lastdef##*...}
+            local maxlen=$arglen
+            if [[ ! -z "$defmaxlen" ]]; then
+                maxlen=$(($arglen > $defmaxlen ? $defmaxlen : $arglen))
+                if [[ $maxlen -lt $arglen ]]; then
+                    rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
+                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_TOO_MATCH_ARGS))
+                fi
+            fi
+            refsstr=$(\eval "\echo {$IDX_OFFSET..$(($maxlen - 1 + $IDX_OFFSET))}")
         else
-            refsstr=$(\eval "\echo {$IDX_OFFSET..$((len - 1 + $IDX_OFFSET))}")
+            refsstr=$(\eval "\echo {$IDX_OFFSET..$(($len - 1 + $IDX_OFFSET))}")
         fi
     fi
 
     # actual arguments length is shorter than defined
-    local rtn=$ZETOPT_STATUS_NORMAL
     if [[ $len -lt $deflen ]]; then
         if [[ ${defarr[$(($len + $IDX_OFFSET))]} =~ @ ]]; then
-            rtn=$ZETOPT_STATUS_MISSING_REQUIRED_ARGS
+            rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
             ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
         elif [[ ${defarr[$(($len + $IDX_OFFSET))]} =~ % ]]; then
-            rtn=$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS
+            rtn=$((rtn | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
             ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
         fi
     fi
