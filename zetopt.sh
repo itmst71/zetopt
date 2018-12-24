@@ -5,16 +5,24 @@
 declare -r ZETOPT_APPNAME="zetopt"
 declare -r ZETOPT_VERSION="1.1.0 (2017-02-02)"
 
-# data field numbers
-declare -r ZETOPT_FIELD_ALL=0
-declare -r ZETOPT_FIELD_ID=1
-declare -r ZETOPT_FIELD_SHORT=2
-declare -r ZETOPT_FIELD_LONG=3
-declare -r ZETOPT_FIELD_ARG=4
-declare -r ZETOPT_FIELD_TYPE=5
-declare -r ZETOPT_FIELD_STATUS=6
-declare -r ZETOPT_FIELD_COUNT=7
-declare -r ZETOPT_FIELD_HELP=8
+# field numbers for definition
+declare -r ZETOPT_FIELD_DEF_ALL=0
+declare -r ZETOPT_FIELD_DEF_ID=1
+declare -r ZETOPT_FIELD_DEF_SHORT=2
+declare -r ZETOPT_FIELD_DEF_LONG=3
+declare -r ZETOPT_FIELD_DEF_ARG=4
+declare -r ZETOPT_FIELD_DEF_HELP=5
+
+# field numbers for parsed data
+declare -r ZETOPT_FIELD_DATA_ALL=0
+declare -r ZETOPT_FIELD_DATA_ID=1
+declare -r ZETOPT_FIELD_DATA_SHORT=2
+declare -r ZETOPT_FIELD_DATA_LONG=3
+declare -r ZETOPT_FIELD_DATA_ARG=4
+declare -r ZETOPT_FIELD_DATA_TYPE=5
+declare -r ZETOPT_FIELD_DATA_STATUS=6
+declare -r ZETOPT_FIELD_DATA_COUNT=7
+
 
 # types
 declare -r ZETOPT_TYPE_CMD=0
@@ -463,12 +471,12 @@ _zetopt::def::defined()
         echo "${ZETOPT_DEFINED-}"
         return 0
     fi
-    _zetopt::def::get "$1" $ZETOPT_FIELD_ALL
+    _zetopt::def::get "$1" $ZETOPT_FIELD_DEF_ALL
 }
 
 # Search and print the definition.
-# _zetopt::def::get {ID} [FIELD-NUMBER-TO-PRINT]
-# _zetopt::def::get /foo $ZETOPT_FIELD_ARG
+# _zetopt::def::get {ID} [FIELD-DEF-NUMBER-TO-PRINT]
+# _zetopt::def::get /foo $ZETOPT_FIELD_DEF_ARG
 # STDOUT: string
 _zetopt::def::get()
 {
@@ -483,10 +491,10 @@ _zetopt::def::get()
     if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
         return 1
     fi
-    local field="${2:-$ZETOPT_FIELD_ALL}"
+    local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
 
     local line="${_ZETOPT_DEFINED_LIST[$ididx]}"
-    if [[ $field == 0 ]]; then
+    if [[ $field == $ZETOPT_FIELD_DEF_ALL ]]; then
         echo "$line"
     else
         if [[ $field =~ [^0-9] ]]; then
@@ -642,7 +650,7 @@ _zetopt::def::paramidx()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_ARG)"
+    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
     if [[ -z $paramdef_str ]]; then
         return 1
     fi
@@ -667,7 +675,7 @@ _zetopt::def::paramidx()
 _zetopt::def::paramlen()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_ARG)"
+    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
     if [[ -z $paramdef_str ]]; then
         echo 0
         return 0
@@ -1008,7 +1016,7 @@ _zetopt::parser::setopt()
     local id="$1" short="$2" long="$3" refsstr="$4" types="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
-    local refs paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_ARG)"
+    local refs paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
     local arg arg_idx=$IDX_OFFSET arglen=${#args[@]}
     local optarg_idx=$((${#ZETOPT_OPTVALS[@]} + $IDX_OFFSET))
     refs=()
@@ -1144,7 +1152,7 @@ _zetopt::parser::assign_args()
     local arglen=${#ZETOPT_ARGS[@]}
     local IFS=:
     \set -- ${_ZETOPT_DEFINED_LIST[$ididx]}
-    local paramdef_str="$(eval echo '"${'$ZETOPT_FIELD_ARG'-}"')"
+    local paramdef_str="$(eval echo '"${'$ZETOPT_FIELD_DEF_ARG'-}"')"
     if [[ -z $paramdef_str ]]; then
         return 0
     fi
@@ -1225,12 +1233,12 @@ _zetopt::data::parsed()
         echo "${ZETOPT_PARSED-}"
         return 0
     fi
-    _zetopt::data::get "$1" $ZETOPT_FIELD_ALL
+    _zetopt::data::get "$1" $ZETOPT_FIELD_DATA_ALL
 }
 
 # Search and print the parsed data
-# _zetopt::data::get {ID} [FILED-NUMBER]
-# _zetopt::data::get /foo $ZETOPT_FIELD_ARG
+# _zetopt::data::get {ID} [FILED-DATA-NUMBER]
+# _zetopt::data::get /foo $ZETOPT_FIELD_DATA_ARG
 # STDOUT: string
 _zetopt::data::get()
 {
@@ -1304,7 +1312,7 @@ _zetopt::data::isok()
 }
 
 # Print option arguments/status index list
-# _zetopt::data::validx {ID} {[$ZETOPT_FILED_ARGS|$ZETOPT_FILED_STATUS|$ZETOPT_FIELD_TYPE]} [TWO-DIMENSIONAL-KEYS]
+# _zetopt::data::validx {ID} {[$ZETOPT_FILED_ARGS|$ZETOPT_FILED_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
 # _zetopt::data::validx /foo $ZETOPT_FILED_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
@@ -1326,7 +1334,7 @@ _zetopt::data::validx()
 
     local field="$2"
     case $field in
-        $ZETOPT_FIELD_ARG | $ZETOPT_FIELD_TYPE | $ZETOPT_FIELD_STATUS) :;;
+        $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
 
@@ -1418,7 +1426,7 @@ _zetopt::data::validx()
             
             # check the range
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
-                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
+                || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
                 _zetopt::utils::msg Error "Index Out of Range:" "$input_idx"
                 return 1
@@ -1508,7 +1516,7 @@ _zetopt::data::validx()
 
                 # check the range
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
-                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
+                    || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
                     _zetopt::utils::msg Error "Index Out of Range:" "$input_idx"
                     return 1
@@ -1557,7 +1565,7 @@ _zetopt::data::argidx()
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     shift
     
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_ARG "$@")"
+    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "$@")"
     if [[ -z "$list_str" ]]; then
         return 1
     fi
@@ -1577,7 +1585,7 @@ _zetopt::data::argvalue()
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     shift
     
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_ARG "$@")"
+    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "$@")"
     if [[ -z "$list_str" ]]; then
         return 1
     fi
@@ -1633,7 +1641,7 @@ _zetopt::data::arglength()
     fi
     local IFS=$' '
     local arr
-    arr=($(_zetopt::data::validx "$id" $ZETOPT_FIELD_ARG "${idxarr[@]}"))
+    arr=($(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "${idxarr[@]}"))
     echo ${#arr[@]}
 }
 
@@ -1664,7 +1672,7 @@ _zetopt::data::status()
             idxarr+=("$idx")
         done
     fi
-    _zetopt::data::validx "$id" $ZETOPT_FIELD_STATUS "${idxarr[@]}"
+    _zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_STATUS "${idxarr[@]}"
 }
 
 # Print the type of option in ZETOPT_TYPE_*
@@ -1694,7 +1702,7 @@ _zetopt::data::type()
             idxarr+=("$idx")
         done
     fi
-    _zetopt::data::validx "$id" $ZETOPT_FIELD_TYPE "${idxarr[@]}"
+    _zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_TYPE "${idxarr[@]}"
 }
 
 
@@ -1704,7 +1712,7 @@ _zetopt::data::type()
 # STDOUT: an integer
 _zetopt::data::count()
 {
-    _zetopt::data::get "${1-}" $ZETOPT_FIELD_COUNT || echo 0
+    _zetopt::data::get "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
 
