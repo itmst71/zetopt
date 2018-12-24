@@ -14,6 +14,7 @@ declare -r ZETOPT_FIELD_ARG=4
 declare -r ZETOPT_FIELD_TYPE=5
 declare -r ZETOPT_FIELD_STATUS=6
 declare -r ZETOPT_FIELD_COUNT=7
+declare -r ZETOPT_FIELD_HELP=8
 
 # types
 declare -r ZETOPT_TYPE_CMD=0
@@ -50,6 +51,7 @@ export ZETOPT_CFG_ERRMSG_COL_MODE=auto
 export ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
 export ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
 export ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
+export ZETOPT_CFG_HELP_INDENT_SPACES=4
 
 #------------------------------------------------
 # Main
@@ -98,11 +100,12 @@ zetopt()
         -v | --version)
             echo $ZETOPT_APPNAME $ZETOPT_VERSION;;
         -h | --help)
-            _zetopt::help::show;;
+            _zetopt::selfhelp::show;;
         init)
             ZETOPT_DEFINED=
             _ZETOPT_DEFINED_LIST=()
             _ZETOPT_ID_LIST=()
+            _ZETOPT_OPTHELP_LIST=()
 
             ZETOPT_PARSED=
             _ZETOPT_PARSED_LIST=()
@@ -181,7 +184,8 @@ zetopt()
 _zetopt::def::define()
 {
     if [[ -z ${ZETOPT_DEFINED:-} ]]; then
-        ZETOPT_DEFINED="/:::"$'\n'
+        ZETOPT_DEFINED="/:::0"$'\n'
+        _ZETOPT_OPTHELP_LIST=("")
     fi
 
     local IFS=$' ' origin="$*" lines=
@@ -192,24 +196,31 @@ _zetopt::def::define()
         return 1
     fi
 
-    local line namespace id short long namedef paramdef global arr
+    local line namespace id short long namedef paramdef helpdef helpidx global arr
     for line in "${lines[@]}"
     do 
-        namespace= id= short= long= namedef= paramdef= global=
+        namespace= id= short= long= namedef= paramdef= helpidx=0 helpdef= global=
         if [[ -z ${line//[$' \t']/} ]]; then
             continue
         fi
+
+        # help
+        IFS=$''
+        if [[ $line =~ \ \# ]]; then
+            helpdef="${line#*\ #}"
+            line=${line%%\ #*}
+        fi
+
         IFS=$' '
         \read line <<< "$line" #trim
 
+        # only parameters
+        if [[ $line =~ ^-{0,2}[@%] ]]; then
+            line="/ $line"
+        fi
+
         namedef="${line%% *}"
         paramdef="${line#* }"
-
-        # only parameters
-        if [[ $namedef =~ ^-{0,2}[@%] ]]; then
-            paramdef="$namedef $paramdef"
-            namedef=/
-        fi
 
         # no parameter definition
         if [[ $namedef == $paramdef ]]; then
@@ -376,13 +387,18 @@ _zetopt::def::define()
             paramdef="$*"
         fi
 
-        line="$id$global:$short:$long:$paramdef"
+        if [[ -n "$helpdef" ]]; then
+            _ZETOPT_OPTHELP_LIST+=("$helpdef")
+            helpidx=$((${#_ZETOPT_OPTHELP_LIST[@]} - 1 + $IDX_OFFSET))
+        fi
+
+        line="$id$global:$short:$long:$paramdef:$helpidx"
         ZETOPT_DEFINED="$ZETOPT_DEFINED$line"$'\n'
 
         # defines parent subcommands automatically
         if [[ $namespace == / ]]; then
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED/:::"$'\n'
+            ZETOPT_DEFINED="$ZETOPT_DEFINED/:::0"$'\n'
             continue
         fi
 
@@ -392,7 +408,7 @@ _zetopt::def::define()
         do
             curr_ns="${curr_ns%*/}/$ns/"
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED$curr_ns:::"$'\n'
+            ZETOPT_DEFINED="$ZETOPT_DEFINED$curr_ns:::0"$'\n'
         done
     done
 }
@@ -1776,9 +1792,9 @@ _zetopt::utils::is_true()
 
 
 #------------------------------------------------
-# _zetopt::help
+# _zetopt::selfhelp
 #------------------------------------------------
-_zetopt::help::show()
+_zetopt::selfhelp::show()
 {
     if [[ $1 == "short" ]]; then
 << __EOHELP__ \cat
