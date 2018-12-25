@@ -71,7 +71,6 @@ zetopt()
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
     local LC_ALL=C LANG=C
-    local CALLER_COMMAND=${0##*/}
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
@@ -86,9 +85,13 @@ zetopt()
         setopt localoptions GLOB_SUBST
         setopt localoptions NO_EXTENDED_GLOB
         setopt localoptions BASH_REMATCH
+        local tmp=${funcfiletrace%:*}
     else
         declare -r IDX_OFFSET=0
+        local tmp=$0
     fi
+    declare -r CALLER_CMD_PATH="$(cd -- "${tmp%/*}"; pwd)/${tmp##*/}"
+    declare -r CALLER_CMD_NAME=${tmp##*/}
 
     # save whether the stderr of the main function is TTY or not.
     if [[ -t 2 ]]; then
@@ -99,7 +102,7 @@ zetopt()
 
     # show help if subcommand not given
     if [[ $# -eq 0 ]]; then
-        _zetopt::help::show short
+        _zetopt::help::selfhelp short
         return 1
     fi
 
@@ -1820,7 +1823,8 @@ _zetopt::help::init()
         "3:DESCRIPTION"
         "4:OPTIONS"
     )
-    _ZETOPT_HELPS=("" "" "" "" "")
+    _ZETOPT_HELPS=("_" "" "_" "" "_")
+    _ZETOPT_HELPS_CUSTOM=
 }
 
 _zetopt::help::search()
@@ -1868,6 +1872,7 @@ _zetopt::help::define()
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
         idx=${#_ZETOPT_HELPS[@]}
     fi
+    _ZETOPT_HELPS_CUSTOM="${_ZETOPT_HELPS_CUSTOM%:}:$idx:"
     local refidx=$(($idx + $IDX_OFFSET))
     _ZETOPT_HELPS_IDX[$refidx]="$idx:$1"
     shift 1
@@ -1877,7 +1882,7 @@ _zetopt::help::define()
 
 _zetopt::help::show()
 {
-    local helps_idx_option=4
+    local idx_name=0 idx_synopsis=2 idx_option=4 idx=
     local _TERM_MAX_COLS=$(($(tput cols) - 4))
     local _BASE_COLS=1
     local _OPT_COLS=4
@@ -1888,11 +1893,13 @@ _zetopt::help::show()
     local IFS=$'\n'
     local title titles
     titles=()
-    if [[ $# -eq 0 ]]; then
+
+    if [[ -z "${@-}" ]]; then
         titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
     else
         titles=("$@")
     fi
+    
     for title in "${titles[@]}"
     do
         body=$(_zetopt::help::body "$title")
@@ -1902,9 +1909,21 @@ _zetopt::help::show()
 
         \printf -- "$(_zetopt::help::indent)%b\n" "\e[1m$title\e[m"
         : $((_INDENT_LEVEL++))
-        if [[ $(_zetopt::help::search "$title") == $helps_idx_option ]]; then
+        idx=$(_zetopt::help::search "$title")
+
+        # OPTIONS
+        if [[ $idx == $idx_option && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_option}: ]]; then
             _zetopt::help::options
         else
+            # Default NAME
+            if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
+                body="$CALLER_CMD_NAME"
+
+            # Default SYNOPSIS
+            elif [[ $idx == $idx_synopsis && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_synopsis}: ]]; then
+                body=$(_zetopt::help::synopsis)
+            fi
+
             bodyarr=($(\printf -- "%b" "$body" | \fold -w $(_zetopt::help::rest_cols) -s -b))
             \printf -- "$(_zetopt::help::indent)%b\n" "${bodyarr[@]}"
             \echo
@@ -1926,6 +1945,11 @@ _zetopt::help::rest_cols()
 _zetopt::help::indent()
 {
     printf -- "%s" "$(printf -- "%$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))s" "")" 
+}
+
+_zetopt::help::synopsis()
+{
+    echo Auto Generated Synopsis
 }
 
 _zetopt::help::options()
@@ -2021,7 +2045,7 @@ _zetopt::help::fmtoptarg()
 
     if [[ $id != / && $id =~ /$ ]]; then
         opt="${id:1:$((${#id}-2))}"
-        opt="$CALLER_COMMAND ${opt//\// }"
+        opt="$CALLER_CMD_NAME ${opt//\// }"
     else
         if [[ -n $short ]]; then
             opt="-$short"
