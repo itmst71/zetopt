@@ -23,7 +23,6 @@ declare -r ZETOPT_FIELD_DATA_TYPE=5
 declare -r ZETOPT_FIELD_DATA_STATUS=6
 declare -r ZETOPT_FIELD_DATA_COUNT=7
 
-
 # types
 declare -r ZETOPT_TYPE_CMD=0
 declare -r ZETOPT_TYPE_SHORT=1
@@ -44,6 +43,15 @@ declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 7))
 # misc
 declare -r ZETOPT_IDX_NOT_FOUND=-1
 
+# caller
+if [[ -n ${ZSH_VERSION-} ]]; then
+    _caller=${funcfiletrace%:*}
+else
+    _caller=$0
+fi
+declare -r ZETOPT_CALLER_NAME=${_caller##*/}
+unset _caller
+
 # config
 export ZETOPT_CFG_VALUE_IFS=$'\n'
 export ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
@@ -54,12 +62,13 @@ export ZETOPT_CFG_OPTTYPE_PLUS=false
 export ZETOPT_CFG_FLAGVAL_TRUE=0
 export ZETOPT_CFG_FLAGVAL_FALSE=1
 export ZETOPT_CFG_ERRMSG=true
-export ZETOPT_CFG_ERRMSG_APPNAME=$ZETOPT_APPNAME
+export ZETOPT_CFG_ERRMSG_APPNAME=$ZETOPT_CALLER_NAME
 export ZETOPT_CFG_ERRMSG_COL_MODE=auto
 export ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
 export ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
 export ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
 export ZETOPT_CFG_HELP_INDENT_SPACES=4
+
 
 #------------------------------------------------
 # Main
@@ -85,13 +94,9 @@ zetopt()
         setopt localoptions GLOB_SUBST
         setopt localoptions NO_EXTENDED_GLOB
         setopt localoptions BASH_REMATCH
-        local tmp=${funcfiletrace%:*}
     else
         declare -r IDX_OFFSET=0
-        local tmp=$0
     fi
-    declare -r CALLER_CMD_PATH="$(cd -- "${tmp%/*}"; pwd)/${tmp##*/}"
-    declare -r CALLER_CMD_NAME=${tmp##*/}
 
     # save whether the stderr of the main function is TTY or not.
     if [[ -t 2 ]]; then
@@ -1917,7 +1922,7 @@ _zetopt::help::show()
         else
             # Default NAME
             if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
-                body="$CALLER_CMD_NAME"
+                body="$ZETOPT_CALLER_NAME"
 
             # Default SYNOPSIS
             elif [[ $idx == $idx_synopsis && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_synopsis}: ]]; then
@@ -2045,7 +2050,7 @@ _zetopt::help::fmtoptarg()
 
     if [[ $id != / && $id =~ /$ ]]; then
         opt="${id:1:$((${#id}-2))}"
-        opt="$CALLER_CMD_NAME ${opt//\// }"
+        opt="$ZETOPT_CALLER_NAME ${opt//\// }"
     else
         if [[ -n $short ]]; then
             opt="-$short"
