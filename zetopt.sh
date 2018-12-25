@@ -71,7 +71,8 @@ zetopt()
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
     local LC_ALL=C LANG=C
-    
+    local CALLER_COMMAND=${0##*/}
+
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
         if [[ $'\n'$(setopt) =~ $'\n'ksharrays ]]; then
@@ -84,6 +85,7 @@ zetopt()
         setopt localoptions NO_NOMATCH
         setopt localoptions GLOB_SUBST
         setopt localoptions NO_EXTENDED_GLOB
+        setopt localoptions BASH_REMATCH
     else
         declare -r IDX_OFFSET=0
     fi
@@ -113,7 +115,9 @@ zetopt()
             ZETOPT_DEFINED=
             _ZETOPT_DEFINED_LIST=()
             _ZETOPT_ID_LIST=()
-            _ZETOPT_OPTHELP_LIST=()
+            _ZETOPT_OPTHELPS=()
+            _ZETOPT_HELPS_IDX=()
+            _ZETOPT_HELPS=()
 
             ZETOPT_PARSED=
             _ZETOPT_PARSED_LIST=()
@@ -149,6 +153,8 @@ zetopt()
             ;;
         parsed)
             _zetopt::data::parsed "${@-}";;
+        define-help | def-help)
+            _zetopt::help::define "${@-}";;
         isset)
             _zetopt::data::isset "${@-}";;
         isok)
@@ -193,7 +199,7 @@ _zetopt::def::define()
 {
     if [[ -z ${ZETOPT_DEFINED:-} ]]; then
         ZETOPT_DEFINED="/:::0"$'\n'
-        _ZETOPT_OPTHELP_LIST=("")
+        _ZETOPT_OPTHELPS=("")
     fi
 
     local IFS=$' ' origin="$*" lines=
@@ -396,8 +402,8 @@ _zetopt::def::define()
         fi
 
         if [[ -n "$helpdef" ]]; then
-            _ZETOPT_OPTHELP_LIST+=("$helpdef")
-            helpidx=$((${#_ZETOPT_OPTHELP_LIST[@]} - 1 + $IDX_OFFSET))
+            _ZETOPT_OPTHELPS+=("$helpdef")
+            helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
         fi
 
         line="$id$global:$short:$long:$paramdef:$helpidx"
@@ -715,7 +721,7 @@ _zetopt::def::paramlen()
 
 # Initialize variables concerned with the parser. 
 # ** Must be executed in the current shell **
-# _zetopt::def::init
+# _zetopt::parser::init
 # STDOUT: NONE
 _zetopt::parser::init()
 {
@@ -1796,6 +1802,75 @@ _zetopt::utils::is_true()
         echo $rtn
     fi
     return $rtn
+}
+
+
+#------------------------------------------------
+# _zetopt::help
+#------------------------------------------------
+_zetopt::help::init()
+{
+    local IFS=$' '
+    _ZETOPT_HELPS_IDX=(
+        "0:NAME"
+        "1:VERSION"
+        "2:SYNOPSIS"
+        "3:DESCRIPTION"
+        "4:OPTIONS"
+    )
+    _ZETOPT_HELPS=("" "" "" "" "")
+}
+
+_zetopt::help::search()
+{
+    if [[ -z ${1-} ]]; then
+        return $ZETOPT_IDX_NOT_FOUND
+    fi
+
+    (
+        # for search with ignoring case
+        if [[ -n ${ZSH_VERSION-} ]]; then
+            setopt localoptions NOCASEMATCH
+            setopt localoptions KSH_ARRAYS # for BASH_REMATCH
+        else
+            shopt -s nocasematch
+        fi
+
+        local IFS=$'\n'
+        if [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):($1)$'\n' ]]; then
+            printf -- "%s" ${BASH_REMATCH[1]}
+        else
+            printf -- "%s" $ZETOPT_IDX_NOT_FOUND
+        fi
+    )
+}
+
+_zetopt::help::body()
+{
+    local idx=$(_zetopt::help::search "$1")
+    if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
+        printf -- "%s" ""
+    else
+        local refidx=$(($idx + $IDX_OFFSET))
+        printf -- "%s" "${_ZETOPT_HELPS[$refidx]}"
+    fi
+}
+
+_zetopt::help::define()
+{
+    if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
+        _zetopt::help::init
+    fi
+
+    local idx=$(_zetopt::help::search "$1")
+    if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
+        idx=${#_ZETOPT_HELPS[@]}
+    fi
+    local refidx=$(($idx + $IDX_OFFSET))
+    _ZETOPT_HELPS_IDX[$refidx]="$idx:$1"
+    shift 1
+    local IFS=$''
+    _ZETOPT_HELPS[$refidx]="$*"
 }
 
 
