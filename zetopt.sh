@@ -1887,10 +1887,14 @@ _zetopt::help::define()
 
 _zetopt::help::show()
 {
+    if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
+        _zetopt::help::init
+    fi
     local idx_name=0 idx_synopsis=2 idx_option=4 idx=
     local _TERM_MAX_COLS=$(($(tput cols) - 4))
-    local _BASE_COLS=1
+    local _BASE_COLS=0
     local _OPT_COLS=4
+    local _OPT_DESC_MARGIN=2
     local _DESC_DEFAULT_COLS=120
     local _INDENT_STEP=4
     local _INDENT_LEVEL=0
@@ -1940,7 +1944,7 @@ _zetopt::help::show()
 _zetopt::help::rest_cols()
 {
     local desc_cols=$_DESC_DEFAULT_COLS
-    local desc_max_cols=$((_TERM_MAX_COLS - _BASE_COLS - (_INDENT_STEP * _INDENT_LEVEL)))
+    local desc_max_cols=$((_TERM_MAX_COLS - _BASE_COLS - _OPT_COLS - (_INDENT_STEP * _INDENT_LEVEL)))
     if [[ $_DESC_DEFAULT_COLS -gt $desc_max_cols ]]; then
         desc_cols=$desc_max_cols
     fi
@@ -1949,7 +1953,12 @@ _zetopt::help::rest_cols()
 
 _zetopt::help::indent()
 {
-    printf -- "%s" "$(printf -- "%$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))s" "")" 
+    printf -- "%s" "$(printf -- "%$((_BASE_COLS + (_INDENT_STEP * _INDENT_LEVEL)))s" "")" 
+}
+
+_zetopt::help::desc_indent()
+{
+    printf -- "%s" "$(printf -- "%$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + (_INDENT_STEP * _INDENT_LEVEL)))s" "")" 
 }
 
 _zetopt::help::synopsis()
@@ -1991,8 +2000,6 @@ _zetopt::help::options()
         fi
 
         opt=$(_zetopt::help::fmtoptarg "$line")
-        help=${_ZETOPT_OPTHELPS[${line##*:}]}
-        desc=($(\printf -- "%b" "$help" | \fold -w $(_zetopt::help::rest_cols) -s -b))
         if [[ $subcmd_mode == true ]]; then
             if [[ ${opt:0:1} == "-" ]]; then
                 : $((_INDENT_LEVEL++))
@@ -2001,26 +2008,24 @@ _zetopt::help::options()
             elif [[ $ns != $prev_ns && $incremented == true ]]; then
                 : $((_INDENT_LEVEL--))
                 incremented=false
-            fi   
+            fi
         fi
         
-        if [[ ${#opt} -le $_OPT_COLS ]]; then
-            \printf -- "$(_zetopt::help::indent)%-${_OPT_COLS}s%s\n" "$opt" "${desc[$((0 + $IDX_OFFSET))]}"
+        help=${_ZETOPT_OPTHELPS[${line##*:}]}
+        desc=($(\printf -- "%b" "$help" | \fold -w $(_zetopt::help::rest_cols) -s -b))
+        if [[ ${#opt} -le $(($_OPT_COLS)) ]]; then
+            \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$opt" "${desc[$((0 + $IDX_OFFSET))]}"
             if [[ ${#desc[@]} -gt 1 ]]; then
                 unset desc[$((0 + $IDX_OFFSET))]
                 desc=(${desc[@]})
                 if [[ -n "${desc[@]//\ /}" ]]; then
-                    : $((_INDENT_LEVEL++))
-                    \printf -- "$(_zetopt::help::indent)%s\n" "${desc[@]}"
-                    : $((_INDENT_LEVEL--))
+                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
                 fi
             fi
         else
             \printf -- "$(_zetopt::help::indent)%s\n" "$opt"
             if [[ -n "${desc[@]}" ]]; then
-                : $((_INDENT_LEVEL++))
-                \printf -- "$(_zetopt::help::indent)%s\n" "${desc[@]}"
-                : $((_INDENT_LEVEL--))
+                \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
             fi
         fi
 
@@ -2030,7 +2035,6 @@ _zetopt::help::options()
         fi
     done
 }
-
 
 _zetopt::help::fmtoptarg()
 {
