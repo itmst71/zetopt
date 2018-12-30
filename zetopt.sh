@@ -52,6 +52,9 @@ fi
 declare -r ZETOPT_CALLER_NAME=${_caller##*/}
 unset _caller
 
+# self file path
+declare -r ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
+
 # config
 export ZETOPT_CFG_VALUE_IFS=$'\n'
 export ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
@@ -67,6 +70,7 @@ export ZETOPT_CFG_ERRMSG_COL_MODE=auto
 export ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
 export ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
 export ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
+export ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 export ZETOPT_CFG_HELP_INDENT_SPACES=4
 
 
@@ -111,6 +115,9 @@ zetopt()
         return 1
     fi
 
+    local _COMMAND_LINE
+    _COMMAND_LINE=("$@")
+    
     local subcmd="$1"
     shift
 
@@ -1384,7 +1391,7 @@ _zetopt::data::validx()
             if [[ ! $input_idx =~ \
                 ^(@|([$\^]|-?[0-9]+)(,([$\^]|-?[0-9]+)?)?)?(:?(@|(([$\^]|-?[0-9]+|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^]|-?[0-9]+|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$
             ]]; then #)) # Fix VSCode Syntax-Highlight
-                _zetopt::utils::msg Error "Bad Key:" "$input_idx"
+                _zetopt::utils::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
 
@@ -1444,7 +1451,7 @@ _zetopt::data::validx()
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
-                _zetopt::utils::msg Error "Index Out of Range:" "$input_idx"
+                _zetopt::utils::script_error "Index Out of Range:" "$input_idx"
                 return 1
             fi
 
@@ -1492,7 +1499,7 @@ _zetopt::data::validx()
                 done
 
                 if [[ -z $nameidx ]]; then
-                    _zetopt::utils::msg Error "Parameter Name Not Found:" "$input_idx"
+                    _zetopt::utils::script_error "Parameter Name Not Found:" "$input_idx"
                     return 1
                 fi
 
@@ -1534,7 +1541,7 @@ _zetopt::data::validx()
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
-                    _zetopt::utils::msg Error "Index Out of Range:" "$input_idx"
+                    _zetopt::utils::script_error "Index Out of Range:" "$input_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
                     return 1
                 fi
 
@@ -1784,7 +1791,67 @@ _zetopt::utils::msg()
     esac
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local appname="${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}"
-    \printf >&2 "\033[${col}m%b\033[0m \033[${textcol}m%b\033[0m \033[${col}m%b\033[0m\n" "$appname: $title:" "$text" "$value"
+    \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
+}
+
+_zetopt::utils::script_error()
+{
+    local text=${1-} value=${2-}
+    local lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
+    local appname=${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}
+    local filename=${ZETOPT_SOURCE_FILE_PATH##*/}
+    local title="SCRIPT ERROR"
+    local funcname="$(_zetopt::utils::funcname 1 )()"
+    local col=${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"7;1;31"}
+    local textcol=${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}
+    local IFS=$' \t\n'
+    \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname [$lineno]" "\n$text" "$value"
+    \printf >&2 -- "\n\e[4mCommand Line\e[m\n -> zetopt"
+    \printf >&2 -- " \"%s\"" "${_COMMAND_LINE[@]}"
+    \printf >&2 -- "\n\n\e[4mStack Trace\e[m\n"
+    IFS=$'\n'
+    \printf >&2 -- " -> %b\n" $(_zetopt::utils::stack_trace)
+}
+
+_zetopt::utils::funcname()
+{
+    local skip_stack_count=0
+    if [[ -n ${1-} ]]; then
+        skip_stack_count=$1
+    fi
+
+    if [[ -n $BASH_VERSION ]]; then
+        \printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
+    elif [[ -n $ZSH_VERSION ]]; then
+        \printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $IDX_OFFSET))]}"
+    fi
+}
+
+_zetopt::utils::stack_trace()
+{
+    local skip_stack_count=1
+    if [[ -n ${1-} ]]; then
+        skip_stack_count=$1
+    fi
+    local funcs_start_idx=$((skip_stack_count + 1))
+    local lines_start_idx=$skip_stack_count
+    local funcs lines i
+    funcs=()
+    lines=()
+    if [[ -n $BASH_VERSION ]]; then
+        funcs=("${FUNCNAME[@]:$funcs_start_idx}")
+        funcs[$((${#funcs[@]} - 1))]=$ZETOPT_CALLER_NAME
+        lines=("${BASH_LINENO[@]:$lines_start_idx}")
+    elif [[ -n $ZSH_VERSION ]]; then
+        \setopt localoptions KSH_ARRAYS
+        funcs=("${funcstack[@]:$funcs_start_idx}" "$ZETOPT_CALLER_NAME")
+        lines=("${funcfiletrace[@]:$lines_start_idx}")
+        lines=("${lines[@]##*:}")
+    fi
+    for ((i=0; i<${#funcs[@]}; i++))
+    do
+        \printf -- "%s [%s]\n" "${funcs[$i]}" "${lines[$i]}"
+    done
 }
 
 _zetopt::utils::is_true()
