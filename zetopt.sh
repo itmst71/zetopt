@@ -1597,42 +1597,81 @@ _zetopt::data::argidx()
 }
 
 # Print the values of the option/subcommand argument
-# _zetopt::data::argvalue {ID} [TWO-DIMENSIONAL-KEYS]
-# _zetopt::data::argvalue /foo 0:@ 1:@
+# def.) _zetopt::data::argvalue <ID> [<TWO-DIMENSIONAL-KEYS>] [-a,--array <ARRAY_NAME>]
+# e.g.) _zetopt::data::argvalue /foo 0:@ 1:@
 # STDOUT: strings separated with $ZETOPT_CFG_VALUE_IFS
 _zetopt::data::argvalue()
 {
-    if [[ -z ${1-} ]]; then
+    if [[ $# -eq 0 ]]; then
         return 1
     fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    shift
+
+    local __array_mode=false __arrname=
+    local __args
+    __args=()
+
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            --array|-a)
+                __array_mode=true;
+                \shift;
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::utils::script_error "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    return 1
+                fi
+                __arrname=$1
+                \shift
+                ;;
+            --) \shift; __args+=("$@"); \break;;
+            *)  __args+=("$1"); \shift;;
+        esac
+    done
+
+    if [[ $__array_mode == true ]]; then
+        # check the user defined array name before eval to avoid overwriting local variables
+        if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
+            _zetopt::utils::script_error "Invalid Array Name:" "$__arrname"
+            return 1
+        fi
+        eval "$__arrname=()"
+    fi
+
+    local IFS=' '
+    if [[ -z ${__args[$((0 + $IDX_OFFSET))]-} ]]; then
+        return 1
+    fi
+    local __id="${__args[$((0 + $IDX_OFFSET))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
+    unset __args[$((0 + $IDX_OFFSET))]
+    __args=(${__args[@]})
     
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "$@")"
-    if [[ -z "$list_str" ]]; then
+    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]}")"
+    if [[ -z "$__list_str" ]]; then
         return 1
     fi
     
     # for subcommands
-    local IFS=$' ' args
-    args=()
-    if [[ $id =~ ^/(.*/)?$ ]]; then
-        args=("${ZETOPT_ARGS[@]}")
+    __args=()
+    if [[ $__id =~ ^/(.*/)?$ ]]; then
+        __args=("${ZETOPT_ARGS[@]}")
 
     # for options
     else
-        args=("${ZETOPT_OPTVALS[@]}")
+        __args=("${ZETOPT_OPTVALS[@]}")
     fi
 
-    local vals idx=
-    vals=()
-    for idx in $list_str
+    local __idx= __i=$IDX_OFFSET
+    local __ifs=${ZETOPT_CFG_VALUE_IFS-$'\n'}
+    set -- $__list_str
+    for __idx in "$@"
     do
-        vals+=("${args[$idx]}")
+        if [[ $__array_mode == true ]]; then
+            \eval $__arrname'[$__i]=${__args[$__idx]}'
+        else
+            \printf -- "%s$__ifs" "${__args[$__idx]}"
+        fi
+        : $((__i++))
     done
-    
-    IFS=${ZETOPT_CFG_VALUE_IFS-$'\n'}
-    printf -- "%s\n" "${vals[*]}"
 }
 
 # Print the actual length of arguments of the option/subcommand
