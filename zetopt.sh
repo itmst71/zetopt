@@ -1387,6 +1387,10 @@ _zetopt::data::validx()
     if [[ ${#args[@]} -eq 0 ]]; then
         output_list=(${lists[$lists_last_idx]})
     else
+        local list_last_vals
+        list_last_vals=(${lists[$lists_last_idx]})
+        local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1 + $IDX_OFFSET))
+
         local input_idx= tmp_list
         for input_idx in "${args[@]}"
         do            
@@ -1396,10 +1400,12 @@ _zetopt::data::validx()
             fi
 
             # shortcuts for improving performance
-            if [[ $input_idx == @ ]]; then
-                output_list+=(${lists[$lists_last_idx]})
+            # @ / 0,$ / ^,$
+            if [[ $input_idx =~ ^(@|[${IDX_OFFSET}\^],[\$${val_lastlist_lastidx}])$ ]]; then
+                output_list+=(${list_last_vals[@]})
                 continue
-            elif [[ $input_idx == @:@ ]]; then
+            # @:@ / ^,$:@ / 0,$:@ / @:^,$ / @:0,$ / 0,$:0,$ / 0,$:^,$
+            elif [[ $input_idx =~ ^(@|\^,\$|${IDX_OFFSET},\$):(@|\^,\$|${IDX_OFFSET},\$)$ ]]; then
                 output_list+=(${lists[*]})
                 continue
             fi
