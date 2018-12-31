@@ -1363,7 +1363,7 @@ _zetopt::data::validx()
         *) return 1;;
     esac
 
-    \shift 2
+    shift 2
     local args
     args=("$@")
 
@@ -1451,7 +1451,7 @@ _zetopt::data::validx()
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
-                _zetopt::utils::script_error "Index Out of Range:" "$input_idx"
+                _zetopt::utils::script_error "Group Index Out of Range:" "$tmp_list_idx -> $list_start_idx~$list_end_idx (Valid: $IDX_OFFSET~$lists_last_idx)"
                 return 1
             fi
 
@@ -1465,23 +1465,22 @@ _zetopt::data::validx()
                 tmp_val_end_idx=$tmp_val_idx
             fi
 
-            local val_start_idx= val_end_idx= val_idx=
             case "$tmp_val_start_idx" in
-                @)      val_start_idx=$IDX_OFFSET;;
-                ^)      val_start_idx=$IDX_OFFSET;;
-                $|"")   val_start_idx=$;; # the last index will be determined later
-                *)      val_start_idx=$tmp_val_start_idx;;
+                @)      tmp_val_start_idx=$IDX_OFFSET;;
+                ^)      tmp_val_start_idx=$IDX_OFFSET;;
+                $|"")   tmp_val_start_idx=$;; # the last index will be determined later
+                *)      tmp_val_start_idx=$tmp_val_start_idx;;
             esac
             case "$tmp_val_end_idx" in
-                @)      val_end_idx=$;; # the last index will be determined later
-                ^)      val_end_idx=$IDX_OFFSET;;
-                $|"")   val_end_idx=$;; # the last index will be determined later
-                *)      val_end_idx=$tmp_val_end_idx
+                @)      tmp_val_end_idx=$;; # the last index will be determined later
+                ^)      tmp_val_end_idx=$IDX_OFFSET;;
+                $|"")   tmp_val_end_idx=$;; # the last index will be determined later
+                *)      tmp_val_end_idx=$tmp_val_end_idx
             esac
 
             # index by name : look up a name from parameter definition
             local def= defidx= idx=0 param_names=
-            for param_names in $val_start_idx $val_end_idx
+            for param_names in $tmp_val_start_idx $tmp_val_end_idx
             do
                 if [[ ! $param_names =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
                     : $((idx++))
@@ -1493,7 +1492,7 @@ _zetopt::data::validx()
                 do
                     if [[ ${def//[-@%.]/} == $param_names ]]; then
                         nameidx=$defidx
-                        \break
+                        break
                     fi
                     : $((defidx++))
                 done
@@ -1504,16 +1503,16 @@ _zetopt::data::validx()
                 fi
 
                 if [[ $idx -eq 0 ]]; then
-                    val_start_idx=$nameidx
+                    tmp_val_start_idx=$nameidx
                 else
-                    val_end_idx=$nameidx
+                    tmp_val_end_idx=$nameidx
                 fi
                 : $((idx++))
             done
 
-            local list_idx= val_idx= maxidx=
+            local list_idx= val_idx= maxidx= val_start_idx= val_end_idx=
             tmp_list=()
-            for list_idx in $(\eval "\echo {$list_start_idx..$list_end_idx}")
+            for list_idx in $(\eval "echo {$list_start_idx..$list_end_idx}")
             do 
                 tmp_list=(${lists[$list_idx]})
                 if [[ ${#tmp_list[@]} -eq 0 ]]; then
@@ -1522,11 +1521,15 @@ _zetopt::data::validx()
                 
                 # determine the value start/end index
                 maxidx=$((${#tmp_list[@]} - 1 + $IDX_OFFSET))
-                if [[ $val_start_idx == $ ]]; then
+                if [[ $tmp_val_start_idx == $ ]]; then
                     val_start_idx=$maxidx  # set the last index
+                else
+                    val_start_idx=$tmp_val_start_idx
                 fi
-                if [[ $val_end_idx == $ ]]; then
+                if [[ $tmp_val_end_idx == $ ]]; then
                     val_end_idx=$maxidx    # set the last index
+                else
+                    val_end_idx=$tmp_val_end_idx
                 fi
 
                 # convert negative indices to positive
@@ -1541,7 +1544,7 @@ _zetopt::data::validx()
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
-                    _zetopt::utils::script_error "Index Out of Range:" "$input_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
+                    _zetopt::utils::script_error "Value Index Out of Range:" "$tmp_val_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
                     return 1
                 fi
 
