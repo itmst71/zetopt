@@ -2158,9 +2158,11 @@ _zetopt::help::fmtoptarg()
     local args=${tmparr[$arridx_arg]}
     IFS=$'\n'
 
-    if [[ $id != / && $id =~ /$ ]]; then
+    if [[ $id == / ]]; then
+        opt="$ZETOPT_CALLER_NAME "
+    elif [[ $id =~ /$ ]]; then
         opt="${id:1:$((${#id}-2))}"
-        opt="$ZETOPT_CALLER_NAME ${opt//\// }"
+        opt="${opt//\// }"
     else
         if [[ -n $short ]]; then
             opt="-$short"
@@ -2180,16 +2182,21 @@ _zetopt::help::fmtoptarg()
             args=${args//.../ ...}
         fi
         IFS=$' '
+        local cnt=1
         for arg in $args
         do
             if [[ $arg == @ ]]; then
-                optargs="$optargs {ARG}" 
+                optargs="$optargs <ARG_$cnt>"
+                : $((cnt++))
             elif [[ $arg == % ]]; then
-                optargs="$optargs [ARG]"
+                optargs="$optargs [<ARG_$cnt>]"
+                : $((cnt++))
             elif [[ ${arg:0:1} == @ ]]; then
-                optargs="$optargs {${arg:1}}"
+                optargs="$optargs <${arg:1}>"
+                : $((cnt++))
             elif [[ ${arg:0:1} == % ]]; then
-                optargs="$optargs [${arg:1}]"
+                optargs="$optargs [<${arg:1}>]"
+                : $((cnt++))
             elif [[ $arg =~ \.\.\. ]]; then
                 optargs="$optargs [$arg]"
             fi
