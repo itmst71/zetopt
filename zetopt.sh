@@ -1891,6 +1891,59 @@ _zetopt::utils::stack_trace()
     done
 }
 
+_zetopt::utils::repeat()
+{
+    if [[ $# -ne 2 || ! $1 =~ ^[1-9][0-9]*$ ]]; then
+        _zetopt::utils::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
+        return 1
+    fi
+    local IFS=$' '
+    local repstr="${2//\//\\/}"
+    \printf -- "0%.s" $(eval "echo {1..$1}") | \sed -e "s/0/$repstr/g"
+}
+
+_zetopt::utils::seq()
+{
+    local start= end= delim= custom_delim=false error=
+
+    while [[ ! $# -eq 0 ]]
+    do
+        case $1 in
+            -d|--delemiter) shift; delim=${1-}; custom_delim=true; shift;;
+            --) start=$1; shift; end=${1-}; shift; break ;;
+            *)
+                if [[ -z $start ]]; then
+                    start=$1
+                elif [[ -z $end ]]; then
+                    end=$1
+                else
+                    error=true
+                    break
+                fi
+                shift ;;
+        esac
+    done
+    if [[ -z $start || -z $end ]]; then
+        error=true
+    fi
+    
+    if [[ $error == true ]]; then
+        _zetopt::utils::script_error "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
+        return 1
+    fi
+
+    if [[ ! $start =~ ^([a-zA-Z]|-?[0-9]+)$ ]] || [[ ! $end =~ ^([a-zA-Z]|-?[0-9]+)$ ]]; then
+        _zetopt::utils::script_error "Accepts:" "^([a-zA-Z]|[0-9]+)$"
+        return 1
+    fi
+
+    if [[ $custom_delim == true ]]; then
+        \eval "echo {$start..$end}" | \sed -e "s/ /$delim/g"
+    else
+        \eval "echo {$start..$end}"
+    fi
+}
+
 _zetopt::utils::is_true()
 {
     local rtn=1
