@@ -1388,9 +1388,7 @@ _zetopt::data::validx()
         local input_idx= tmp_list
         for input_idx in "${args[@]}"
         do            
-            if [[ ! $input_idx =~ \
-                ^(@|([$\^]|-?[0-9]+)(,([$\^]|-?[0-9]+)?)?)?(:?(@|(([$\^]|-?[0-9]+|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^]|-?[0-9]+|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$
-            ]]; then #)) # Fix VSCode Syntax-Highlight
+            if [[ ! $input_idx =~ ^(@|([$\^]|-?[1-9][0-9]*)(,([$\^]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
                 _zetopt::utils::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
