@@ -2114,11 +2114,13 @@ _zetopt::help::show()
     local title titles
     titles=()
 
+    IFS=$' '
     if [[ -z "${@-}" ]]; then
         titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
     else
         titles=("$@")
     fi
+    IFS=$'\n'
     
     for title in "${titles[@]}"
     do
