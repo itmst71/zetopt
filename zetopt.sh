@@ -566,7 +566,7 @@ _zetopt::def::has_options()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
-    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${ns}[a-zA-Z0-9_]+\+?: ]]
+    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${ns}[a-zA-Z0-9_]+[+]?: ]]
 }
 
 # Check if the current namespace has arguments
@@ -591,7 +591,7 @@ _zetopt::def::options()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
-    <<< "$ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+\+?:"
+    <<< "$ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:"
 }
 
 _zetopt::def::namespaces()
