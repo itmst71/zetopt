@@ -2187,7 +2187,7 @@ _zetopt::help::desc_indent()
 _zetopt::help::synopsis()
 {
     local IFS=$'\n' app=$ZETOPT_CALLER_NAME
-    local ns= cmd= has_arg= has_arg_req= has_opt= has_sub= line= args= cmdcol= dbldash= bodyarr=
+    local ns= cmd= has_arg= has_arg_req= has_opt= has_sub= line= args= cmdcol= dbl_dash= loop= bodyarr= i=
     for ns in $(_zetopt::def::namespaces)
     do
         line= has_arg=false has_arg_req=false has_opt=false has_sub=false args=
@@ -2210,20 +2210,35 @@ _zetopt::help::synopsis()
         fi
 
         if [[ $has_opt == true || $has_arg == true ]]; then
+            if _zetopt::def::has_subcmd $ns; then
+                has_sub=true
+            fi
+
             cmdcol=$((${#cmd} + 1))
             IFS=$' '
             cmd=$(\printf -- "\e[4m%s\e[m " $cmd)
             cmd=${cmd% }
             IFS=$'\n'
-            dbldash=
-            if [[ $has_arg == true && $has_opt == false ]] && _zetopt::def::has_subcmd $ns; then
-                dbldash="-- "
+            dbl_dash=
+            loop=1
+            if [[ $has_arg == true && $has_sub == true ]]; then
+                dbl_dash_required=true
+                if [[ $has_opt == false ]]; then
+                    line="--$line"
+                else
+                    loop=2
+                fi
             fi
-            bodyarr=($(\printf -- "%b" "$line" | \fold -w $(_zetopt::help::rest_cols $cmdcol) -s -b | \sed -e 's/</\\e[3m</g' -e 's/>/>\\e[m/g' -e 's/, / \| /g'))
-            \printf -- "$(_zetopt::help::indent)%b\n" "$cmd $dbldash${bodyarr[0]# *}"
-            if [[ ${#bodyarr[@]} -gt 1 ]]; then
-                \printf -- "$(_zetopt::help::indent $cmdcol)%b\n" "${bodyarr[@]:1}"
-            fi
+
+            for ((i=0; i<$loop; i++))
+            do
+                bodyarr=($(\printf -- "%b" "$line" | \fold -w $(_zetopt::help::rest_cols $cmdcol) -s -b | \sed -e 's/</\\e[3m</g' -e 's/>/>\\e[m/g' -e 's/, / \| /g'))
+                \printf -- "$(_zetopt::help::indent)%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
+                if [[ ${#bodyarr[@]} -gt 1 ]]; then
+                    \printf -- "$(_zetopt::help::indent $cmdcol)%b\n" "${bodyarr[@]:1}"
+                fi
+                line="--$args"
+            done
         fi
     done
 }
