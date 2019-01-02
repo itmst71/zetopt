@@ -1693,8 +1693,7 @@ _zetopt::data::argvalue()
         return 1
     fi
     local __id="${__args[$((0 + $IDX_OFFSET))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
-    \unset __args[$((0 + $IDX_OFFSET))]
-    __args=(${__args[@]})
+    __args=(${__args[@]:1})
     
     local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]}")"
     if [[ -z "$__list_str" ]]; then
@@ -2045,7 +2044,8 @@ _zetopt::help::init()
 
 _zetopt::help::search()
 {
-    if [[ -z ${1-} ]]; then
+    local title=${1-}
+    if [[ -z $title ]]; then
         return $ZETOPT_IDX_NOT_FOUND
     fi
 
@@ -2059,7 +2059,7 @@ _zetopt::help::search()
         fi
 
         local IFS=$'\n'
-        if [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):($1)$'\n' ]]; then
+        if [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]]; then
             \printf -- "%s" ${BASH_REMATCH[1]}
         else
             \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
@@ -2069,12 +2069,12 @@ _zetopt::help::search()
 
 _zetopt::help::body()
 {
-    local idx=$(_zetopt::help::search "$1")
+    local title=${1-}
+    local idx=$(_zetopt::help::search "$title")
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
         \printf -- "%s" ""
     else
-        local refidx=$(($idx + $IDX_OFFSET))
-        \printf -- "%s" "${_ZETOPT_HELPS[$refidx]}"
+        \printf -- "%s" "${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]}"
     fi
 }
 
@@ -2083,14 +2083,14 @@ _zetopt::help::define()
     if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
         _zetopt::help::init
     fi
-
-    local idx=$(_zetopt::help::search "$1")
+    local title=${1-}
+    local idx=$(_zetopt::help::search "$title")
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
         idx=${#_ZETOPT_HELPS[@]}
     fi
     _ZETOPT_HELPS_CUSTOM="${_ZETOPT_HELPS_CUSTOM%:}:$idx:"
     local refidx=$(($idx + $IDX_OFFSET))
-    _ZETOPT_HELPS_IDX[$refidx]="$idx:$1"
+    _ZETOPT_HELPS_IDX[$refidx]="$idx:${1-}"
     shift 1
     local IFS=$''
     _ZETOPT_HELPS[$refidx]="$*"
@@ -2102,16 +2102,14 @@ _zetopt::help::show()
         _zetopt::help::init
     fi
     local idx_name=0 idx_synopsis=3 idx_option=5 idx=
-    local _TERM_MAX_COLS=$(($(tput cols) - 4))
+    local _TERM_MAX_COLS=$(($(\tput cols) - 4))
     local _BASE_COLS=0
     local _OPT_COLS=4
     local _OPT_DESC_MARGIN=2
     local _DESC_DEFAULT_COLS=140
     local _INDENT_STEP=4
     local _INDENT_LEVEL=0
-    local body= bodyarr= 
-    local IFS=$'\n'
-    local title titles
+    local IFS body bodyarr title titles
     titles=()
 
     IFS=$' '
@@ -2189,7 +2187,7 @@ _zetopt::help::desc_indent()
 _zetopt::help::synopsis()
 {
     local IFS=$'\n' app=$ZETOPT_CALLER_NAME
-    local ns= cmd= has_arg= has_arg_req= has_opt= has_sub= line= args= cmdcol= dbl_dash= loop= bodyarr= i=
+    local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr i
     for ns in $(_zetopt::def::namespaces)
     do
         line= has_arg=false has_arg_req=false has_opt=false has_sub=false args=
@@ -2221,10 +2219,8 @@ _zetopt::help::synopsis()
             cmd=$(\printf -- "\e[4m%s\e[m " $cmd)
             cmd=${cmd% }
             IFS=$'\n'
-            dbl_dash=
             loop=1
             if [[ $has_arg == true && $has_sub == true ]]; then
-                dbl_dash_required=true
                 if [[ $has_opt == false ]]; then
                     line="--$line"
                 else
@@ -2247,14 +2243,8 @@ _zetopt::help::synopsis()
 
 _zetopt::help::synopsis_options()
 {
-    local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
-    [[ ! $ns =~ /$ ]] && ns=$ns/
-    local IFS=$'\n'
-    local line
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NO_GLOB_SUBST
-    fi
-    for line in $(_zetopt::def::options $ns)
+    local IFS=$'\n' ns=${1-} line
+    for line in $(_zetopt::def::options "$ns")
     do
         \printf -- "[%s] " "$(_zetopt::help::fmtoptarg "$line")"
     done
@@ -2262,17 +2252,15 @@ _zetopt::help::synopsis_options()
 
 _zetopt::help::synopsis_arguments()
 {
-    local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
-    [[ ! $ns =~ /$ ]] && ns=$ns/
-    local IFS=$'\n'
-    local line=$(_zetopt::def::get $ns)
+    local IFS=$'\n' ns=${1-}
+    local line=$(_zetopt::def::get "$ns")
     \printf -- "%s" $(_zetopt::help::fmtoptarg "$line")
 }
 
 _zetopt::help::options()
 {
     local len=${#_ZETOPT_DEFINED_LIST[@]}
-    local i=0 id= tmp= desc= opt= rootcmds= subcmds= help=
+    local i=0 id tmp desc opt rootcmds subcmds
     rootcmds=() subcmds=()
 
     for line in "${_ZETOPT_DEFINED_LIST[@]}"
@@ -2286,7 +2274,7 @@ _zetopt::help::options()
         fi
     done
 
-    local ns= prev_ns=/
+    local ns prev_ns=/
     local subcmd_mode=false
     local incremented=false
     for line in "${rootcmds[@]}" "${subcmds[@]}"
@@ -2314,16 +2302,11 @@ _zetopt::help::options()
             fi
         fi
         
-        help=${_ZETOPT_OPTHELPS[${line##*:}]}
-        desc=($(\printf -- "%b" "$help" | \fold -w $(_zetopt::help::rest_cols) -s -b))
+        desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[${line##*:}]}" | \fold -w $(_zetopt::help::rest_cols) -s -b))
         if [[ ${#opt} -le $(($_OPT_COLS)) ]]; then
             \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$opt" "${desc[$((0 + $IDX_OFFSET))]}"
             if [[ ${#desc[@]} -gt 1 ]]; then
-                \unset desc[$((0 + $IDX_OFFSET))]
-                desc=(${desc[@]})
-                if [[ -n "${desc[@]//\ /}" ]]; then
-                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
-                fi
+                \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]:1}"
             fi
         else
             \printf -- "$(_zetopt::help::indent)%s\n" "$opt"
@@ -2332,8 +2315,7 @@ _zetopt::help::options()
             fi
         fi
 
-        : $((i++))
-        if [[ $len -gt $i ]]; then
+        if [[ $len -gt $((++i)) ]]; then
             \printf -- "%s\n" ""
         fi
     done
@@ -2341,18 +2323,9 @@ _zetopt::help::options()
 
 _zetopt::help::fmtoptarg()
 {
-    local arridx_id=$(($ZETOPT_FIELD_DEF_ID - 1 + $IDX_OFFSET))
-    local arridx_short=$(($ZETOPT_FIELD_DEF_SHORT - 1 + $IDX_OFFSET))
-    local arridx_long=$(($ZETOPT_FIELD_DEF_LONG - 1 + $IDX_OFFSET))
-    local arridx_arg=$(($ZETOPT_FIELD_DEF_ARG - 1 + $IDX_OFFSET))
-    local opt= tmparr= optargs=
+    local id short long args dummy opt tmparr optargs
     local IFS=:
-    local line=$1
-    tmparr=($line)
-    local id=${tmparr[$arridx_id]}
-    local short=${tmparr[$arridx_short]}
-    local long=${tmparr[$arridx_long]}
-    local args=${tmparr[$arridx_arg]}
+    \read id short long args dummy <<< ${1-}
     IFS=$'\n'
 
     if [[ $id == / ]]; then
