@@ -3,7 +3,7 @@
 #------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-01 20:40)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-03 06:40)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -2104,7 +2104,7 @@ _zetopt::help::show()
     local idx_name=0 idx_synopsis=3 idx_option=5 idx=
     local _TERM_MAX_COLS=$(($(\tput cols) - 4))
     local _BASE_COLS=0
-    local _OPT_COLS=4
+    local _OPT_COLS=2
     local _OPT_DESC_MARGIN=2
     local _DESC_DEFAULT_COLS=140
     local _INDENT_STEP=4
@@ -2187,7 +2187,8 @@ _zetopt::help::desc_indent()
 _zetopt::help::synopsis()
 {
     local IFS=$'\n' app=$ZETOPT_CALLER_NAME
-    local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr i
+    local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr idx
+    local ignore_subcmd_undef=$(_zetopt::utils::is_true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}" && echo true || echo false)
     for ns in $(_zetopt::def::namespaces)
     do
         line= has_arg=false has_arg_req=false has_opt=false has_sub=false args=
@@ -2220,7 +2221,7 @@ _zetopt::help::synopsis()
             cmd=${cmd% }
             IFS=$'\n'
             loop=1
-            if [[ $has_arg == true && $has_sub == true ]]; then
+            if [[ $ignore_subcmd_undef == false && $has_arg == true && $has_sub == true ]]; then
                 if [[ $has_opt == false ]]; then
                     line="--$line"
                 else
@@ -2228,9 +2229,9 @@ _zetopt::help::synopsis()
                 fi
             fi
 
-            for ((i=0; i<$loop; i++))
+            for ((idx=0; idx<$loop; idx++))
             do
-                bodyarr=($(\printf -- "%b" "$line" | \fold -w $(_zetopt::help::rest_cols $cmdcol) -s -b | \sed -e 's/</\\e[3m</g' -e 's/>/>\\e[m/g' -e 's/, / \| /g'))
+                bodyarr=($(\printf -- "%b" "$line" | \fold -w $(_zetopt::help::rest_cols $cmdcol) -s -b))
                 \printf -- "$(_zetopt::help::indent)%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
                 if [[ ${#bodyarr[@]} -gt 1 ]]; then
                     \printf -- "$(_zetopt::help::indent $cmdcol)%b\n" "${bodyarr[@]:1}"
@@ -2246,7 +2247,7 @@ _zetopt::help::synopsis_options()
     local IFS=$'\n' ns=${1-} line
     for line in $(_zetopt::def::options "$ns")
     do
-        \printf -- "[%s] " "$(_zetopt::help::fmtoptarg "$line")"
+        \printf -- "[%s] " "$(_zetopt::help::fmtoptarg --synopsis "$line")"
     done
 }
 
@@ -2254,90 +2255,105 @@ _zetopt::help::synopsis_arguments()
 {
     local IFS=$'\n' ns=${1-}
     local line=$(_zetopt::def::get "$ns")
-    \printf -- "%s" $(_zetopt::help::fmtoptarg "$line")
+    \printf -- "%s" $(_zetopt::help::fmtoptarg --synopsis "$line")
 }
 
 _zetopt::help::options()
 {
     local len=${#_ZETOPT_DEFINED_LIST[@]}
-    local i=0 id tmp desc opt rootcmds subcmds
-    rootcmds=() subcmds=()
-
-    for line in "${_ZETOPT_DEFINED_LIST[@]}"
-    do
-        id=${line%%:*}
-        tmp=${id//[!\/]/}
-        if [[ ${#tmp} -eq 1 ]]; then
-            rootcmds+=("$line")
-        else
-            subcmds+=("$line")
-        fi
-    done
-
+    local i=1 id tmp desc opt 
+    local nslist
+    local IFS=$' '
+    nslist=($(_zetopt::def::namespaces))
     local ns prev_ns=/
     local subcmd_mode=false
     local incremented=false
-    for line in "${rootcmds[@]}" "${subcmds[@]}"
+    local IFS=$'\n'
+    for ns in ${nslist[@]}
     do
-        id= desc= opt=
-        id=${line%%:*}
-        ns=${id%/*}/
-        # command mode
-        if [[ $subcmd_mode == false && $id != / && $id =~ /$ ]]; then
-            subcmd_mode=true
-            _INDENT_LEVEL=0
-            \printf -- "$(_zetopt::help::indent)%b\n" "\e[1mCOMMANDS\e[m"
-            : $((_INDENT_LEVEL++))
-        fi
+        for line in $(_zetopt::def::get $ns) $(_zetopt::def::options $ns)
+        do
+            id= desc= opt=
+            id=${line%%:*}
+            
+            if [[ "$id" == / ]]; then
+                continue
+            fi
 
-        opt=$(_zetopt::help::fmtoptarg "$line")
-        if [[ $subcmd_mode == true ]]; then
-            if [[ ${opt:0:1} == "-" ]]; then
+            # sub-command section
+            if [[ $subcmd_mode == false && $id =~ /$ ]]; then
+                subcmd_mode=true
+                _INDENT_LEVEL=0
+                \printf -- "$(_zetopt::help::indent)%b\n" "\e[1mCOMMANDS\e[m"
                 : $((_INDENT_LEVEL++))
-                prev_ns=$ns
-                incremented=true
-            elif [[ $ns != $prev_ns && $incremented == true ]]; then
-                : $((_INDENT_LEVEL--))
-                incremented=false
             fi
-        fi
-        
-        desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[${line##*:}]}" | \fold -w $(_zetopt::help::rest_cols) -s -b))
-        if [[ ${#opt} -le $(($_OPT_COLS)) ]]; then
-            \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$opt" "${desc[$((0 + $IDX_OFFSET))]}"
-            if [[ ${#desc[@]} -gt 1 ]]; then
-                \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]:1}"
-            fi
-        else
-            \printf -- "$(_zetopt::help::indent)%s\n" "$opt"
-            if [[ -n "${desc[@]}" ]]; then
-                \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
-            fi
-        fi
 
-        if [[ $len -gt $((++i)) ]]; then
-            \printf -- "%s\n" ""
-        fi
+            opt=$(_zetopt::help::fmtoptarg "$line")
+            if [[ $subcmd_mode == true ]]; then
+                if [[ $incremented == false && ${opt:0:1} == "-" ]]; then
+                    : $((_INDENT_LEVEL++))
+                    prev_ns=$ns
+                    incremented=true
+                elif [[ $ns != $prev_ns && $incremented == true ]]; then
+                    : $((_INDENT_LEVEL--))
+                    incremented=false
+                fi
+            fi
+            
+            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[${line##*:}]}" | \fold -w $(_zetopt::help::rest_cols) -s -b))
+            if [[ ${#opt} -le $(($_OPT_COLS)) ]]; then
+                \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$opt" "${desc[$((0 + $IDX_OFFSET))]}"
+                if [[ ${#desc[@]} -gt 1 ]]; then
+                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]:1}"
+                fi
+            else
+                \printf -- "$(_zetopt::help::indent)%s\n" "$opt"
+                if [[ -n "${desc[@]}" ]]; then
+                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
+                fi
+            fi
+
+            if [[ $len -gt $((++i)) ]]; then
+                \printf -- "%s\n" ""
+            fi
+        done
     done
 }
 
 _zetopt::help::fmtoptarg()
 {
-    local id short long args dummy opt tmparr optargs
+    local id short long args dummy opt tmparr optargs default_argname
+    local sep=", " synopsis=false vs="<\e[3m" ve="\e[m>"
+    if [[ ${1-} == "--synopsis" ]]; then
+        synopsis=true
+        sep="|"
+        shift
+    fi
     local IFS=:
     \read id short long args dummy <<< ${1-}
     IFS=$'\n'
 
     if [[ $id == / ]]; then
-        : #opt="$ZETOPT_CALLER_NAME "
+        default_argname=ARG_
+        if [[ $synopsis == false ]]; then
+            opt="$ZETOPT_CALLER_NAME"
+        fi
     elif [[ $id =~ /$ ]]; then
-        : #opt="${id:1:$((${#id}-2))}"
-        : #opt="${opt//\// }"
+        default_argname=ARG_
+        if [[ $synopsis == false ]]; then
+            opt="${id:1:$((${#id}-2))}"
+            opt="${opt//\// }"
+            IFS=$' '
+            opt=$(\printf -- "\e[4m%s\e[m " $opt)
+            opt=${opt% }
+            IFS=$'\n'
+        fi
     else
+        default_argname=OPTARG_
         if [[ -n $short ]]; then
             opt="-$short"
             if [[ -n $long ]]; then
-                opt="$opt, --$long"
+                opt="$opt$sep--$long"
             fi
         elif [[ -n $long ]]; then
             opt="--$long"
@@ -2356,16 +2372,16 @@ _zetopt::help::fmtoptarg()
         for arg in $args
         do
             if [[ $arg == @ ]]; then
-                optargs="$optargs <ARG_$cnt>"
+                optargs="$optargs $vs$default_argname$cnt$ve$ve"
                 : $((cnt++))
             elif [[ $arg == % ]]; then
-                optargs="$optargs [<ARG_$cnt>]"
+                optargs="$optargs [$vs$default_argname$cnt$ve]"
                 : $((cnt++))
             elif [[ ${arg:0:1} == @ ]]; then
-                optargs="$optargs <${arg:1}>"
+                optargs="$optargs $vs${arg:1}$ve"
                 : $((cnt++))
             elif [[ ${arg:0:1} == % ]]; then
-                optargs="$optargs [<${arg:1}>]"
+                optargs="$optargs [$vs${arg:1}$ve]"
                 : $((cnt++))
             elif [[ $arg =~ \.\.\. ]]; then
                 lastchar=${optargs:$((${#optargs}-1)):1}
@@ -2374,7 +2390,7 @@ _zetopt::help::fmtoptarg()
         done
         IFS=$'\n'
     fi
-    \printf -- "%s" "$optargs"
+    \printf -- "%b" "$optargs"
 }
 
 
