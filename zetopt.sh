@@ -3,7 +3,7 @@
 #------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-03 06:40)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-07 11:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -1894,13 +1894,17 @@ _zetopt::utils::script_error()
     local funcname="$(_zetopt::utils::funcname 1 )()"
     local col=${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}
     local textcol=${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}
-    local IFS=$' \t\n'
-    \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname [$lineno]" "\n$text" "$value"
-    \printf >&2 -- "\n\e[4mCommand Line\e[m\n -> zetopt"
+    local IFS=$'\n' stack
+    stack=($(_zetopt::utils::stack_trace))
+    IFS=$' \t\n'
+    \printf >&2 "\n\e[${col}m%b\e[0m\n\n\e[${col}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($lineno)" "$text" "$value"
+    \printf >&2 -- "\n\e[1;${col}mCommand Line:\e[m\n %s\n" "${stack[$((${#stack[@]} -1 + $IDX_OFFSET))]}"
+    \printf >&2 "%s" " -> zetopt"
     \printf >&2 -- " \"%s\"" "${_COMMAND_LINE[@]}"
-    \printf >&2 -- "\n\n\e[4mStack Trace\e[m\n"
+    \printf >&2 -- "\n\n\e[1;${col}mStack Trace:\e[m\n"
     IFS=$'\n'
-    \printf >&2 -- " -> %b\n" $(_zetopt::utils::stack_trace)
+    \printf >&2 -- " -> %b\n" ${stack[@]}
+    echo
 }
 
 _zetopt::utils::funcname()
