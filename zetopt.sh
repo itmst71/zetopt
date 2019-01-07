@@ -3,7 +3,7 @@
 #------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-07 11:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-08 05:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -204,7 +204,7 @@ zetopt()
         length | len)
             _zetopt::data::arglength "${@-}";;
         *)
-            _zetopt::utils::script_error "Undefined Sub-Command:" "$subcmd"
+            _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
             return 1;;
     esac
 }
@@ -230,7 +230,7 @@ _zetopt::def::define()
     IFS=$';\n'
     lines=($origin)
     if [[ ${#lines[@]} -eq 0 ]]; then
-        _zetopt::utils::script_error "No Definition Given"
+        _zetopt::msg::script_error "No Definition Given"
         return 1
     fi
 
@@ -278,7 +278,7 @@ _zetopt::def::define()
         IFS=:
         \set -- $namedef
         if [[ $# -gt 3 ]]; then
-            _zetopt::utils::script_error "Invalid Definition:" "$line"
+            _zetopt::msg::script_error "Invalid Definition:" "$line"
             return 1
         fi
 
@@ -292,19 +292,19 @@ _zetopt::def::define()
 
         # can not determine whether it is a subcommand or an option
         if [[ $namedef =~ : && $id =~ /$ ]]; then
-            _zetopt::utils::script_error "Invalid Definition:" "$line"
+            _zetopt::msg::script_error "Invalid Definition:" "$line"
             return 1
         fi
 
         if [[ ! $id =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ ]]; then
-            _zetopt::utils::script_error "Invalid Identifier:" "$id"
+            _zetopt::msg::script_error "Invalid Identifier:" "$id"
             return 1
         fi
 
         # namespace(subcommand) definition
         if [[ $id == $namespace ]]; then
             if [[ -n $global ]]; then
-                _zetopt::utils::script_error "Sub-Command Difinition with Global Option Sign +:" "$line"
+                _zetopt::msg::script_error "Sub-Command Difinition with Global Option Sign +:" "$line"
                 return 1
             fi
 
@@ -322,7 +322,7 @@ _zetopt::def::define()
         fi
         
         if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]; then
-            _zetopt::utils::script_error "Duplicated Identifier:" "$1"
+            _zetopt::msg::script_error "Duplicated Identifier:" "$1"
             return 1
         fi
 
@@ -343,18 +343,18 @@ _zetopt::def::define()
                 # short option
                 if [[ ${#1} -eq 1 ]]; then
                     if [[ -n $short ]]; then
-                        _zetopt::utils::script_error "2 Short Options at once:" "$1"
+                        _zetopt::msg::script_error "2 Short Options at once:" "$1"
                         return 1
                     fi
 
                     if [[ ! $1 =~ ^[a-zA-Z0-9_]$ ]]; then
-                        _zetopt::utils::script_error "Invalid Short Option Name:" "$1"
+                        _zetopt::msg::script_error "Invalid Short Option Name:" "$1"
                         return 1
                     fi
                     
                     # subcommand scope option
                     if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
-                        _zetopt::utils::script_error "Already Defined:" "-$1 : $line"
+                        _zetopt::msg::script_error "Already Defined:" "-$1 : $line"
                         return 1
                     fi
                     short=$1
@@ -362,18 +362,18 @@ _zetopt::def::define()
                 # long option
                 else
                     if [[ -n $long ]]; then
-                        _zetopt::utils::script_error "2 Long Options at once:" "$1"
+                        _zetopt::msg::script_error "2 Long Options at once:" "$1"
                         return 1
                     fi
 
                     if [[ ! $1 =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
-                        _zetopt::utils::script_error "Invalid Long Option Name:" "$1"
+                        _zetopt::msg::script_error "Invalid Long Option Name:" "$1"
                         return 1
                     fi
 
                     # subcommand scope option
                     if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
-                        _zetopt::utils::script_error "Already Defined:" "--$1"
+                        _zetopt::msg::script_error "Already Defined:" "--$1"
                         return 1
                     fi
                     long=$1
@@ -392,15 +392,15 @@ _zetopt::def::define()
             IFS=$' ' read paramdef <<< "$paramdef" # trim spaces
             
             if [[ ! $paramdef =~ ^(\ *-{0,2}[@%]([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)*)?)+$ ]]; then
-                _zetopt::utils::script_error "Invalid Parameter Definition:" "$paramdef"
+                _zetopt::msg::script_error "Invalid Parameter Definition:" "$paramdef"
                 return 1
 
             elif [[ ${paramdef//[\ .-]/} =~ ^%+@ ]]; then
-                _zetopt::utils::script_error "Required Parameter after Optional:" "$paramdef"
+                _zetopt::msg::script_error "Required Parameter after Optional:" "$paramdef"
                 return 1
 
             elif [[ $paramdef =~ [.]{3,3} && ! ${paramdef//[\ -]/} =~ [%@][a-zA-Z0-9_]*[.]{3,3}([1-9][0-9]*)*$ ]]; then
-                _zetopt::utils::script_error "Variable-length parameter must be at the last:" "$paramdef"
+                _zetopt::msg::script_error "Variable-length parameter must be at the last:" "$paramdef"
                 return 1
             fi
 
@@ -413,7 +413,7 @@ _zetopt::def::define()
                     for paramname in $@
                     do
                         if [[ \ $paramnames\  =~ \ $paramname\  ]]; then
-                            _zetopt::utils::script_error "Duplicated Parameter Name:" "$paramdef"
+                            _zetopt::msg::script_error "Duplicated Parameter Name:" "$paramdef"
                             return 1
                         fi
                         paramnames="$paramnames $paramname "
@@ -482,7 +482,7 @@ _zetopt::def::load()
         return 1
     fi
     if [[ ! -f $1 ]]; then
-        _zetopt::utils::script_error "No Such File:" "$1"
+        _zetopt::msg::script_error "No Such File:" "$1"
         return 1
     fi
 
@@ -826,7 +826,7 @@ _zetopt::parser::parse()
     local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::utils::script_error "Invalid Definition Data:" "Root Namespace Not Found"
+        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
         return 1
     fi
 
@@ -978,7 +978,7 @@ _zetopt::parser::parse()
                         continue
                     fi
                     error_subcmd_name="${ns//\// }"
-                    _zetopt::utils::msg Error "Undefined Sub-Command:" "$error_subcmd_name"
+                    _zetopt::msg::error Error "Undefined Sub-Command:" "$error_subcmd_name"
                     ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
                     break
                 fi
@@ -1013,31 +1013,31 @@ _zetopt::parser::parse()
         # Undefined Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_UNDEFINED_OPTION)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_UNDEFINED[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::utils::msg Warning "Undefined Option(s):" "${msg[*]}"
+            _zetopt::msg::error Warning "Undefined Option(s):" "${msg[*]}"
         fi
 
         # Invalid Format Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_INVALID_OPTFORMAT)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_INVALID[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::utils::msg Error "Invalid Format Option(s):" "${msg[*]}"
+            _zetopt::msg::error Error "Invalid Format Option(s):" "${msg[*]}"
         fi
 
         # Missing Required Option Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_MISSING_REQUIRED[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::utils::msg Error "Missing Required Option Argument(s):" "${msg[*]}"
+            _zetopt::msg::error Error "Missing Required Option Argument(s):" "${msg[*]}"
         fi
 
         # Missing Required Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_MISSING_REQUIRED_ARGS)) -ne 0 ]]; then
             msg=($subcmdstr "$(_zetopt::def::paramlen $namespace required) Argument(s) Required")
-            _zetopt::utils::msg Error "Missing Required Argument(s):" "${msg[*]}"
+            _zetopt::msg::error Error "Missing Required Argument(s):" "${msg[*]}"
         fi
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_TOO_MATCH_ARGS)) -ne 0 ]]; then
             msg=($subcmdstr "Given ${#ZETOPT_ARGS[@]} Arguments (Up To "$(_zetopt::def::paramlen $namespace max)")")
-            _zetopt::utils::msg Error "Too Match Arguments:" "${msg[*]}"
+            _zetopt::msg::error Error "Too Match Arguments:" "${msg[*]}"
         fi
     fi
 
@@ -1444,7 +1444,7 @@ _zetopt::data::validx()
         for input_idx in "${args[@]}"
         do            
             if [[ ! $input_idx =~ ^(@|([$\^0]|-?[1-9][0-9]*)(,([$\^0]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
-                _zetopt::utils::script_error "Bad Key:" "$input_idx"
+                _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
 
@@ -1506,7 +1506,7 @@ _zetopt::data::validx()
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
-                _zetopt::utils::script_error "Group Index Out of Range:" "$tmp_list_idx -> $list_start_idx~$list_end_idx (Valid: $IDX_OFFSET~$lists_last_idx)"
+                _zetopt::msg::script_error "Group Index Out of Range:" "$tmp_list_idx -> $list_start_idx~$list_end_idx (Valid: $IDX_OFFSET~$lists_last_idx)"
                 return 1
             fi
 
@@ -1553,7 +1553,7 @@ _zetopt::data::validx()
                 done
 
                 if [[ -z $nameidx ]]; then
-                    _zetopt::utils::script_error "Parameter Name Not Found:" "$input_idx"
+                    _zetopt::msg::script_error "Parameter Name Not Found:" "$input_idx"
                     return 1
                 fi
 
@@ -1599,7 +1599,7 @@ _zetopt::data::validx()
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
-                    _zetopt::utils::script_error "Value Index Out of Range:" "$tmp_val_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
+                    _zetopt::msg::script_error "Value Index Out of Range:" "$tmp_val_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
                     return 1
                 fi
 
@@ -1675,7 +1675,7 @@ _zetopt::data::argvalue()
                 __array_mode=true;
                 shift;
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::utils::script_error "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    _zetopt::msg::script_error "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
                 __arrname=$1
@@ -1689,7 +1689,7 @@ _zetopt::data::argvalue()
     if [[ $__array_mode == true ]]; then
         # check the user defined array name before eval to avoid overwriting local variables
         if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::utils::script_error "Invalid Array Name:" "$__arrname"
+            _zetopt::msg::script_error "Invalid Array Name:" "$__arrname"
             return 1
         fi
         \eval "$__arrname=()"
@@ -1752,7 +1752,7 @@ _zetopt::data::arglength()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::utils::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Index:" "$idx"
                 return 1
             fi
             idxarr+=("$idx:@")
@@ -1785,7 +1785,7 @@ _zetopt::data::status()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::utils::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Index:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -1815,7 +1815,7 @@ _zetopt::data::type()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::utils::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Index:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -1857,9 +1857,9 @@ _zetopt::data::setids()
 
 
 #------------------------------------------------
-# _zetopt::utils
+# _zetopt::msg
 #------------------------------------------------
-_zetopt::utils::msg()
+_zetopt::msg::error()
 {
     if ! _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
         return 0
@@ -1868,7 +1868,7 @@ _zetopt::utils::msg()
     local title="${1-}" text="${2-}" value="${3-}" col=
 
     # plain text message
-    if ! _zetopt::utils::should_decorate $FD_STDERR; then
+    if ! _zetopt::msg::should_decorate $FD_STDERR; then
         \printf >&2 "%b\n" "$ZETOPT_APPNAME: $title: $text$value"
         return 0
     fi
@@ -1884,7 +1884,7 @@ _zetopt::utils::msg()
     \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
-_zetopt::utils::script_error()
+_zetopt::msg::script_error()
 {
     local text=${1-} value=${2-}
     local lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
@@ -1907,6 +1907,42 @@ _zetopt::utils::script_error()
     echo
 }
 
+_zetopt::msg::output()
+{
+    local fd=${1:-1}
+    if ! zetopt::utils::should_decorate $fd; then
+        _zetopt::utils::undecorate
+    else
+        \cat -- -
+    fi
+}
+
+_zetopt::msg::should_decorate()
+{
+    if [[ -n ${ZSH_VERSION-} ]]; then
+        \setopt localoptions NOCASEMATCH
+    else
+        \shopt -s nocasematch
+    fi
+    local fd="${1-}"
+    case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
+        always)   return 0;;
+        never)    return 1;;
+        auto)     
+            case "$fd" in
+                $FD_STDOUT) return $TTY_STDOUT;;
+                $FD_STDERR) return $TTY_STDERR;;
+                *) return 1;;
+            esac
+            ;;
+        *) return 1;;
+    esac
+}
+
+
+#------------------------------------------------
+# _zetopt::utils
+#------------------------------------------------
 _zetopt::utils::funcname()
 {
     local skip_stack_count=0
@@ -1951,7 +1987,7 @@ _zetopt::utils::stack_trace()
 _zetopt::utils::repeat()
 {
     if [[ $# -ne 2 || ! $1 =~ ^[1-9][0-9]*$ ]]; then
-        _zetopt::utils::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
+        _zetopt::msg::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
         return 1
     fi
     local IFS=$' '
@@ -1985,12 +2021,12 @@ _zetopt::utils::seq()
     fi
     
     if [[ $error == true ]]; then
-        _zetopt::utils::script_error "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
+        _zetopt::msg::script_error "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
         return 1
     fi
 
     if [[ ! $start =~ ^([a-zA-Z]|-?[0-9]+)$ ]] || [[ ! $end =~ ^([a-zA-Z]|-?[0-9]+)$ ]]; then
-        _zetopt::utils::script_error "Accepts:" "^([a-zA-Z]|[0-9]+)$"
+        _zetopt::msg::script_error "Accepts:" "^([a-zA-Z]|[0-9]+)$"
         return 1
     fi
 
@@ -2068,7 +2104,7 @@ _zetopt::utils::fold()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::utils::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>]"
+        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>]"
         return 1
     fi
 
@@ -2128,38 +2164,6 @@ _zetopt::utils::fold()
             fi
         done
     done
-}
-
-_zetopt::utils::output()
-{
-    local fd=${1:-1}
-    if ! zetopt::utils::should_decorate $fd; then
-        _zetopt::utils::undecorate
-    else
-        \cat -- -
-    fi
-}
-
-_zetopt::utils::should_decorate()
-{
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
-    local fd="${1-}"
-    case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
-        always)   return 0;;
-        never)    return 1;;
-        auto)     
-            case "$fd" in
-                $FD_STDOUT) return $TTY_STDOUT;;
-                $FD_STDERR) return $TTY_STDERR;;
-                *) return 1;;
-            esac
-            ;;
-        *) return 1;;
-    esac
 }
 
 _zetopt::utils::undecorate()
@@ -2260,7 +2264,7 @@ _zetopt::help::show()
     titles=()
 
     local deco_s= deco_e=
-    if _zetopt::utils::should_decorate $FD_STDOUT; then
+    if _zetopt::msg::should_decorate $FD_STDOUT; then
         deco_s="\e[1m"
         deco_e="\e[m"
         _DECORATION=true
