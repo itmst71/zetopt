@@ -103,12 +103,18 @@ zetopt()
         declare -r IDX_OFFSET=0
     fi
 
-    # save whether the stderr of the main function is TTY or not.
-    if [[ -t 2 ]]; then
-        declare -r TTY_STDERR=0
-    else
-        declare -r TTY_STDERR=1
-    fi
+    # save whether the stdin/out/err of the main function is TTY or not.
+    [[ -t 0 ]]
+    declare -r TTY_STDIN=$?
+
+    [[ -t 1 ]]
+    declare -r TTY_STDOUT=$?
+
+    [[ -t 2 ]]
+    declare -r TTY_STDERR=$?
+
+    declare -r FD_STDOUT=1
+    declare -r FD_STDERR=2
 
     # show help if subcommand not given
     if [[ $# -eq 0 ]]; then
@@ -1860,15 +1866,9 @@ _zetopt::utils::msg()
     fi
 
     local title="${1-}" text="${2-}" value="${3-}" col=
-    local coloring=false
-    case "$(<<< "${ZETOPT_CFG_ERRMSG_COL_MODE:-never}" \tr "[:upper:]" "[:lower:]")" in
-        never) coloring=false;;
-        always) coloring=true;;
-        auto) [[ $TTY_STDERR -eq 0 ]] && coloring=true || coloring=false;;
-    esac
 
     # plain text message
-    if [[ $coloring == false ]]; then
+    if ! _zetopt::utils::should_decorate $FD_STDERR; then
         \printf >&2 "%b\n" "$ZETOPT_APPNAME: $title: $text$value"
         return 0
     fi
@@ -2130,6 +2130,47 @@ _zetopt::utils::fold()
     done
 }
 
+_zetopt::utils::output()
+{
+    local fd=${1:-1}
+    if ! zetopt::utils::should_decorate $fd; then
+        _zetopt::utils::undecorate
+    else
+        \cat -- -
+    fi
+}
+
+_zetopt::utils::should_decorate()
+{
+    if [[ -n ${ZSH_VERSION-} ]]; then
+        \setopt localoptions NOCASEMATCH
+    else
+        \shopt -s nocasematch
+    fi
+    local fd="${1-}"
+    case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
+        always)   return 0;;
+        never)    return 1;;
+        auto)     
+            case "$fd" in
+                $FD_STDOUT) return $TTY_STDOUT;;
+                $FD_STDERR) return $TTY_STDERR;;
+                *) return 1;;
+            esac
+            ;;
+        *) return 1;;
+    esac
+}
+
+_zetopt::utils::undecorate()
+{
+    if [[ $# -eq 0 ]]; then
+        \sed 's/'$'\033''\[[0-9;]*[JKmsu]//g'
+    else
+        \sed 's/'$'\033''\[[0-9;]*[JKmsu]//g' <<< "$*"
+    fi
+}
+
 
 #------------------------------------------------
 # _zetopt::help
@@ -2214,8 +2255,16 @@ _zetopt::help::show()
     local _DESC_DEFAULT_COLS=140
     local _INDENT_STEP=4
     local _INDENT_LEVEL=0
+    local _DECORATION=false
     local IFS body bodyarr title titles
     titles=()
+
+    local deco_s= deco_e=
+    if _zetopt::utils::should_decorate $FD_STDOUT; then
+        deco_s="\e[1m"
+        deco_e="\e[m"
+        _DECORATION=true
+    fi
 
     IFS=$' '
     if [[ -z "${@-}" ]]; then
@@ -2232,7 +2281,7 @@ _zetopt::help::show()
             continue
         fi
 
-        \printf -- "$(_zetopt::help::indent)%b\n" "\e[1m$title\e[m"
+        \printf -- "$(_zetopt::help::indent)%b\n" "$deco_s$title$deco_e"
         : $((_INDENT_LEVEL++))
         idx=$(_zetopt::help::search "$title")
 
@@ -2306,6 +2355,7 @@ _zetopt::help::synopsis()
     local IFS=$'\n' app=$ZETOPT_CALLER_NAME
     local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr idx
     local ignore_subcmd_undef=$(_zetopt::utils::is_true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}" && echo true || echo false)
+
     for ns in $(_zetopt::def::namespaces)
     do
         line= has_arg=false has_arg_req=false has_opt=false has_sub=false args=
@@ -2334,7 +2384,9 @@ _zetopt::help::synopsis()
 
             cmdcol=$((${#cmd} + 1))
             IFS=$' '
-            cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
+            if [[ $_DECORATION == true ]]; then
+                cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
+            fi
             cmd=${cmd% }
             IFS=$'\n'
             loop=1
@@ -2351,18 +2403,23 @@ _zetopt::help::synopsis()
             for ((idx=0; idx<$loop; idx++))
             do
                 bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols)))
-                \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}" | _zetopt::help::decorate --synopsis
+                \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
                 if [[ ${#bodyarr[@]} -gt 1 ]]; then
-                    \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}" | _zetopt::help::decorate --synopsis
+                    \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}"
                 fi
                 line="--$args"
-            done
+            done | _zetopt::help::decorate --synopsis
         fi
     done
 }
 
 _zetopt::help::decorate()
 {
+    if [[ $_DECORATION == false ]]; then
+        \cat -- -
+        return 0
+    fi
+
     if [[ ${1-} == "--synopsis" ]]; then
         \sed < /dev/stdin \
             -e 's/<\([^>]\{1,\}\)>/<'$'\e[3m''\1'$'\e[m''>/g' \
@@ -2374,7 +2431,7 @@ _zetopt::help::decorate()
             -e 's/^\( *\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\), \(--[a-zA-Z0-9_-]\{1,\}\)/\1\2, '$'\e[1m''\3'$'\e[m''/g' \
             -e 's/^\( *\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\)/\1'$'\e[1m''\2'$'\e[m''/g'
     else
-        \cat -
+        \cat -- -
     fi
 }
 
@@ -2404,6 +2461,11 @@ _zetopt::help::options()
     local subcmd_mode=false
     local incremented=false
     local IFS=$'\n'
+    local deco_s= deco_e=
+    if [[ $_DECORATION == true ]]; then
+        deco_s="\e[1m" deco_e="\e[m"
+    fi
+
     for ns in $(_zetopt::def::namespaces)
     do
         for line in $(_zetopt::def::get $ns) $(_zetopt::def::options $ns)
@@ -2417,18 +2479,20 @@ _zetopt::help::options()
             if [[ $id =~ /$ ]]; then
                 cmd="${id:1:$((${#id}-2))}"
                 cmd="${cmd//\// }"
-
                 cmdcol=$((${#cmd} + 1))
-                IFS=$' '
-                cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
-                cmd=${cmd% }
-                IFS=$'\n'
+
+                if [[ $_DECORATION == true ]]; then
+                    IFS=$' '
+                    cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
+                    cmd=${cmd% }
+                    IFS=$'\n'
+                fi
 
                 # sub-command section
                 if [[ $subcmd_mode == false ]]; then
                     subcmd_mode=true
                     _INDENT_LEVEL=0
-                    \printf -- "$(_zetopt::help::indent)%b\n" "\e[1mCOMMANDS\e[m"
+                    \printf -- "$(_zetopt::help::indent)%b\n" "${deco_s}COMMANDS${deco_e}"
                     : $((_INDENT_LEVEL++))
                 fi
             fi
@@ -2465,12 +2529,12 @@ _zetopt::help::options()
                         \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
                     fi
                 fi
-            fi | _zetopt::help::decorate --options
+            fi
             
             if [[ $len -gt $((++i)) ]]; then
                 \printf -- "%s\n" " "
             fi
-        done
+        done | _zetopt::help::decorate --options
     done
     if [[ $incremented == true ]]; then
         : $((_INDENT_LEVEL--))
