@@ -42,6 +42,7 @@ declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 7))
 
 # misc
 declare -r ZETOPT_IDX_NOT_FOUND=-1
+declare -r ZETOPT_OLDBASH=$([[ -n ${BASH_VERSION-} && ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)
 
 # caller
 if [[ -n ${ZSH_VERSION-} ]]; then
@@ -1959,6 +1960,7 @@ _zetopt::utils::funcname()
 
 _zetopt::utils::stack_trace()
 {
+    local IFS=$' '
     local skip_stack_count=1
     if [[ -n ${1-} ]]; then
         skip_stack_count=$1
@@ -1968,11 +1970,11 @@ _zetopt::utils::stack_trace()
     local funcs lines i
     funcs=()
     lines=()
-    if [[ -n $BASH_VERSION ]]; then
+    if [[ -n ${BASH_VERSION-} ]]; then
         funcs=("${FUNCNAME[@]:$funcs_start_idx}")
         funcs[$((${#funcs[@]} - 1))]=$ZETOPT_CALLER_NAME
         lines=("${BASH_LINENO[@]:$lines_start_idx}")
-    elif [[ -n $ZSH_VERSION ]]; then
+    elif [[ -n ${ZSH_VERSION-} ]]; then
         \setopt localoptions KSH_ARRAYS
         funcs=("${funcstack[@]:$funcs_start_idx}" "$ZETOPT_CALLER_NAME")
         lines=("${funcfiletrace[@]:$lines_start_idx}")
@@ -2409,7 +2411,12 @@ _zetopt::help::synopsis()
                 bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols)))
                 \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
                 if [[ ${#bodyarr[@]} -gt 1 ]]; then
-                    \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}"
+                    if [[ $ZETOPT_OLDBASH == true ]]; then
+                        unset bodyarr[0]
+                        \printf -- "$cmd_indent%b\n" "${bodyarr[@]}"
+                    else
+                        \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}"
+                    fi
                 fi
                 line="--$args"
             done | _zetopt::help::decorate --synopsis
@@ -2520,9 +2527,12 @@ _zetopt::help::options()
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $IDX_OFFSET))]}"
                 if [[ ${#desc[@]} -gt 1 ]]; then
-                    unset desc[$IDX_OFFSET]
-                    desc=(${desc[@]})
-                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
+                    if [[ $ZETOPT_OLDBASH == true ]]; then
+                        \unset desc[0]
+                        \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
+                    else
+                        \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]:$((1 + $IDX_OFFSET))}"
+                    fi
                 fi
             else
                 \printf -- "$(_zetopt::help::indent)%s\n" "$optarg"
