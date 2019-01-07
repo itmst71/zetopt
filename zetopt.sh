@@ -83,6 +83,7 @@ zetopt()
 {
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
+    local _LC_ALL=$LC_ALL _LANG=$LANG
     local LC_ALL=C LANG=C
 
     # setup for zsh
@@ -2021,6 +2022,108 @@ _zetopt::utils::is_true()
         \echo $rtn
     fi
     return $rtn
+}
+
+_zetopt::utils::fold()
+{
+    local width=80 locale=${_LC_ALL:-${_LANG:-C}} indent_cnt=0 indent_str=" "
+    local error=false
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            -w|--width)
+                if [[ ${2-} =~ ^[1-9][0-9]*$ ]]; then
+                    width=$2
+                else
+                    error=true; break
+                fi
+                shift 2;;
+            -l|--locale)
+                if [[ -n ${2-} ]]; then
+                    locale=$2
+                else
+                    error=true; break
+                fi
+                shift 2;;
+            -i|--indent)
+                if [[ ${2-} =~ ^[1-9][0-9]*$ ]]; then
+                    indent_cnt=$2
+                else
+                    error=true; break
+                fi
+                shift 2;;
+            --indent-string)
+                if [[ -n ${2-} ]]; then
+                    indent_str=$2
+                else
+                    error=true; break
+                fi
+                shift 2;;
+            --) shift; break;;
+            *)  shift; error=true; break;;
+        esac
+    done
+    if [[ $error == true ]]; then
+        _zetopt::utils::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>]"
+        return 1
+    fi
+
+    local LC_ALL=$locale
+    local max_buff_size=$width
+    local IFS=$'\n'
+    local line buff_size tmp_buff buff curr
+    local pointer=0
+    local indent=
+    if [[ $indent_cnt -ne 0 ]]; then
+        indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")
+    fi
+    while < /dev/stdin \read -r line || [[ -n $line ]]
+    do
+        line_len=${#line}
+        curr=0 pointer=0
+        rest_buff_size=$max_buff_size
+        while true
+        do
+            curr_buff_size=$(($rest_buff_size / 2))
+            tmp_buff=${line:$pointer:$curr_buff_size}
+            ascii=${tmp_buff//[!a-zA-Z0-9[:blank:][:punct:]]/}
+            mb=${tmp_buff//[a-zA-Z0-9[:blank:][:punct:]]/}
+            rest_buff_size=$((rest_buff_size - ${#mb} * 2 - ${#ascii}))
+            pointer=$((pointer + curr_buff_size))
+            if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
+                continue
+            fi
+
+            # smart folding
+            skip=0
+            if [[ $rest_buff_size -eq 1 ]]; then
+                if [[ ${line:$pointer:1} =~ ^[[:punct:]]$ ]]; then
+                    : $((pointer++))
+                fi
+
+                if [[ ${line:$pointer:2} =~ ^[[:alnum:][:blank:][:punct:]]\ $ ]]; then
+                    : $((pointer++))
+                fi
+            fi
+            if [[ ${line:$((pointer - 2)):2} =~ ^\ [[:alnum:][:blank:][:punct:]]{1,2}$ ]]; then
+                : $((pointer--))
+            elif [[ ${line:$pointer:1} == " " ]]; then
+                skip=1
+            fi
+
+            total_buff_size=$((pointer - curr))
+            buff=${line:$curr:$total_buff_size}
+            printf -- "%s\n" "$indent$buff"
+
+            curr=$((curr + total_buff_size + skip))
+            pointer=$curr
+            rest_buff_size=$max_buff_size
+
+            if [[ $curr -ge $line_len ]]; then
+                break
+            fi
+        done
+    done
 }
 
 
