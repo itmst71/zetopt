@@ -3,7 +3,7 @@
 #------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-08 05:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-08 07:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -43,17 +43,7 @@ declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 7))
 # misc
 declare -r ZETOPT_IDX_NOT_FOUND=-1
 declare -r ZETOPT_OLDBASH=$([[ -n ${BASH_VERSION-} && ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)
-
-# caller
-if [[ -n ${ZSH_VERSION-} ]]; then
-    _caller=${funcfiletrace%:*}
-else
-    _caller=$0
-fi
-declare -r ZETOPT_CALLER_NAME=${_caller##*/}
-\unset _caller
-
-# self file path
+declare -r ZETOPT_CALLER_NAME=$([[ -n ${ZSH_VERSION-} ]] && __=${funcfiletrace%:*} || __=$0; echo "${__##*/}")
 declare -r ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
 
 # config
@@ -820,11 +810,11 @@ _zetopt::parser::parse()
     
     # internal global variables
     local _CONSUMED_ARGS_COUNT=0
-    local _ZETOPT_CFG_CLUSTERED_AS_LONG="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_CLUSTERED_AS_LONG-}")"
-    local _ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
-    local _ZETOPT_CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
-    local _ZETOPT_CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
-    local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true --stdout "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
+    local _ZETOPT_CFG_CLUSTERED_AS_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CLUSTERED_AS_LONG-}")"
+    local _ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
+    local _ZETOPT_CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
+    local _ZETOPT_CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
+    local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
         _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
@@ -837,7 +827,7 @@ _zetopt::parser::parse()
         _CONSUMED_ARGS_COUNT=0
         
         if [[ $1 == -- ]]; then
-            if [[ $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -ne 0 ]]; then
+            if [[ $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
                 shift
                 ZETOPT_ARGS+=("$@")
                 break
@@ -852,7 +842,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         elif [[ $1 == "" ]]; then
-            if [[ $_ZETOPT_CFG_IGNORE_BLANK_STRING -eq 0 ]]; then
+            if [[ $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
                 shift
                 continue
             fi
@@ -861,7 +851,7 @@ _zetopt::parser::parse()
             check_subcmd=false
                 
         # long option or clustered short options with ZETOPT_CFG_CLUSTERED_AS_LONG enabled
-        elif [[ $1 =~ ^-- || ($_ZETOPT_CFG_CLUSTERED_AS_LONG -eq 0 && $1 =~ ^-[^-]. ) ]]; then
+        elif [[ $1 =~ ^-- || ($_ZETOPT_CFG_CLUSTERED_AS_LONG == true && $1 =~ ^-[^-]. ) ]]; then
             if [[ ! $1 =~ ^--?[a-zA-Z0-9_] ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -869,7 +859,7 @@ _zetopt::parser::parse()
                 check_subcmd=false
             fi
 
-            if [[ $1 =~ ^-[^-]. && $_ZETOPT_CFG_CLUSTERED_AS_LONG -eq 0 ]]; then
+            if [[ $1 =~ ^-[^-]. && $_ZETOPT_CFG_CLUSTERED_AS_LONG == true ]]; then
                 optsign=-
             else
                 optsign=--
@@ -929,7 +919,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # short option(s) with + optsign
-        elif [[ $1 =~ ^[+] && $_ZETOPT_CFG_OPTTYPE_PLUS -eq 0 ]]; then
+        elif [[ $1 =~ ^[+] && $_ZETOPT_CFG_OPTTYPE_PLUS == true ]]; then
             if [[ ! $1 =~ ^[+][a-zA-Z0-9_] ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -973,7 +963,7 @@ _zetopt::parser::parse()
                 ns="${namespace%/*}/$1/"
                 if [[ ! $ns =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ || -z $(_zetopt::def::get "$ns") ]]; then
                     check_subcmd=false
-                    if [[ $_ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR -eq 0 ]]; then
+                    if [[ $_ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
                         ZETOPT_ARGS+=("$1")
                         shift
                         continue
@@ -1133,7 +1123,7 @@ _zetopt::parser::setopt()
             fi
 
             arg="${args[$arg_idx]}"
-            if [[ $arg == "" && $_ZETOPT_CFG_IGNORE_BLANK_STRING -eq 0 ]]; then
+            if [[ $arg == "" && $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
                 : $((arg_idx++))
                 continue
             fi
@@ -1144,7 +1134,7 @@ _zetopt::parser::setopt()
                 || $arg == ""
                 || ($arg =~ ^-[^-] && $def =~ ^-[^-])
                 || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
-                || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS -eq 0)
+                || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS == true)
                 || ($arg == "--" && $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
             ]]; then
                 ZETOPT_OPTVALS+=("$arg")
@@ -1848,6 +1838,7 @@ _zetopt::data::setids()
     for line in "${_ZETOPT_PARSED_LIST[@]}"
     do
         \set -- $line
+        # $7 is ZETOPT_FIELD_DATA_COUNT
         if [[ $7 -ne 0 ]]; then
             ids+=("$1")
         fi
@@ -2041,28 +2032,55 @@ _zetopt::utils::seq()
 
 _zetopt::utils::is_true()
 {
-    local rtn=1
-    if [[ $# -eq 0 || -z ${1-} ]]; then
-        return $rtn
+    local rtn_true= rtn_false= stdout=false
+    local error=false
+    local arg
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            -t|--true)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    error=true; break
+                fi
+                rtn_true=$1
+                stdout=true
+                shift;;
+            -f|--false)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    error=true; break
+                fi
+                rtn_false=$1
+                stdout=true
+                shift;;
+            -*) error=true; break;;
+            --) shift; arg=$1; break;;
+            *)  arg=$1; shift;;
+        esac
+    done
+
+    if [[ $error == true ]]; then
+        _zetopt::msg::script_error "Usage:" "_zetopt::utils::is_true [-t|--true <TRUE_STRING>] [-f|--false <FALSE_STRING>] <VALUE_TO_CHECK>"
+        return 1
     fi
 
-    local stdout=false
-    if [[ $1 == --stdout ]]; then
-        stdout=true
-        shift
+    if [[ -n ${ZSH_VERSION-} ]]; then
+        \setopt localoptions NOCASEMATCH
+    else
+        \shopt -s nocasematch
+    fi
+    [[ ${1-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]]
+    rtn=$?
+
+    if [[ $stdout == true ]]; then
+        if [[ $rtn -eq 0 ]]; then
+            echo "$rtn_true"
+        else
+            echo "$rtn_false"
+        fi
     fi
     
-    local longest="enabled"
-    if [[ -n ${1-} && ${#1} -le ${#longest} ]]; then
-        case "$(<<< "${1-}" \tr "[:upper:]" "[:lower:]")" in
-            0 | true | yes | y | enabled | enable | on)     rtn=0;;
-            #1 | false | no | n | disabled | disable | off)  rtn=1;;
-            #*)                                              rtn=1;;
-        esac
-    fi
-    if [[ $stdout == true ]]; then
-        \echo $rtn
-    fi
     return $rtn
 }
 
