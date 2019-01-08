@@ -79,11 +79,9 @@ zetopt()
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
-        if [[ $'\n'$(\setopt) =~ $'\n'ksharrays ]]; then
-            declare -r IDX_OFFSET=0
-        else
-            declare -r IDX_OFFSET=1
-        fi
+        [[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] \
+        && declare -r IDX_OFFSET=0 \
+        || declare -r IDX_OFFSET=1
         \setopt localoptions SH_WORD_SPLIT
         \setopt localoptions BSD_ECHO
         \setopt localoptions NO_NOMATCH
@@ -95,14 +93,17 @@ zetopt()
     fi
 
     # save whether the stdin/out/err of the main function is TTY or not.
-    [[ -t 0 ]]
-    declare -r TTY_STDIN=$?
+    [[ -t 0 ]] \
+    && declare -r TTY_STDIN=$? \
+    || declare -r TTY_STDIN=$?
 
-    [[ -t 1 ]]
-    declare -r TTY_STDOUT=$?
+    [[ -t 1 ]] \
+    && declare -r TTY_STDOUT=$? \
+    || declare -r TTY_STDOUT=$?
 
-    [[ -t 2 ]]
-    declare -r TTY_STDERR=$?
+    [[ -t 2 ]] \
+    && declare -r TTY_STDERR=$? \
+    || declare -r TTY_STDERR=$?
 
     declare -r FD_STDOUT=1
     declare -r FD_STDERR=2
@@ -1034,8 +1035,8 @@ _zetopt::parser::parse()
 
     IFS=$'\n'
     ZETOPT_PARSED="${_ZETOPT_PARSED_LIST[*]}"
-    [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_MISSING_OPTIONAL_ARGS ]]
-    return $?
+    [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_MISSING_OPTIONAL_ARGS ]] \
+    && return $? || return $?
 }
 
 # Increment the set count of a sub-command. 
@@ -1197,8 +1198,8 @@ _zetopt::parser::setopt()
     : $((cnt++))
     
     _ZETOPT_PARSED_LIST[$ididx]="$id:$short:$long:$refsstr:$types:$stat:$cnt"
-    [[ $curr_stat -le $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS ]]
-    return $?
+    [[ $curr_stat -le $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS ]] \
+    && return $? || return $?
 }
 
 # Assign indices to subcommand parameters. 
@@ -1338,8 +1339,8 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && ! $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]];
-    return $?
+    [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && ! $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]] \
+    && return $? || return $?
 }
 
 # Check if the option is set and its status is OK
@@ -1372,8 +1373,8 @@ _zetopt::data::isok()
         return 1
     fi
     # 0 $ZETOPT_STATUS_NORMAL, 1 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS, 2 $ZETOPT_STATUS_MISSING_OPTIONAL_ARGS
-    [[ ! $stat =~ [^012\ ] ]]
-    return $?
+    [[ ! $stat =~ [^012\ ] ]] \
+    && return $? || return $?
 }
 
 # Print option arguments/status index list
@@ -1621,8 +1622,8 @@ _zetopt::data::hasvalue()
     if [[ -z $len ]]; then
         return 1
     fi
-    [[ $len -ne 0 ]]
-    return $?
+    [[ $len -ne 0 ]] \
+    && return $? || return $?
 }
 
 # Print option arguments index list to refer $ZETOPT_OPTVALS
@@ -1911,11 +1912,9 @@ _zetopt::msg::output()
 
 _zetopt::msg::should_decorate()
 {
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
+    [[ -n ${ZSH_VERSION-} ]] \
+    && \setopt localoptions NOCASEMATCH \
+    || \shopt -s nocasematch
     local fd="${1-}"
     case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
         always)   return 0;;
@@ -2070,8 +2069,8 @@ _zetopt::utils::is_true()
     else
         \shopt -s nocasematch
     fi
-    [[ ${1-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]]
-    rtn=$?
+    [[ ${1-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] \
+    && rtn=$? || rtn=$?
 
     if [[ $stdout == true ]]; then
         if [[ $rtn -eq 0 ]]; then
