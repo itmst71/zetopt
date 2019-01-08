@@ -236,9 +236,14 @@ _zetopt::def::define()
 
         # help
         IFS=$''
-        if [[ $line =~ \ \# ]]; then
+        if [[ $line =~ \# ]]; then
             helpdef="${line#*\ #}"
             line=${line%%\ #*}
+
+            # help only
+            if [[ $line =~ ^\# ]]; then
+                line=/
+            fi
         fi
 
         IFS=$' '
