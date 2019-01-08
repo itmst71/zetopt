@@ -2565,8 +2565,8 @@ _zetopt::help::options()
             if [[ $len -gt $((++i)) ]]; then
                 \printf -- "%s\n" " "
             fi
-        done | _zetopt::help::decorate --options
-    done
+        done
+    done | _zetopt::help::decorate --options
     if [[ $incremented == true ]]; then
         : $((_INDENT_LEVEL--))
     fi
