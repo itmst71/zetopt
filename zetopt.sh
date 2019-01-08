@@ -1090,9 +1090,9 @@ _zetopt::parser::setopt()
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
         if [[ $optsign =~ ^--?$ ]]; then
-            ZETOPT_OPTVALS+=(${ZETOPT_CFG_FLAGVAL_TRUE:-0})
+            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}")
         else
-            ZETOPT_OPTVALS+=(${ZETOPT_CFG_FLAGVAL_FALSE:-1})
+            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
         fi
         refs=($optarg_idx)
 
