@@ -173,7 +173,7 @@ zetopt()
             _zetopt::help::show "${@-}";;
         isset)
             _zetopt::data::isset "${@-}";;
-        isok)
+        isvalid | isok)
             _zetopt::data::isok "${@-}";;
         count | cnt)
             _zetopt::data::count "${@-}";;
@@ -214,7 +214,7 @@ zetopt()
 _zetopt::def::define()
 {
     if [[ -z ${ZETOPT_DEFINED:-} ]]; then
-        ZETOPT_DEFINED="/:::0"$'\n'
+        ZETOPT_DEFINED="/::::0 0"$'\n'
         _ZETOPT_OPTHELPS=("")
     fi
 
@@ -226,10 +226,10 @@ _zetopt::def::define()
         return 1
     fi
 
-    local line namespace id short long namedef paramdef helpdef helpidx global arr
+    local line namespace id short long namedef paramdef cmdmode helpdef helpidx helpidx_cmd global arr
     for line in "${lines[@]}"
     do 
-        namespace= id= short= long= namedef= paramdef= helpidx=0 helpdef= global=
+        namespace= id= short= long= namedef= paramdef= cmdmode=false helpidx=0 helpidx_cmd=0 helpdef= global=
         if [[ -z ${line//[$' \t']/} ]]; then
             continue
         fi
@@ -300,22 +300,53 @@ _zetopt::def::define()
 
         # namespace(subcommand) definition
         if [[ $id == $namespace ]]; then
+            cmdmode=true
+
             if [[ -n $global ]]; then
                 _zetopt::msg::script_error "Sub-Command Difinition with Global Option Sign +:" "$line"
                 return 1
             fi
 
-            # remove the existing subcommand definition
+            # ID only: No param and No Help
+            if [[ -z $paramdef && -z $helpdef ]]; then
+                _zetopt::msg::script_error "Invalid Definition:" "$line"
+                return 1
+            fi
+            
+            # help only
+            [[ -z $paramdef && -n $helpdef ]] \
+            && local help_only_definition=true \
+            || local help_only_definition=false
+
             IFS=$'\n'
-            local tmp_line= tmp_defined=
-            for tmp_line in $ZETOPT_DEFINED
-            do
-                if [[ $tmp_line =~ ^${id}: ]]; then
+            if [[ $'\n'$ZETOPT_DEFINED =~ (.*$'\n')((${id}[+]?:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
+                local head_lines=${BASH_REMATCH[$((1 + $IDX_OFFSET))]}
+                local tmp_line=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
+                local tmp_line_nohelp=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
+                helpidx_cmd=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
+                local helpidx_cmdarg=${BASH_REMATCH[$((5 + $IDX_OFFSET))]}
+                local foot_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
+
+                # remove auto defined namespace
+                if [[ $tmp_line ==  "${id}::::0 0" ]]; then
+                    ZETOPT_DEFINED="$head_lines$foot_lines"
+                
+                elif [[ -n $paramdef && $tmp_line =~ [@%] ]] || [[ $help_only_definition == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
+                    _zetopt::msg::script_error "Already Defined:" "$id"
+                    return 1
+
+                # help only definition: rewrite help reference number part of existing definition
+                elif [[ $help_only_definition == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
+                    _ZETOPT_OPTHELPS+=("$helpdef")
+                    helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
+                    ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$foot_lines"
                     continue
+
+                # remove help only definition and continue parsing
+                else
+                    ZETOPT_DEFINED="$head_lines$foot_lines"
                 fi
-                tmp_defined="$tmp_defined$tmp_line"$'\n'
-            done
-            ZETOPT_DEFINED=$tmp_defined
+            fi
         fi
         
         if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]; then
@@ -425,6 +456,11 @@ _zetopt::def::define()
         if [[ -n "$helpdef" ]]; then
             _ZETOPT_OPTHELPS+=("$helpdef")
             helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
+            if [[ $cmdmode == true ]]; then
+                [[ -n $paramdef ]] \
+                && helpidx="$helpidx_cmd $helpidx" \
+                || helpidx="$helpidx 0"
+            fi
         fi
 
         line="$id$global:$short:$long:$paramdef:$helpidx"
@@ -433,7 +469,7 @@ _zetopt::def::define()
         # defines parent subcommands automatically
         if [[ $namespace == / ]]; then
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED/:::0"$'\n'
+            ZETOPT_DEFINED="$ZETOPT_DEFINED/::::0 0"$'\n'
             continue
         fi
 
@@ -443,7 +479,7 @@ _zetopt::def::define()
         do
             curr_ns="${curr_ns%*/}/$ns/"
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED$curr_ns:::0"$'\n'
+            ZETOPT_DEFINED="$ZETOPT_DEFINED$curr_ns::::0 0"$'\n'
         done
     done
 }
@@ -1888,17 +1924,17 @@ _zetopt::msg::script_error()
     local lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
     local appname=${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}
     local filename=${ZETOPT_SOURCE_FILE_PATH##*/}
-    local title="SCRIPT ERROR"
-    local funcname="$(_zetopt::utils::funcname 1 )()"
+    local title="Script Error"
+    local funcname="$(_zetopt::utils::funcname 1)"
     local col=${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}
     local textcol=${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}
     local IFS=$'\n' stack
     stack=($(_zetopt::utils::stack_trace))
     IFS=$' \t\n'
-    \printf >&2 "\n\e[${col}m%b\e[0m\n\n\e[${col}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($lineno)" "$text" "$value"
+    \printf >&2 "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($lineno)"
+    \printf >&2 -- "\n\e[1;${col}mMessage:\e[m\n %b %b\n" "$text" "$value"
     \printf >&2 -- "\n\e[1;${col}mCommand Line:\e[m\n %s\n" "${stack[$((${#stack[@]} -1 + $IDX_OFFSET))]}"
-    \printf >&2 "%s" " -> zetopt"
-    \printf >&2 -- " \"%s\"" "${_COMMAND_LINE[@]}"
+    \printf >&2 -- " %s" "$(_zetopt::utils::escape zetopt "${_COMMAND_LINE[@]}")"
     \printf >&2 -- "\n\n\e[1;${col}mStack Trace:\e[m\n"
     IFS=$'\n'
     \printf >&2 -- " -> %b\n" ${stack[@]}
@@ -2199,6 +2235,15 @@ _zetopt::utils::undecorate()
     fi
 }
 
+_zetopt::utils::escape()
+{
+    local q="'" qq='"' str arr
+    arr=()
+    for str in "$@"; do
+        arr+=("'${str//$q/$q$qq$q$qq$q}'")
+    done
+    echo "${arr[*]}"
+}
 
 #------------------------------------------------
 # _zetopt::help
@@ -2278,7 +2323,7 @@ _zetopt::help::show()
     local idx_name=0 idx_synopsis=3 idx_option=5 idx=
     local _TERM_MAX_COLS=$(($(\tput cols) - 4))
     local _BASE_COLS=0
-    local _OPT_COLS=8
+    local _OPT_COLS=4
     local _OPT_DESC_MARGIN=2
     local _DESC_DEFAULT_COLS=140
     local _INDENT_STEP=4
@@ -2372,10 +2417,24 @@ _zetopt::help::indent()
 _zetopt::help::desc_indent()
 {
     local additional_cols=0
+    local countonly=false
+    if [[ ! -z ${1-} ]]; then
+        if [[ $1 == "--count" ]]; then
+            countonly=true
+            shift
+        fi
+    fi
+
     if [[ ! -z ${1-} ]]; then
         additional_cols=$1
     fi
-    \printf -- "%$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + (_INDENT_STEP * _INDENT_LEVEL) + additional_cols))s" ""
+
+    local count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + (_INDENT_STEP * _INDENT_LEVEL) + additional_cols))
+    if [[ $countonly == true ]]; then
+        echo $count
+        return 0
+    fi
+    \printf -- "%${count}s" ""
 }
 
 _zetopt::help::synopsis()
@@ -2413,7 +2472,7 @@ _zetopt::help::synopsis()
             cmdcol=$((${#cmd} + 1))
             IFS=$' '
             if [[ $_DECORATION == true ]]; then
-                cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
+                cmd=$(\printf -- "\e[1m%s\e[m " $cmd)
             fi
             cmd=${cmd% }
             IFS=$'\n'
@@ -2486,8 +2545,7 @@ _zetopt::help::synopsis_arguments()
 
 _zetopt::help::options()
 {
-    local len=${#_ZETOPT_DEFINED_LIST[@]}
-    local i=1 id tmp desc optarg cmd helpidx optlen
+    local i=1 id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen
     local nslist
     local IFS=$' '
     local ns prev_ns=/
@@ -2495,8 +2553,12 @@ _zetopt::help::options()
     local incremented=false
     local IFS=$'\n'
     local deco_s= deco_e=
+    local sub_title_deco_s= sub_deco_s=
     if [[ $_DECORATION == true ]]; then
-        deco_s="\e[1m" deco_e="\e[m"
+        deco_s="\e[1m"
+        deco_e="\e[m"
+        sub_title_deco_s="\e[4;1m"
+        sub_deco_s="\e[1m"
     fi
 
     for ns in $(_zetopt::def::namespaces)
@@ -2505,22 +2567,16 @@ _zetopt::help::options()
         do
             id=${line%%:*} cmd= cmdcol=0
             if [[ "$id" == / ]]; then
+                prev_ns=$ns
                 continue
             fi
 
+            helpidx=${line##*:}
+            cmdhelpidx=0
+            arghelpidx=0
+
             # sub-command
             if [[ $id =~ /$ ]]; then
-                cmd="${id:1:$((${#id}-2))}"
-                cmd="${cmd//\// }"
-                cmdcol=$((${#cmd} + 1))
-
-                if [[ $_DECORATION == true ]]; then
-                    IFS=$' '
-                    cmd=$(\printf -- "\e[4;1m%s\e[m " $cmd)
-                    cmd=${cmd% }
-                    IFS=$'\n'
-                fi
-
                 # sub-command section
                 if [[ $subcmd_mode == false ]]; then
                     subcmd_mode=true
@@ -2528,23 +2584,45 @@ _zetopt::help::options()
                     \printf -- "$(_zetopt::help::indent)%b\n" "${deco_s}COMMANDS${deco_e}"
                     : $((_INDENT_LEVEL++))
                 fi
+
+                cmdhelpidx=${helpidx% *}
+                arghelpidx=${helpidx#* }
+                helpidx=$arghelpidx
+                cmd="${id:1:$((${#id}-2))}"
+                cmd="${cmd//\// }"
+                cmdcol=$((${#cmd} + 1))
+            fi
+
+            if [[ $subcmd_mode == true && $ns != $prev_ns && $incremented == true ]]; then
+                : $((_INDENT_LEVEL--))
+                incremented=false
             fi
 
             optarg=$(_zetopt::help::fmtoptarg "$line")
             optlen=$((${#optarg} + $cmdcol))
-            optarg="$cmd ${optarg# }"
-            if [[ $subcmd_mode == true ]]; then
-                if [[ $incremented == false && ! $id =~ /$ ]]; then
-                    : $((_INDENT_LEVEL++))
-                    prev_ns=$ns
-                    incremented=true
-                elif [[ $ns != $prev_ns && $incremented == true ]]; then
-                    : $((_INDENT_LEVEL--))
-                    incremented=false
+
+            if [[ $prev_ns != $ns ]]; then 
+                local subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco_s%s$deco_e " $cmd)
+                \printf -- "$(_zetopt::help::indent)%b\n" "$subcmd_title"
+                : $((_INDENT_LEVEL++))
+                prev_ns=$ns
+                incremented=true
+
+                if [[ $cmdhelpidx -ne 0 ]]; then
+                    IFS=$'\n'
+                    desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$cmdhelpidx]}" | _zetopt::utils::fold --width $((_TERM_MAX_COLS - $(_zetopt::help::indent --count)))))
+                    \printf -- "$(_zetopt::help::indent)%b\n" "${desc[@]}"
+                    \printf -- "%s\n" " "
                 fi
+
+                if [[ $optlen == $cmdcol ]]; then
+                    continue
+                fi
+                cmd=$(IFS=$' '; \printf -- "$sub_deco_s%s$deco_e " $cmd)
             fi
 
-            helpidx=${line##*:}
+            optarg="$cmd${optarg# }"
+            IFS=$'\n'
             desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols)))
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $IDX_OFFSET))]}"
@@ -2559,17 +2637,10 @@ _zetopt::help::options()
             else
                 \printf -- "$(_zetopt::help::indent)%s\n" "$optarg"
                 if [[ -n "${desc[@]}" ]]; then
-                    if [[ $id =~ /$ ]]; then
-                        \printf -- "$(_zetopt::help::desc_indent -$_INDENT_STEP)%s\n" "${desc[@]}"
-                    else
-                        \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
-                    fi
+                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
                 fi
             fi
-            
-            if [[ $len -gt $((++i)) ]]; then
-                \printf -- "%s\n" " "
-            fi
+            \printf -- "%s\n" " "
         done
     done | _zetopt::help::decorate --options
     if [[ $incremented == true ]]; then
