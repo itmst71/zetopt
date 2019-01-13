@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-10 15:15)
+# Version     : 1.2.0a (2019-01-13 17:00)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-10 15:15)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-13 17:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -2121,7 +2121,7 @@ _zetopt::utils::is_true()
     else
         \shopt -s nocasematch
     fi
-    [[ ${1-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] \
+    [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] \
     && rtn=$? || rtn=$?
 
     if [[ $stdout == true ]]; then
@@ -2135,30 +2135,43 @@ _zetopt::utils::is_true()
     return $rtn
 }
 
+_zetopt::utils::isCJKLocale()
+{
+    if [[ -n ${ZSH_VERSION-} ]]; then
+        \setopt localoptions NOCASEMATCH
+    else
+        \shopt -s nocasematch
+    fi
+    local rtn
+    [[ ${1-} =~ ^(zh_|ja_|ko_) ]] \
+    && rtn=$? || rtn=$?
+    return $rtn
+}
+
 _zetopt::utils::fold()
 {
-    local width=80 locale=${_LC_ALL:-${_LANG:-C}} indent_cnt=0 indent_str=" "
-    local error=false
+    local width=80 min_width=4 locale=${_LC_ALL:-${_LANG:-C}} indent_cnt=0 indent_str=" "
+    local error=false tab_cnt=4 tab_spaces=
     while [[ $# -ne 0 ]]
     do
         case "$1" in
-            -w|--width)
-                if [[ ${2-} =~ ^[1-9][0-9]*$ ]]; then
-                    width=$2
+            -w | --width)
+                if [[ ${2-} =~ ^-?[0-9]+$ ]]; then
+                    width=$([[ $2 -ge $min_width ]] && printf -- "%s" $2 || echo $min_width)
                 else
                     error=true; break
                 fi
                 shift 2;;
-            -l|--locale)
+            -l | --locale)
                 if [[ -n ${2-} ]]; then
                     locale=$2
                 else
                     error=true; break
                 fi
                 shift 2;;
-            -i|--indent)
-                if [[ ${2-} =~ ^[1-9][0-9]*$ ]]; then
-                    indent_cnt=$2
+            -i | --indent)
+                if [[ ${2-} =~ ^-?[0-9]+$ ]]; then
+                    indent_cnt=$([[ $2 -ge 0 ]] && echo $2 || echo 0)
                 else
                     error=true; break
                 fi
@@ -2170,36 +2183,48 @@ _zetopt::utils::fold()
                     error=true; break
                 fi
                 shift 2;;
+            -t | --tab)
+                if [[ ${2-} =~ ^-?[0-9]+$ ]]; then
+                    tab_cnt=$([[ $2 -ge 0 ]] && printf -- "%s" $2 || echo 4)
+                else
+                    error=true; break
+                fi
+                shift 2;;
             --) shift; break;;
             *)  shift; error=true; break;;
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>]"
+        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
         return 1
     fi
 
     local LC_ALL=$locale
+    local wide_char_width=$(_zetopt::utils::isCJKLocale "$locale" && echo 2 || echo 1)
     local max_buff_size=$width
     local IFS=$'\n'
-    local line buff_size tmp_buff buff curr
+    local line buff_size tmp_buff buff curr mbcnt
     local pointer=0
     local indent=
     if [[ $indent_cnt -ne 0 ]]; then
         indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")
     fi
-    while < /dev/stdin \read -r line || [[ -n $line ]]
+
+    tab_spaces=$(\printf "%${tab_cnt}s" " ")
+
+    while <&0 \read -r line || [[ -n $line ]]
     do
+        line=${line//$'\t'/$tab_spaces} # convert tabs to 4 sapces
         line_len=${#line}
         curr=0 pointer=0
         rest_buff_size=$max_buff_size
         while true
         do
-            curr_buff_size=$(($rest_buff_size / 2))
+            curr_buff_size=$(($rest_buff_size / $wide_char_width))
             tmp_buff=${line:$pointer:$curr_buff_size}
-            ascii=${tmp_buff//[!a-zA-Z0-9[:blank:][:punct:]]/}
-            mb=${tmp_buff//[a-zA-Z0-9[:blank:][:punct:]]/}
-            rest_buff_size=$((rest_buff_size - ${#mb} * 2 - ${#ascii}))
+            ascii=${tmp_buff//[! -\~]/}
+            mbcnt=$((${#tmp_buff} - ${#ascii}))
+            rest_buff_size=$((rest_buff_size - $mbcnt * $wide_char_width - ${#ascii}))
             pointer=$((pointer + curr_buff_size))
             if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
                 continue
@@ -2208,15 +2233,15 @@ _zetopt::utils::fold()
             # smart folding
             skip=0
             if [[ $rest_buff_size -eq 1 ]]; then
-                if [[ ${line:$pointer:1} =~ ^[[:punct:]]$ ]]; then
+                if [[ ${line:$pointer:1} =~ ^[\!-/:-@\{-\~]$ ]]; then
                     : $((pointer++))
                 fi
 
-                if [[ ${line:$pointer:2} =~ ^[[:alnum:][:blank:][:punct:]]\ $ ]]; then
+                if [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
                     : $((pointer++))
                 fi
             fi
-            if [[ ${line:$((pointer - 2)):2} =~ ^\ [[:alnum:][:blank:][:punct:]]{1,2}$ ]]; then
+            if [[ ${line:$((pointer - 2)):2} =~ ^\ [\ -\~]{1,2}$ ]]; then
                 : $((pointer--))
             elif [[ ${line:$pointer:1} == " " ]]; then
                 skip=1
@@ -2332,15 +2357,16 @@ _zetopt::help::show()
         _zetopt::help::init
     fi
     local idx_name=0 idx_synopsis=3 idx_option=5 idx=
-    local _TERM_MAX_COLS=$(($(\tput cols) - 4))
+    local _TERM_MAX_COLS=$(($(\tput cols) - 3))
+    local default_max_cols=120
+    local _MAX_COLS=$([[ $_TERM_MAX_COLS -lt $default_max_cols ]] && echo $_TERM_MAX_COLS || echo $default_max_cols)
     local _BASE_COLS=0
     local _OPT_COLS=4
     local _OPT_DESC_MARGIN=2
-    local _DESC_DEFAULT_COLS=140
     local _INDENT_STEP=4
     local _INDENT_LEVEL=0
     local _DECORATION=false
-    local IFS body bodyarr title titles
+    local IFS body bodyarr title titles cols indent_cnt
     titles=()
 
     local deco_s= deco_e=
@@ -2381,25 +2407,13 @@ _zetopt::help::show()
             if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
                 body="$ZETOPT_CALLER_NAME"
             fi
-            \printf -- "%b" "$body" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols) --indent $(_zetopt::help::indent --count)
+            indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
+            cols=$((_MAX_COLS - $indent_cnt))
+            \printf -- "%b" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt
         fi
         \echo " "
         : $((_INDENT_LEVEL--))
     done
-}
-
-_zetopt::help::rest_cols()
-{
-    local additional_cols=0
-    if [[ ! -z ${1-} ]]; then
-        additional_cols=$1
-    fi
-    local desc_cols=$_DESC_DEFAULT_COLS
-    local desc_max_cols=$((_TERM_MAX_COLS - _BASE_COLS - _OPT_COLS - (_INDENT_STEP * _INDENT_LEVEL) - additional_cols))
-    if [[ $_DESC_DEFAULT_COLS -gt $desc_max_cols ]]; then
-        desc_cols=$desc_max_cols
-    fi
-    \printf -- "%s" "$desc_cols"
 }
 
 _zetopt::help::indent()
@@ -2417,30 +2431,7 @@ _zetopt::help::indent()
         additional_cols=$1
     fi
 
-    local count=$((_BASE_COLS + (_INDENT_STEP * _INDENT_LEVEL) + additional_cols))
-    if [[ $countonly == true ]]; then
-        echo $count
-        return 0
-    fi
-    \printf -- "%${count}s" ""
-}
-
-_zetopt::help::desc_indent()
-{
-    local additional_cols=0
-    local countonly=false
-    if [[ ! -z ${1-} ]]; then
-        if [[ $1 == "--count" ]]; then
-            countonly=true
-            shift
-        fi
-    fi
-
-    if [[ ! -z ${1-} ]]; then
-        additional_cols=$1
-    fi
-
-    local count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + (_INDENT_STEP * _INDENT_LEVEL) + additional_cols))
+    local count=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL + additional_cols))
     if [[ $countonly == true ]]; then
         echo $count
         return 0
@@ -2498,9 +2489,10 @@ _zetopt::help::synopsis()
             
             local base_indent=$(_zetopt::help::indent)
             local cmd_indent=$(_zetopt::help::indent $cmdcol)
+            local cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
             for ((idx=0; idx<$loop; idx++))
             do
-                bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols)))
+                bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols))
                 \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
                 if [[ ${#bodyarr[@]} -gt 1 ]]; then
                     if [[ $ZETOPT_OLDBASH == true ]]; then
@@ -2557,14 +2549,12 @@ _zetopt::help::synopsis_arguments()
 _zetopt::help::options()
 {
     local i=1 id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen
-    local nslist
-    local IFS=$' '
-    local ns prev_ns=/
+    local nslist ns prev_ns=/
     local subcmd_mode=false
     local incremented=false
     local IFS=$'\n'
-    local deco_s= deco_e=
-    local sub_title_deco_s= sub_deco_s=
+    local deco_s= deco_e= sub_title_deco_s= sub_deco_s=
+    local cols max_cols indent_cnt
     if [[ $_DECORATION == true ]]; then
         deco_s="\e[1m"
         deco_e="\e[m"
@@ -2620,12 +2610,15 @@ _zetopt::help::options()
                 incremented=true
 
                 if [[ $cmdhelpidx -ne 0 ]]; then
+                    # calc rest cols
+                    indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
+                    cols=$(($_MAX_COLS - $indent_cnt))
                     IFS=$'\n'
-                    desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$cmdhelpidx]}" | _zetopt::utils::fold --width $((_TERM_MAX_COLS - $(_zetopt::help::indent --count)))))
-                    \printf -- "$(_zetopt::help::indent)%b\n" "${desc[@]}"
+                    \printf -- "%b\n" "$(<<<"${_ZETOPT_OPTHELPS[$cmdhelpidx]}" _zetopt::utils::fold --width $cols --indent $indent_cnt)"
                     \printf -- "%s\n" " "
                 fi
 
+                # no arg: sub-command itself
                 if [[ $optlen == $cmdcol ]]; then
                     continue
                 fi
@@ -2633,22 +2626,28 @@ _zetopt::help::options()
             fi
 
             optarg="$cmd${optarg# }"
+
+            # calc rest cols
+            local indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
+            local indent=$(\printf -- "%${indent_count}s" "")
+            cols=$(($_MAX_COLS - $indent_count))
+
             IFS=$'\n'
-            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $(_zetopt::help::rest_cols)))
+            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols))
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $IDX_OFFSET))]}"
                 if [[ ${#desc[@]} -gt 1 ]]; then
                     if [[ $ZETOPT_OLDBASH == true ]]; then
                         \unset desc[0]
-                        \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
+                        \printf -- "$indent%s\n" "${desc[@]}"
                     else
-                        \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]:$((1 + $IDX_OFFSET))}"
+                        \printf -- "$indent%s\n" "${desc[@]:$((1 + $IDX_OFFSET))}"
                     fi
                 fi
             else
                 \printf -- "$(_zetopt::help::indent)%s\n" "$optarg"
                 if [[ -n "${desc[@]}" ]]; then
-                    \printf -- "$(_zetopt::help::desc_indent)%s\n" "${desc[@]}"
+                    \printf -- "$indent%s\n" "${desc[@]}"
                 fi
             fi
             \printf -- "%s\n" " "
