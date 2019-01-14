@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-13 17:00)
+# Version     : 1.2.0a (2019-01-15 07:00)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-13 17:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-14 10:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -1945,7 +1945,7 @@ _zetopt::msg::script_error()
     \printf >&2 "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($lineno)"
     \printf >&2 -- "\n\e[1;${col}mMessage:\e[m\n %b %b\n" "$text" "$value"
     \printf >&2 -- "\n\e[1;${col}mCommand Line:\e[m\n %s\n" "${stack[$((${#stack[@]} -1 + $IDX_OFFSET))]}"
-    \printf >&2 -- " %s" "$(_zetopt::utils::escape zetopt "${_COMMAND_LINE[@]}")"
+    \printf >&2 -- " %s" "$(_zetopt::utils::quote zetopt "${_COMMAND_LINE[@]}")"
     \printf >&2 -- "\n\n\e[1;${col}mStack Trace:\e[m\n"
     IFS=$'\n'
     \printf >&2 -- " -> %b\n" ${stack[@]}
@@ -2271,14 +2271,15 @@ _zetopt::utils::undecorate()
     fi
 }
 
-_zetopt::utils::escape()
+_zetopt::utils::quote()
 {
     local q="'" qq='"' str arr
     arr=()
     for str in "$@"; do
         arr+=("'${str//$q/$q$qq$q$qq$q}'")
     done
-    echo "${arr[*]}"
+    local IFS=$' '
+    \printf -- "%s\n" "${arr[*]}"
 }
 
 #------------------------------------------------------------
@@ -2326,9 +2327,7 @@ _zetopt::help::body()
 {
     local title=${1-}
     local idx=$(_zetopt::help::search "$title")
-    if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
-        \printf -- "%s" ""
-    else
+    if [[ $idx != $ZETOPT_IDX_NOT_FOUND ]]; then
         \printf -- "%s" "${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]}"
     fi
 }
@@ -2338,6 +2337,13 @@ _zetopt::help::define()
     if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
         _zetopt::help::init
     fi
+
+    if [[ ${1-} == "--rename" ]]; then
+        shift
+        _zetopt::help::rename "$@" \
+        && return $? || return $?
+    fi
+
     local title=${1-}
     local idx=$(_zetopt::help::search "$title")
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
@@ -2349,6 +2355,26 @@ _zetopt::help::define()
     shift 1
     local IFS=$''
     _ZETOPT_HELPS[$refidx]="$*"
+}
+
+_zetopt::help::rename()
+{
+    if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
+        _zetopt::help::init
+    fi
+    if [[ $# -ne 2 || -z ${1-} || -z ${2-} ]]; then
+        _zetopt::msg::script_error "Usage:" "zetopt def-help --rename <OLD_TITLE> <NEW_TITLE>"
+        return 1
+    fi
+    local oldtitle=$1
+    local newtitle=$2
+    local idx=$(_zetopt::help::search "$oldtitle")
+    if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
+        _zetopt::msg::script_error "No Such Help Title: $oldtitle"
+        return 1
+    fi
+    local refidx=$(($idx + $IDX_OFFSET))
+    _ZETOPT_HELPS_IDX[$refidx]="$idx:$newtitle"
 }
 
 _zetopt::help::show()
