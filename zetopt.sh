@@ -2282,6 +2282,26 @@ _zetopt::utils::quote()
     \printf -- "%s\n" "${arr[*]}"
 }
 
+_zetopt::utils::max()
+{
+    if [[ $# -ne 2 ]]; then
+        return 1
+    fi
+    [[ $1 -ge $2 ]] \
+    && \printf "%s\n" "$1" \
+    || \printf "%s\n" "$2"
+}
+
+_zetopt::utils::min()
+{
+    if [[ $# -ne 2 ]]; then
+        return 1
+    fi
+    [[ $1 -le $2 ]] \
+    && \printf "%s\n" "$1" \
+    || \printf "%s\n" "$2"
+}
+
 #------------------------------------------------------------
 # _zetopt::help
 #------------------------------------------------------------
@@ -2386,23 +2406,22 @@ _zetopt::help::show()
     local idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=
     local _TERM_MAX_COLS=$(($(\tput cols) - 3))
     local default_max_cols=120
-    local _MAX_COLS=$([[ $_TERM_MAX_COLS -lt $default_max_cols ]] && echo $_TERM_MAX_COLS || echo $default_max_cols)
+    local _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
     local _BASE_COLS=0
     local _OPT_COLS=4
     local _OPT_DESC_MARGIN=2
     local _INDENT_STEP=4
     local _INDENT_LEVEL=0
     local _DECORATION=false
-    local IFS body bodyarr title titles cols indent_cnt
-    titles=()
-
-    local deco_s= deco_e=
+    local IFS body bodyarr title titles cols indent_cnt deco_title
+    local _DECO_BOLD= _DECO_END=
     if _zetopt::msg::should_decorate $FD_STDOUT; then
-        deco_s="\e[1m"
-        deco_e="\e[m"
+        _DECO_BOLD="\e[1m"
+        _DECO_END="\e[m"
         _DECORATION=true
     fi
 
+    titles=()
     IFS=$' '
     if [[ -z "${@-}" ]]; then
         titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
@@ -2413,131 +2432,146 @@ _zetopt::help::show()
     
     for title in "${titles[@]}"
     do
-        body=$(_zetopt::help::body "$title")
-        if [[ -z $body ]]; then
+        idx=$(_zetopt::help::search "$title")
+        if [[ -z "${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]-}" ]]; then
             continue
         fi
 
-        \printf -- "$(_zetopt::help::indent)%b\n" "$deco_s$title$deco_e"
-        : $((_INDENT_LEVEL++))
-        idx=$(_zetopt::help::search "$title")
+        # Default NAME
+        if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
+            body="$_DECO_BOLD$ZETOPT_CALLER_NAME$_DECO_END"
+            _zetopt::help::general "$title" "$body"
 
         # Default SYNOPSIS
-        if [[ $idx == $idx_synopsis && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_synopsis}: ]]; then
-            _zetopt::help::synopsis
+        elif [[ $idx == $idx_synopsis && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_synopsis}: ]]; then
+            _zetopt::help::synopsis "$title"
         
         # Default OPTIONS
         elif [[ $idx == $idx_options && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_options}: ]]; then
-            _zetopt::help::fmtcmdopt
+            _zetopt::help::fmtcmdopt "$title" --options
         
         # Default COMMANDS
         elif [[ $idx == $idx_commands && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_commands}: ]]; then
-            _zetopt::help::fmtcmdopt --commands
+            _zetopt::help::fmtcmdopt "$title" --commands
 
+        # User Customized Helps
         else
-            # Default NAME
-            if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
-                body="$ZETOPT_CALLER_NAME"
-            fi
-            indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
-            cols=$((_MAX_COLS - $indent_cnt))
-            \printf -- "%b" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt
+            body="${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]}"
+            _zetopt::help::general "$title" "$body"
         fi
-        \echo " "
-        : $((_INDENT_LEVEL--))
     done
+}
+
+_zetopt::help::general()
+{
+    local title=${1-}
+    local body=${2-}
+    \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
+    : $((_INDENT_LEVEL++))
+    local indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
+    local cols=$((_MAX_COLS - $indent_cnt))
+    \printf -- "%b\n" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt
+    : $((_INDENT_LEVEL--))
+    echo " "
 }
 
 _zetopt::help::indent()
 {
     local additional_cols=0
-    local countonly=false
-    if [[ ! -z ${1-} ]]; then
-        if [[ $1 == "--count" ]]; then
-            countonly=true
-            shift
-        fi
-    fi
-
     if [[ ! -z ${1-} ]]; then
         additional_cols=$1
     fi
-
     local count=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL + additional_cols))
-    if [[ $countonly == true ]]; then
-        echo $count
-        return 0
-    fi
     \printf -- "%${count}s" ""
 }
 
 _zetopt::help::synopsis()
 {
+    local title=${1-}
     local IFS=$'\n' app=$ZETOPT_CALLER_NAME
     local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr idx
-    local ignore_subcmd_undef=$(_zetopt::utils::is_true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}" && echo true || echo false)
+    local ignore_subcmd_undef=$(_zetopt::utils::is_true -t true -f false "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")
+    local did_output=false
+    local nslist
+    nslist=($(_zetopt::def::namespaces))
+    if [[ ${#nslist} -eq 0 ]]; then
+        return 0
+    fi
 
-    for ns in $(_zetopt::def::namespaces)
+    \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
+    : $((_INDENT_LEVEL++))
+
+    for ns in ${nslist[@]}
     do
         line= has_arg=false has_arg_req=false has_opt=false has_sub=false args=
         cmd="$app"
-
         if [[ $ns != / ]]; then
             cmd="$cmd${ns//[\/]/ }"
             cmd=${cmd% }
         fi
         
+        # has option
         if _zetopt::def::has_options $ns; then
             has_opt=true
             line="$line $(_zetopt::help::synopsis_options $ns)"
         fi
 
+        # has arguments
         if _zetopt::def::has_arguments $ns; then
             has_arg=true
-            args=$(_zetopt::help::synopsis_arguments $ns)
+            args=$(_zetopt::help::format --synopsis "$(_zetopt::def::get "$ns")")
             line="${line%%\ } ${args#\ }"
         fi
 
-        if [[ $has_opt == true || $has_arg == true ]]; then
-            if _zetopt::def::has_subcmd $ns; then
-                has_sub=true
-            fi
-
-            cmdcol=$((${#cmd} + 1))
-            IFS=$' '
-            if [[ $_DECORATION == true ]]; then
-                cmd=$(\printf -- "\e[1m%s\e[m " $cmd)
-            fi
-            cmd=${cmd% }
-            IFS=$'\n'
-            loop=1
-            if [[ $ignore_subcmd_undef == false && $has_arg == true && $has_sub == true ]]; then
-                if [[ $has_opt == false ]]; then
-                    line="--$line"
-                else
-                    loop=2
-                fi
-            fi
-            
-            local base_indent=$(_zetopt::help::indent)
-            local cmd_indent=$(_zetopt::help::indent $cmdcol)
-            local cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
-            for ((idx=0; idx<$loop; idx++))
-            do
-                bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols))
-                \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
-                if [[ ${#bodyarr[@]} -gt 1 ]]; then
-                    if [[ $ZETOPT_OLDBASH == true ]]; then
-                        unset bodyarr[0]
-                        \printf -- "$cmd_indent%b\n" "${bodyarr[@]}"
-                    else
-                        \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}"
-                    fi
-                fi
-                line="--$args"
-            done | _zetopt::help::decorate --synopsis
+        if [[ $has_opt == false && $has_arg == false ]]; then
+            continue
         fi
+        did_output=true
+
+        # has sub-command
+        if _zetopt::def::has_subcmd $ns; then
+            has_sub=true
+        fi
+
+        cmdcol=$((${#cmd} + 1))
+        if [[ $_DECORATION == true ]]; then
+            cmd=$(IFS=$' '; \printf -- "$_DECO_BOLD%s$_DECO_END " $cmd)
+        fi
+        cmd=${cmd% }
+        
+        loop=1
+        if [[ $ignore_subcmd_undef == false && $has_arg == true && $has_sub == true ]]; then
+            if [[ $has_opt == false ]]; then
+                line="--$line"
+            else
+                loop=2
+            fi
+        fi
+        
+        local base_indent=$(_zetopt::help::indent)
+        local cmd_indent=$(_zetopt::help::indent $cmdcol)
+        local cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
+        for ((idx=0; idx<$loop; idx++))
+        do
+            bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols))
+            \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$IDX_OFFSET]# *}"
+            if [[ ${#bodyarr[@]} -gt 1 ]]; then
+                if [[ $ZETOPT_OLDBASH == true ]]; then
+                    unset bodyarr[0]
+                    \printf -- "$cmd_indent%b\n" "${bodyarr[@]}"
+                else
+                    \printf -- "$cmd_indent%b\n" "${bodyarr[@]:1}"
+                fi
+            fi
+            line="--$args"
+        done | _zetopt::help::decorate --synopsis
     done
+
+    if [[ $did_output == false ]]; then
+        \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$app$_DECO_END"
+    fi
+    : $((_INDENT_LEVEL--))
+    echo " "
 }
 
 _zetopt::help::decorate()
@@ -2571,33 +2605,26 @@ _zetopt::help::synopsis_options()
     done
 }
 
-_zetopt::help::synopsis_arguments()
-{
-    local IFS=$'\n' ns=${1-}
-    local line=$(_zetopt::def::get "$ns")
-    \printf -- "%s" $(_zetopt::help::format --synopsis "$line")
-}
-
 _zetopt::help::fmtcmdopt()
 {
+    local title=${1-}
+    local subcmd_mode=$([[ ${2-} == "--commands" ]] && echo true || echo false)
     local id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen subcmd_title
     local nslist ns prev_ns=/
-    local subcmd_mode=$([[ ${1-} == "--commands" ]] && echo true || echo false)
-    local incremented=false
+    local incremented=false did_output=false
     local IFS=$'\n'
-    local deco_s= deco_e= sub_title_deco_s= sub_deco_s=
     local cols max_cols indent_cnt indent
+
+    local sub_title_deco= sub_deco=
     if [[ $_DECORATION == true ]]; then
-        deco_s="\e[1m"
-        deco_e="\e[m"
-        sub_title_deco_s="\e[4;1m"
-        sub_deco_s="\e[1m"
+        sub_title_deco="\e[4;1m"
+        sub_deco="\e[1m"
     fi
 
     [[ $subcmd_mode == true ]] \
     && nslist=$(_zetopt::def::namespaces) \
     || nslist=/
-    
+
     for ns in ${nslist[@]}
     do
         if [[ $subcmd_mode == true && $ns == / ]]; then
@@ -2609,6 +2636,12 @@ _zetopt::help::fmtcmdopt()
             if [[ "$id" == / ]]; then
                 prev_ns=$ns
                 continue
+            fi
+
+            if [[ $did_output == false ]]; then
+                did_output=true
+                \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
+                : $((_INDENT_LEVEL++))
             fi
 
             helpidx=${line##*:}
@@ -2634,7 +2667,7 @@ _zetopt::help::fmtcmdopt()
             optlen=$((${#optarg} + $cmdcol))
 
             if [[ $prev_ns != $ns ]]; then 
-                subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco_s%s$deco_e " $cmd)
+                subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco%s$_DECO_END " $cmd)
                 \printf -- "$(_zetopt::help::indent)%b\n" "$subcmd_title"
                 : $((_INDENT_LEVEL++))
                 prev_ns=$ns
@@ -2644,7 +2677,6 @@ _zetopt::help::fmtcmdopt()
                     # calc rest cols
                     indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
                     cols=$(($_MAX_COLS - $indent_cnt))
-                    IFS=$'\n'
                     \printf -- "%b\n" "$(<<<"${_ZETOPT_OPTHELPS[$cmdhelpidx]}" _zetopt::utils::fold --width $cols --indent $indent_cnt)"
                     \printf -- "%s\n" " "
                 fi
@@ -2653,7 +2685,7 @@ _zetopt::help::fmtcmdopt()
                 if [[ $optlen == $cmdcol ]]; then
                     continue
                 fi
-                cmd=$(IFS=$' '; \printf -- "$sub_deco_s%s$deco_e " $cmd)
+                cmd=$(IFS=$' '; \printf -- "$sub_deco%s$_DECO_END " $cmd)
             fi
 
             optarg="$cmd${optarg# }"
@@ -2663,7 +2695,6 @@ _zetopt::help::fmtcmdopt()
             indent=$(\printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
 
-            IFS=$'\n'
             desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols))
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $IDX_OFFSET))]}"
@@ -2684,7 +2715,13 @@ _zetopt::help::fmtcmdopt()
             \printf -- "%s\n" " "
         done
     done | _zetopt::help::decorate --options
+
     if [[ $incremented == true ]]; then
+        : $((_INDENT_LEVEL--))
+    fi
+
+    if [[ $did_output == true ]]; then
+        echo " "
         : $((_INDENT_LEVEL--))
     fi
 }
