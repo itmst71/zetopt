@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-15 07:00)
+# Version     : 1.2.0a (2019-01-15 09:30)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-14 10:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-15 09:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -2295,8 +2295,9 @@ _zetopt::help::init()
         "3:SYNOPSIS"
         "4:DESCRIPTION"
         "5:OPTIONS"
+        "6:COMMANDS"
     )
-    _ZETOPT_HELPS=("_" "" "" "_" "" "_")
+    _ZETOPT_HELPS=("_" "" "" "_" "" "_" "_")
     _ZETOPT_HELPS_CUSTOM=
 }
 
@@ -2328,7 +2329,7 @@ _zetopt::help::body()
     local title=${1-}
     local idx=$(_zetopt::help::search "$title")
     if [[ $idx != $ZETOPT_IDX_NOT_FOUND ]]; then
-        \printf -- "%s" "${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]}"
+        \printf -- "%s\n" "${_ZETOPT_HELPS[$(($idx + $IDX_OFFSET))]}"
     fi
 }
 
@@ -2382,7 +2383,7 @@ _zetopt::help::show()
     if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
         _zetopt::help::init
     fi
-    local idx_name=0 idx_synopsis=3 idx_option=5 idx=
+    local idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=
     local _TERM_MAX_COLS=$(($(\tput cols) - 3))
     local default_max_cols=120
     local _MAX_COLS=$([[ $_TERM_MAX_COLS -lt $default_max_cols ]] && echo $_TERM_MAX_COLS || echo $default_max_cols)
@@ -2426,8 +2427,13 @@ _zetopt::help::show()
             _zetopt::help::synopsis
         
         # Default OPTIONS
-        elif [[ $idx == $idx_option && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_option}: ]]; then
-            _zetopt::help::options
+        elif [[ $idx == $idx_options && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_options}: ]]; then
+            _zetopt::help::fmtcmdopt
+        
+        # Default COMMANDS
+        elif [[ $idx == $idx_commands && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_commands}: ]]; then
+            _zetopt::help::fmtcmdopt --commands
+
         else
             # Default NAME
             if [[ $idx == $idx_name && ! $_ZETOPT_HELPS_CUSTOM =~ :${idx_name}: ]]; then
@@ -2543,13 +2549,13 @@ _zetopt::help::decorate()
 
     if [[ ${1-} == "--synopsis" ]]; then
         \sed < /dev/stdin \
-            -e 's/\([\[\|]\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\)/\1'$'\e[1m''\2'$'\e[m''/g' \
+            -e 's/\([\[\|]\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\)/\1'$'\e[1m''\2'$'\e[m''/g'
             #-e 's/<\([^>]\{1,\}\)>/<'$'\e[3m''\1'$'\e[m''>/g'
 
     elif [[ ${1-} == "--options" ]]; then
         \sed < /dev/stdin \
             -e 's/^\( *\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\), \(--[a-zA-Z0-9_-]\{1,\}\)/\1\2, '$'\e[1m''\3'$'\e[m''/g' \
-            -e 's/^\( *\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\)/\1'$'\e[1m''\2'$'\e[m''/g' \
+            -e 's/^\( *\)\(-\{1,2\}[a-zA-Z0-9_-]\{1,\}\)/\1'$'\e[1m''\2'$'\e[m''/g'
             #-e 's/<\([^>]\{1,\}\)>/<'$'\e[3m''\1'$'\e[m''>/g'
     else
         \cat -- -
@@ -2561,7 +2567,7 @@ _zetopt::help::synopsis_options()
     local IFS=$'\n' ns=${1-} line
     for line in $(_zetopt::def::options "$ns")
     do
-        \printf -- "[%s] " "$(_zetopt::help::fmtoptarg --synopsis "$line")"
+        \printf -- "[%s] " "$(_zetopt::help::format --synopsis "$line")"
     done
 }
 
@@ -2569,18 +2575,18 @@ _zetopt::help::synopsis_arguments()
 {
     local IFS=$'\n' ns=${1-}
     local line=$(_zetopt::def::get "$ns")
-    \printf -- "%s" $(_zetopt::help::fmtoptarg --synopsis "$line")
+    \printf -- "%s" $(_zetopt::help::format --synopsis "$line")
 }
 
-_zetopt::help::options()
+_zetopt::help::fmtcmdopt()
 {
-    local i=1 id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen
+    local id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen subcmd_title
     local nslist ns prev_ns=/
-    local subcmd_mode=false
+    local subcmd_mode=$([[ ${1-} == "--commands" ]] && echo true || echo false)
     local incremented=false
     local IFS=$'\n'
     local deco_s= deco_e= sub_title_deco_s= sub_deco_s=
-    local cols max_cols indent_cnt
+    local cols max_cols indent_cnt indent
     if [[ $_DECORATION == true ]]; then
         deco_s="\e[1m"
         deco_e="\e[m"
@@ -2588,8 +2594,15 @@ _zetopt::help::options()
         sub_deco_s="\e[1m"
     fi
 
-    for ns in $(_zetopt::def::namespaces)
+    [[ $subcmd_mode == true ]] \
+    && nslist=$(_zetopt::def::namespaces) \
+    || nslist=/
+    
+    for ns in ${nslist[@]}
     do
+        if [[ $subcmd_mode == true && $ns == / ]]; then
+            continue
+        fi
         for line in $(_zetopt::def::get $ns) $(_zetopt::def::options $ns)
         do
             id=${line%%:*} cmd= cmdcol=0
@@ -2604,14 +2617,6 @@ _zetopt::help::options()
 
             # sub-command
             if [[ $id =~ /$ ]]; then
-                # sub-command section
-                if [[ $subcmd_mode == false ]]; then
-                    subcmd_mode=true
-                    _INDENT_LEVEL=0
-                    \printf -- "$(_zetopt::help::indent)%b\n" "${deco_s}COMMANDS${deco_e}"
-                    : $((_INDENT_LEVEL++))
-                fi
-
                 cmdhelpidx=${helpidx% *}
                 arghelpidx=${helpidx#* }
                 helpidx=$arghelpidx
@@ -2625,11 +2630,11 @@ _zetopt::help::options()
                 incremented=false
             fi
 
-            optarg=$(_zetopt::help::fmtoptarg "$line")
+            optarg=$(_zetopt::help::format "$line")
             optlen=$((${#optarg} + $cmdcol))
 
             if [[ $prev_ns != $ns ]]; then 
-                local subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco_s%s$deco_e " $cmd)
+                subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco_s%s$deco_e " $cmd)
                 \printf -- "$(_zetopt::help::indent)%b\n" "$subcmd_title"
                 : $((_INDENT_LEVEL++))
                 prev_ns=$ns
@@ -2654,8 +2659,8 @@ _zetopt::help::options()
             optarg="$cmd${optarg# }"
 
             # calc rest cols
-            local indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
-            local indent=$(\printf -- "%${indent_count}s" "")
+            indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
+            indent=$(\printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
 
             IFS=$'\n'
@@ -2684,7 +2689,7 @@ _zetopt::help::options()
     fi
 }
 
-_zetopt::help::fmtoptarg()
+_zetopt::help::format()
 {
     local id short long args dummy opt tmparr optargs default_argname
     local sep=", " synopsis=false
