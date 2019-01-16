@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-15 09:30)
+# Version     : 1.2.0a (2019-01-16 13:30)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-15 09:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-16 13:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -318,11 +318,8 @@ _zetopt::def::define()
                 return 1
             fi
 
-            # ID only: No param and No Help
-            if [[ -z $paramdef && -z $helpdef ]]; then
-                _zetopt::msg::script_error "Invalid Definition:" "$line"
-                return 1
-            fi
+            # command has two indices for itself and its argument
+            helpidx="0 0"
             
             # help only
             [[ -z $paramdef && -n $helpdef ]] \
