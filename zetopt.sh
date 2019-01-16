@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-16 13:30)
+# Version     : 1.2.0a (2019-01-16 15:00)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-16 13:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-16 15:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -85,7 +85,7 @@ zetopt()
 {
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
-    local _LC_ALL=$LC_ALL _LANG=$LANG
+    local _LC_ALL=${LC_ALL-} _LANG=${LANG-}
     local LC_ALL=C LANG=C
 
     # setup for zsh
@@ -327,7 +327,7 @@ _zetopt::def::define()
             || local help_only_definition=false
 
             IFS=$'\n'
-            if [[ $'\n'$ZETOPT_DEFINED =~ (.*$'\n')((${id}[+]?:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
+            if [[ $'\n'$ZETOPT_DEFINED =~ (.*$'\n')((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
                 local head_lines=${BASH_REMATCH[$((1 + $IDX_OFFSET))]}
                 local tmp_line=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
                 local tmp_line_nohelp=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
@@ -336,7 +336,7 @@ _zetopt::def::define()
                 local foot_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
 
                 # remove auto defined namespace
-                if [[ $tmp_line ==  "${id}::::0 0" ]]; then
+                if [[ $tmp_line == "${id}::::0 0" ]]; then
                     ZETOPT_DEFINED="$head_lines$foot_lines"
                 
                 elif [[ -n $paramdef && $tmp_line =~ [@%] ]] || [[ $help_only_definition == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
@@ -2754,7 +2754,7 @@ _zetopt::help::format()
         fi
     fi
 
-    optargs=$opt
+    optargs=${opt-}
 
     if [[ -n $args ]]; then
         args=${args//-/}
