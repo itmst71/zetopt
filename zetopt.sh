@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-16 15:00)
+# Version     : 1.2.0a (2019-01-23 03:00)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-16 15:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-23 03:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -2067,7 +2067,7 @@ _zetopt::utils::seq()
     fi
 
     if [[ ! $start =~ ^([a-zA-Z]|-?[0-9]+)$ ]] || [[ ! $end =~ ^([a-zA-Z]|-?[0-9]+)$ ]]; then
-        _zetopt::msg::script_error "Accepts:" "^([a-zA-Z]|[0-9]+)$"
+        _zetopt::msg::script_error "Accepts:" "^([a-zA-Z]|-?[0-9]+)$"
         return 1
     fi
 
