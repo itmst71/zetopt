@@ -105,16 +105,16 @@ zetopt()
 
     # save whether the stdin/out/err of the main function is TTY or not.
     [[ -t 0 ]] \
-    && declare -r TTY_STDIN=$? \
-    || declare -r TTY_STDIN=$?
+    && declare -r TTY_STDIN=0 \
+    || declare -r TTY_STDIN=1
 
     [[ -t 1 ]] \
-    && declare -r TTY_STDOUT=$? \
-    || declare -r TTY_STDOUT=$?
+    && declare -r TTY_STDOUT=0 \
+    || declare -r TTY_STDOUT=1
 
     [[ -t 2 ]] \
-    && declare -r TTY_STDERR=$? \
-    || declare -r TTY_STDERR=$?
+    && declare -r TTY_STDERR=0 \
+    || declare -r TTY_STDERR=1
 
     declare -r FD_STDOUT=1
     declare -r FD_STDERR=2
@@ -1961,22 +1961,26 @@ _zetopt::msg::output()
 
 _zetopt::msg::should_decorate()
 {
-    [[ -n ${ZSH_VERSION-} ]] \
-    && \setopt localoptions NOCASEMATCH \
-    || \shopt -s nocasematch
-    local fd="${1-}"
-    case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
-        always)   return 0;;
-        never)    return 1;;
-        auto)     
-            case "$fd" in
-                $FD_STDOUT) return $TTY_STDOUT;;
-                $FD_STDERR) return $TTY_STDERR;;
-                *) return 1;;
-            esac
-            ;;
-        *) return 1;;
-    esac
+    local fd=${1-}
+    local colmode=${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}
+    return $(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        if [[ $colmode == auto ]]; then
+            if [[ $fd == $FD_STDOUT ]]; then
+                echo $TTY_STDOUT
+            elif [[ $fd == $FD_STDERR ]]; then
+                echo $TTY_STDERR
+            else
+                echo 1
+            fi
+        elif [[ $colmode == always ]]; then
+            echo 0
+        else #never and the others
+            echo 1
+        fi
+    )
 }
 
 
@@ -2113,13 +2117,12 @@ _zetopt::utils::is_true()
         return 1
     fi
 
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
-    [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] \
-    && rtn=$? || rtn=$?
+    rtn=$(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] && echo 0 || echo 1
+    )
 
     if [[ $stdout == true ]]; then
         if [[ $rtn -eq 0 ]]; then
@@ -2134,15 +2137,12 @@ _zetopt::utils::is_true()
 
 _zetopt::utils::isCJKLocale()
 {
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
-    local rtn
-    [[ ${1-} =~ ^(zh_|ja_|ko_) ]] \
-    && rtn=$? || rtn=$?
-    return $rtn
+    return $(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        [[ ${1-} =~ ^(zh_|ja_|ko_) ]] && echo 0 || echo 1
+    )
 }
 
 _zetopt::utils::fold()
@@ -2285,8 +2285,8 @@ _zetopt::utils::max()
         return 1
     fi
     [[ $1 -ge $2 ]] \
-    && \printf "%s\n" "$1" \
-    || \printf "%s\n" "$2"
+    && \printf -- "%s\n" "$1" \
+    || \printf -- "%s\n" "$2"
 }
 
 _zetopt::utils::min()
@@ -2295,8 +2295,8 @@ _zetopt::utils::min()
         return 1
     fi
     [[ $1 -le $2 ]] \
-    && \printf "%s\n" "$1" \
-    || \printf "%s\n" "$2"
+    && \printf -- "%s\n" "$1" \
+    || \printf -- "%s\n" "$2"
 }
 
 #------------------------------------------------------------
@@ -2324,21 +2324,15 @@ _zetopt::help::search()
     if [[ -z $title ]]; then
         return $ZETOPT_IDX_NOT_FOUND
     fi
-
-    # for search with ignoring case
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-        \setopt localoptions KSH_ARRAYS # for BASH_REMATCH
-    else
-        \shopt -s nocasematch
-    fi
-
-    local IFS=$'\n'
-    if [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]]; then
-        \printf -- "%s" ${BASH_REMATCH[1]}
-    else
-        \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
-    fi
+    \printf -- "%s" "$(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        local IFS=$'\n'
+        [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]] \
+        && \printf -- "%s" ${BASH_REMATCH[$((1 + $IDX_OFFSET))]} \
+        || \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
+    )"
 }
 
 _zetopt::help::body()
@@ -2420,11 +2414,9 @@ _zetopt::help::show()
 
     titles=()
     IFS=$' '
-    if [[ -z "${@-}" ]]; then
-        titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
-    else
-        titles=("$@")
-    fi
+    [[ -z "${@-}" ]] \
+    && titles=("${_ZETOPT_HELPS_IDX[@]#*:}") \
+    || titles=("$@")
     IFS=$'\n'
     
     for title in "${titles[@]}"
