@@ -555,26 +555,20 @@ _zetopt::def::get()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
-        return 1
-    fi
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    IFS=$'\n'
+    if [[ ! $'\n'$ZETOPT_DEFINED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
-
-    local line="${_ZETOPT_DEFINED_LIST[$ididx]}"
-    if [[ $field == $ZETOPT_FIELD_DEF_ALL ]]; then
-        \echo "$line"
-    else
-        if [[ $field =~ [^0-9] ]]; then
-            return 1
-        fi
-        IFS=:
-        \set -- $line
-        \eval echo '"${'$field'-}"'
-    fi
+    case "$field" in
+        $ZETOPT_FIELD_DEF_ALL)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ALL))]}";;
+        $ZETOPT_FIELD_DEF_ID)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ID))]}";;
+        $ZETOPT_FIELD_DEF_SHORT) \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_SHORT))]}";;
+        $ZETOPT_FIELD_DEF_LONG)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_LONG))]}";;
+        $ZETOPT_FIELD_DEF_ARG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ARG))]}";;
+        $ZETOPT_FIELD_DEF_HELP)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_HELP))]}";;
+        *) return 1;;
+    esac
 }
 
 # Check if the ID exists
@@ -1011,7 +1005,7 @@ _zetopt::parser::parse()
             # subcommand
             if [[ $check_subcmd == true ]] && _zetopt::def::has_subcmd "$namespace"; then
                 ns="${namespace%/*}/$1/"
-                if [[ ! $ns =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ || -z $(_zetopt::def::get "$ns") ]]; then
+                if ! _zetopt::def::get "$ns"; then
                     check_subcmd=false
                     if [[ $_ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
                         ZETOPT_ARGS+=("$1")
@@ -1361,21 +1355,22 @@ _zetopt::data::get()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    IFS=$'\n'
+    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
-    local field="${2-0}"
-    if [[ $field -eq 0 ]]; then
-        \echo "${_ZETOPT_PARSED_LIST[$ididx]}"
-    else
-        if [[ $field =~ [^0-9] ]]; then
-            return 1
-        fi
-        IFS=:
-        set -- ${_ZETOPT_PARSED_LIST[$ididx]}
-        \eval echo '$'$field
-    fi
+    local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
+    case "$field" in
+        $ZETOPT_FIELD_DATA_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ALL))]}";;
+        $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ID))]}";;
+        $ZETOPT_FIELD_DATA_SHORT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_SHORT))]}";;
+        $ZETOPT_FIELD_DATA_LONG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_LONG))]}";;
+        $ZETOPT_FIELD_DATA_ARG)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ARG))]}";;
+        $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_TYPE))]}";;
+        $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_STATUS))]}";;
+        $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_COUNT))]}";;
+        *) return 1;;
+    esac
 }
 
 # Check if the option is set
@@ -1427,62 +1422,40 @@ _zetopt::data::isok()
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_ARGS|$ZETOPT_FILED_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
+# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FILED_DATA_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
 {
-    if [[ -z ${ZETOPT_PARSED:-} ]]; then
+    if [[ -z ${ZETOPT_PARSED:-} ||  $# -lt 2 || -z ${1-} ]]; then
         return 1
     fi
-    if [[ $# -lt 2 ]]; then
-        return 1
-    fi
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
-        return 1
-    fi
-
-    local field="$2"
-    case $field in
+    case $2 in
         $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
 
-    shift 2
-    local args
-    args=("$@")
-
-    # get the definition
-    local IFS=:
-    \set -- ${_ZETOPT_DEFINED_LIST[$ididx]}
-    local def_str="$(\eval echo '"${'$field'-}"')"
-
-    # get the actual arguments list
-    \set -- ${_ZETOPT_PARSED_LIST[$ididx]}
-    local lists_str="$(\eval echo '$'$field)"
-    if [[ -z $lists_str ]]; then
-        return 1
-    fi
-    IFS=$','
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     local lists output_list
-    lists=($lists_str) output_list=()
+    IFS=,
+    lists=($(_zetopt::data::get "$id" $2))
+    output_list=()
     local lists_last_idx="$((${#lists[@]} - 1 + $IDX_OFFSET))"
 
-    IFS=$' '
-    if [[ ${#args[@]} -eq 0 ]]; then
+    shift 2
+    IFS=' '
+    if [[ $# -eq 0 ]]; then
         output_list=(${lists[$lists_last_idx]})
     else
+        # get the arg definition for param names
+        local def_str=$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)
+
         local list_last_vals
         list_last_vals=(${lists[$lists_last_idx]})
         local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1 + $IDX_OFFSET))
 
         local input_idx= tmp_list
-        for input_idx in "${args[@]}"
+        for input_idx in "$@"
         do            
             if [[ ! $input_idx =~ ^(@|([$\^0]|-?[1-9][0-9]*)(,([$\^0]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
@@ -1547,7 +1520,10 @@ _zetopt::data::validx()
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
-                _zetopt::msg::script_error "Group Index Out of Range:" "$tmp_list_idx -> $list_start_idx~$list_end_idx (Valid: $IDX_OFFSET~$lists_last_idx)"
+                [[ $list_start_idx == $list_end_idx ]] \
+                && local translated_idx=$list_start_idx \
+                || local translated_idx=$list_start_idx~$list_end_idx
+                _zetopt::msg::script_error "Session Index Out of Range ($IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -1640,7 +1616,10 @@ _zetopt::data::validx()
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
-                    _zetopt::msg::script_error "Value Index Out of Range:" "$tmp_val_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
+                    [[ $val_start_idx == $val_end_idx ]] \
+                    && local translated_idx=$val_start_idx \
+                    || local translated_idx=$val_start_idx~$val_end_idx
+                    _zetopt::msg::script_error "Value Index Out of Range ($IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
