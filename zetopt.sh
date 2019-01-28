@@ -512,8 +512,7 @@ _zetopt::def::load()
         _zetopt::msg::script_error "No Such File:" "$1"
         return 1
     fi
-
-    ZETOPT_DEFINED=$(cat "${1-}")
+    ZETOPT_DEFINED=$(\cat "${1-}")
 }
 
 # Print the defined data. Print all if ID not given.
@@ -525,7 +524,7 @@ _zetopt::def::defined()
         _zetopt::def::init
     fi
     if [[ -z ${1-} ]]; then
-        \echo "$ZETOPT_DEFINED"
+        \printf -- "%s\n" "$ZETOPT_DEFINED"
         return 0
     fi
     _zetopt::def::get "$1" $ZETOPT_FIELD_DEF_ALL
@@ -541,7 +540,6 @@ _zetopt::def::get()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    IFS=$'\n'
     if [[ ! $'\n'$ZETOPT_DEFINED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
@@ -640,14 +638,14 @@ _zetopt::def::opt2id()
         return 1
     fi
 
-    local regex= regex_tmp= global="[+]?"
+    local regex= global="[+]?"
     while :
     do
         [[ ${#opt} -eq 1 ]] \
-        && regex_tmp="(${ns}[a-zA-Z0-9_]+)${global}:$opt:" \
-        || regex_tmp="(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:$opt:"
+        && regex="(${ns}[a-zA-Z0-9_]+)${global}:$opt:" \
+        || regex="(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:$opt:"
         
-        if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$regex_tmp ]]; then
+        if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$regex ]]; then
             \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET))]}"
             return 0
         fi
@@ -990,7 +988,6 @@ _zetopt::parser::parse()
         fi
     fi
 
-    IFS=$'\n'
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
     && return $? || return $?
 }
@@ -1053,11 +1050,9 @@ _zetopt::parser::setopt()
 
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
-        if [[ $optsign =~ ^--?$ ]]; then
-            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}")
-        else
-            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
-        fi
+        [[ $optsign =~ ^--?$ ]] \
+        && ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}") \
+        || ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
         refs=($optarg_idx)
 
     # options requring arguments
