@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-23 03:00)
+# Version     : 1.2.0a (2019-01-28 07:30)
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-23 03:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-28 07:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -54,7 +54,8 @@ declare -r ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTAR
 # misc
 declare -r ZETOPT_IDX_NOT_FOUND=-1
 declare -r ZETOPT_OLDBASH=$([[ -n ${BASH_VERSION-} && ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)
-declare -r ZETOPT_CALLER_NAME=$([[ -n ${ZSH_VERSION-} ]] && __=${funcfiletrace%:*} || __=$0; echo "${__##*/}")
+declare -r ZETOPT_CALLER_FILE_PATH=$([[ -n ${ZSH_VERSION-} ]] && __=${funcfiletrace%:*} || __=$0; echo "$__")
+declare -r ZETOPT_CALLER_NAME=${ZETOPT_CALLER_FILE_PATH##*/}
 declare -r ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
 
 # config
@@ -105,16 +106,16 @@ zetopt()
 
     # save whether the stdin/out/err of the main function is TTY or not.
     [[ -t 0 ]] \
-    && declare -r TTY_STDIN=$? \
-    || declare -r TTY_STDIN=$?
+    && declare -r TTY_STDIN=0 \
+    || declare -r TTY_STDIN=1
 
     [[ -t 1 ]] \
-    && declare -r TTY_STDOUT=$? \
-    || declare -r TTY_STDOUT=$?
+    && declare -r TTY_STDOUT=0 \
+    || declare -r TTY_STDOUT=1
 
     [[ -t 2 ]] \
-    && declare -r TTY_STDERR=$? \
-    || declare -r TTY_STDERR=$?
+    && declare -r TTY_STDERR=0 \
+    || declare -r TTY_STDERR=1
 
     declare -r FD_STDOUT=1
     declare -r FD_STDERR=2
@@ -125,9 +126,6 @@ zetopt()
         return 1
     fi
 
-    local _COMMAND_LINE
-    _COMMAND_LINE=("$@")
-    
     local subcmd="$1"
     shift
 
@@ -138,14 +136,11 @@ zetopt()
             _zetopt::selfhelp::show;;
         init)
             ZETOPT_DEFINED=
-            _ZETOPT_DEFINED_LIST=()
-            _ZETOPT_ID_LIST=()
             _ZETOPT_OPTHELPS=()
             _ZETOPT_HELPS_IDX=()
             _ZETOPT_HELPS=()
 
             ZETOPT_PARSED=
-            _ZETOPT_PARSED_LIST=()
             ZETOPT_OPTVALS=()
             ZETOPT_ARGS=()
 
@@ -333,11 +328,11 @@ _zetopt::def::define()
                 local tmp_line_nohelp=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
                 helpidx_cmd=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
                 local helpidx_cmdarg=${BASH_REMATCH[$((5 + $IDX_OFFSET))]}
-                local foot_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
+                local tail_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
 
                 # remove auto defined namespace
                 if [[ $tmp_line == "${id}::::0 0" ]]; then
-                    ZETOPT_DEFINED="$head_lines$foot_lines"
+                    ZETOPT_DEFINED="$head_lines$tail_lines"
                 
                 elif [[ -n $paramdef && $tmp_line =~ [@%] ]] || [[ $help_only_definition == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
                     _zetopt::msg::script_error "Already Defined:" "$id"
@@ -347,12 +342,12 @@ _zetopt::def::define()
                 elif [[ $help_only_definition == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
                     _ZETOPT_OPTHELPS+=("$helpdef")
                     helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
-                    ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$foot_lines"
+                    ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
                     continue
 
                 # remove help only definition and continue parsing
                 else
-                    ZETOPT_DEFINED="$head_lines$foot_lines"
+                    ZETOPT_DEFINED="$head_lines$tail_lines"
                 fi
             fi
         fi
@@ -467,17 +462,17 @@ _zetopt::def::define()
             if [[ $cmdmode == true ]]; then
                 [[ -n $paramdef ]] \
                 && helpidx="$helpidx_cmd $helpidx" \
-                || helpidx="$helpidx 0"
+                || helpidx+=" 0"
             fi
         fi
 
         line="$id$global:$short:$long:$paramdef:$helpidx"
-        ZETOPT_DEFINED="$ZETOPT_DEFINED$line"$'\n'
+        ZETOPT_DEFINED+="$line"$'\n'
 
         # defines parent subcommands automatically
         if [[ $namespace == / ]]; then
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED/::::0 0"$'\n'
+            ZETOPT_DEFINED+="/::::0 0"$'\n'
             continue
         fi
 
@@ -487,7 +482,7 @@ _zetopt::def::define()
         do
             curr_ns="${curr_ns%*/}/$ns/"
             [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && continue
-            ZETOPT_DEFINED="$ZETOPT_DEFINED$curr_ns::::0 0"$'\n'
+            ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
         done
     done
 }
@@ -502,15 +497,6 @@ _zetopt::def::init()
         return 1
     fi
     ZETOPT_DEFINED=$(<<< "$ZETOPT_DEFINED" \sort -t : -k 1,1 | \sed '/^$/d') 
-    local IFS=$'\n' line=
-    _ZETOPT_DEFINED_LIST=($ZETOPT_DEFINED)
-    _ZETOPT_ID_LIST=()
-    for line in ${ZETOPT_DEFINED//+/} # remove global signs
-    do
-        IFS=:
-        \set -- $line
-        _ZETOPT_ID_LIST+=($1)
-    done
 }
 
 # Load definition data from a file.
@@ -526,8 +512,7 @@ _zetopt::def::load()
         _zetopt::msg::script_error "No Such File:" "$1"
         return 1
     fi
-
-    ZETOPT_DEFINED=$(cat "${1-}")
+    ZETOPT_DEFINED=$(\cat "${1-}")
 }
 
 # Print the defined data. Print all if ID not given.
@@ -535,11 +520,11 @@ _zetopt::def::load()
 # STDOUT: strings separated with $'\n'
 _zetopt::def::defined()
 {
-    if [[ ${#_ZETOPT_DEFINED_LIST[@]} -eq 0 ]]; then
+    if [[ -z ${ZETOPT_DEFINED-} ]]; then
         _zetopt::def::init
     fi
     if [[ -z ${1-} ]]; then
-        \echo "${ZETOPT_DEFINED-}"
+        \printf -- "%s\n" "$ZETOPT_DEFINED"
         return 0
     fi
     _zetopt::def::get "$1" $ZETOPT_FIELD_DEF_ALL
@@ -555,39 +540,33 @@ _zetopt::def::get()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
-        return 1
-    fi
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    if [[ ! $'\n'$ZETOPT_DEFINED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
-
-    local line="${_ZETOPT_DEFINED_LIST[$ididx]}"
-    if [[ $field == $ZETOPT_FIELD_DEF_ALL ]]; then
-        \echo "$line"
-    else
-        if [[ $field =~ [^0-9] ]]; then
-            return 1
-        fi
-        IFS=:
-        \set -- $line
-        \eval echo '"${'$field'-}"'
-    fi
+    case "$field" in
+        $ZETOPT_FIELD_DEF_ALL)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ALL))]}";;
+        $ZETOPT_FIELD_DEF_ID)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ID))]}";;
+        $ZETOPT_FIELD_DEF_SHORT) \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_SHORT))]}";;
+        $ZETOPT_FIELD_DEF_LONG)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_LONG))]}";;
+        $ZETOPT_FIELD_DEF_ARG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_ARG))]}";;
+        $ZETOPT_FIELD_DEF_HELP)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DEF_HELP))]}";;
+        *) return 1;;
+    esac
 }
 
 # Check if the ID exists
-# def.) _zetopt::def::idexist {ID}
-# e.g.) _zetopt::def::idexist /foo
+# def.) _zetopt::def::exists {ID}
+# e.g.) _zetopt::def::exists /foo
 # STDOUT: NONE
-_zetopt::def::idexist()
+_zetopt::def::exists()
 {
     if [[ -z ${1-} ]]; then
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id=/$id
-    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]
+    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]] \
+    && return $? || return $?
 }
 
 # Check if the current namespace has subcommands
@@ -647,108 +626,36 @@ _zetopt::def::namespaces()
     <<< "$ZETOPT_DEFINED" \grep -E '^/([^:]+/)?:' | \sed -e 's/:.*//'
 }
 
-# Print the index of the specified ID to refer 
-# def.) _zetopt::def::ididx {ID}
-# e.g.) _zetopt::def::ididx /foo
-# STDOUT: an integer
-_zetopt::def::ididx()
-{
-    if [[ -z ${1-} ]]; then
-        \echo $ZETOPT_IDX_NOT_FOUND
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id=/$id
-
-    # binary search
-    local min=$IDX_OFFSET max=$((${#_ZETOPT_ID_LIST[@]} + $IDX_OFFSET)) mid=-1
-    while :
-    do
-        if [[ $max -lt $min ]]; then
-            \echo $ZETOPT_IDX_NOT_FOUND
-            return 1
-        else
-            mid=$((min + (max - min) / 2))
-            if [[ ${_ZETOPT_ID_LIST[$mid]} > $id ]]; then
-                max=$((mid - 1))
-                continue
-            elif [[ ${_ZETOPT_ID_LIST[$mid]} < $id ]]; then
-                min=$((mid + 1))
-                continue
-            else
-                \echo $mid
-                return 0
-            fi
-        fi
-    done
-    \echo $ZETOPT_IDX_NOT_FOUND
-    return 1
-}
-
-# Check if the option exists in some namespace. This works faster.
-# def.) _zetopt::def::optexist {OPTION-NAME}
-# e.g.) _zetopt::def::optexist version
-# STDOUT: NONE
-_zetopt::def::optexist()
-{
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    if [[ ${#1} -eq 1 ]]; then
-        [[ $'\n'$ZETOPT_DEFINED =~ $'\n'[^:]+:$1: ]]
-    else
-        [[ $'\n'$ZETOPT_DEFINED =~ $'\n'[^:]+:[^:]?:$1: ]]
-    fi
-}
-
 # Print the index of the definition by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
-# def.) _zetopt::def::nsoptidx {NAMESPACE} {OPTION-NAME}
-# e.g.) _zetopt::def::nsoptidx /remote/add/ version
-# STDOUT: an integer
-_zetopt::def::nsoptidx()
+# def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME}
+# e.g.) _zetopt::def::opt2id /remote/add/ version
+# STDOUT: an identifier
+_zetopt::def::opt2id()
 {
-    local ns="${1-}" opt="${2-}"
+    local ns=${1-} opt=${2-}
     if [[ -z $ns || -z $opt ]]; then
-        \echo $ZETOPT_IDX_NOT_FOUND
-        return 1
-    fi
-    if ! _zetopt::def::optexist "$opt" ; then
-        \echo $ZETOPT_IDX_NOT_FOUND
         return 1
     fi
 
-    local regex= regex_tmp= global="[+]?"
-    while true
+    local regex= global="[+]?"
+    while :
     do
-        if [[ ${#opt} -eq 1 ]]; then
-            regex_tmp="${ns}[a-zA-Z0-9_]+${global}:$opt:"
-        else
-            regex_tmp="${ns}[a-zA-Z0-9_]+${global}:[^:]?:$opt:"
-        fi
-        if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$regex_tmp ]]; then
-            regex=$regex_tmp
-            break
+        [[ ${#opt} -eq 1 ]] \
+        && regex="(${ns}[a-zA-Z0-9_]+)${global}:$opt:" \
+        || regex="(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:$opt:"
+        
+        if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$regex ]]; then
+            \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET))]}"
+            return 0
         fi
         if [[ $ns == / ]]; then
-            \echo $ZETOPT_IDX_NOT_FOUND
             return 1
         fi
         ns=${ns%/*}  # remove the last /
         ns=${ns%/*}/ # parent ns
         global="[+]"
     done
-
-    local line= ididx=$IDX_OFFSET
-    for line in "${_ZETOPT_DEFINED_LIST[@]}"
-        do
-        if [[ $line =~ ^$regex ]]; then
-            \echo $ididx
-            return 0
-        fi
-        : $((ididx++))
-    done
-
-    \echo $ZETOPT_IDX_NOT_FOUND
     return 1
 }
 
@@ -915,7 +822,6 @@ _zetopt::parser::parse()
                 optsign=--
             fi
             
-
             if [[ $1 =~ = ]]; then
                 optarg="${1#*=}"
                 optname="${1%%=*}"
@@ -1011,7 +917,7 @@ _zetopt::parser::parse()
             # subcommand
             if [[ $check_subcmd == true ]] && _zetopt::def::has_subcmd "$namespace"; then
                 ns="${namespace%/*}/$1/"
-                if [[ ! $ns =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ || -z $(_zetopt::def::get "$ns") ]]; then
+                if ! _zetopt::def::exists "$ns"; then
                     check_subcmd=false
                     if [[ $_ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
                         ZETOPT_ARGS+=("$1")
@@ -1082,8 +988,6 @@ _zetopt::parser::parse()
         fi
     fi
 
-    IFS=$'\n'
-    ZETOPT_PARSED="${_ZETOPT_PARSED_LIST[*]}"
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
     && return $? || return $?
 }
@@ -1095,17 +999,20 @@ _zetopt::parser::parse()
 # STDOUT: NONE
 _zetopt::parser::setsub()
 {
-    local ididx="$(_zetopt::def::ididx "${1-}")"
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    local id=${1-}
+    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
-    local line="${_ZETOPT_PARSED_LIST[$ididx]}"
+
+    local head_lines=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+    local tail_lines=${BASH_REMATCH[$((10 + IDX_OFFSET))]}
+    local offset=2
+
     local IFS=:
-    \set -- $line
-    local cnt="$7"
-    : $((cnt++))
-    _ZETOPT_PARSED_LIST[$ididx]="$1:$2:$3:$4:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt"
+    \set -- ${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
+    local cnt=$(($7 + 1))
+    ZETOPT_PARSED=$head_lines$1:$2:$3:$4:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
 # Set option data. 
@@ -1119,15 +1026,20 @@ _zetopt::parser::setopt()
     shift 3
     args=("$@")
 
-    local ididx=$(_zetopt::def::nsoptidx "$namespace" "$opt")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    local id=$(_zetopt::def::opt2id "$namespace" "$opt")
+    if [[ -z $id ]]; then
         ZETOPT_OPTERR_UNDEFINED+=("$optsign$opt")
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_OPTION))
         return 1
     fi
 
+    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+        return 1
+    fi
+    local head_lines=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+    local tail_lines=${BASH_REMATCH[$((10 + IDX_OFFSET))]}
     local IFS=:
-    \set -- ${_ZETOPT_PARSED_LIST[$ididx]}
+    \set -- ${BASH_REMATCH[$((2 + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
     local id="$1" short="$2" long="$3" refsstr="$4" types="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
@@ -1138,11 +1050,9 @@ _zetopt::parser::setopt()
 
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
-        if [[ $optsign =~ ^--?$ ]]; then
-            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}")
-        else
-            ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
-        fi
+        [[ $optsign =~ ^--?$ ]] \
+        && ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}") \
+        || ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
         refs=($optarg_idx)
 
     # options requring arguments
@@ -1246,40 +1156,33 @@ _zetopt::parser::setopt()
     fi
     : $((cnt++))
     
-    _ZETOPT_PARSED_LIST[$ididx]="$id:$short:$long:$refsstr:$types:$stat:$cnt"
+    ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$types:$stat:$cnt$tail_lines
     [[ $curr_stat -le $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS ]] \
     && return $? || return $?
 }
 
 # Assign indices to subcommand parameters. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::assign_args {NAMESPACE} {ARGUMENTS}
-# e.g.) _zetopt::parser::assign_args /sub/cmd/ "$@"
+# def.) _zetopt::parser::assign_args {NAMESPACE}
+# e.g.) _zetopt::parser::assign_args /sub/cmd/
 # STDOUT: NONE
 _zetopt::parser::assign_args()
 {
-    local namespace="${1-}"
-    local ididx="$(_zetopt::def::ididx "$namespace")"
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    local id=${1-}
+    if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    shift
-    local arglen=${#ZETOPT_ARGS[@]}
-    local IFS=:
-    \set -- ${_ZETOPT_DEFINED_LIST[$ididx]}
-    local paramdef_str="$(eval echo '"${'$ZETOPT_FIELD_DEF_ARG'-}"')"
-    if [[ -z $paramdef_str ]]; then
+
+    local IFS=' ' defarr
+    defarr=($(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG))
+    local deflen=${#defarr[@]}
+    if [[ $deflen -eq 0 ]]; then
         return 0
     fi
-
-    local rtn=$ZETOPT_STATUS_NORMAL
-
-    IFS=$' '
-    local defarr
-    defarr=($paramdef_str)
-    local deflen=${#defarr[@]}  refsstr=
+    local arglen=${#ZETOPT_ARGS[@]}
     local len=$(($arglen > $deflen ? $deflen : $arglen))
-    
+    local refsstr=
+    local rtn=$ZETOPT_STATUS_NORMAL
     if [[ $len -ne 0 ]]; then
         # variable length
         local lastdef=${defarr[$((deflen - 1 + $IDX_OFFSET))]}
@@ -1310,9 +1213,23 @@ _zetopt::parser::assign_args()
         fi
     fi
 
-    IFS=:
-    \set -- ${_ZETOPT_PARSED_LIST[$ididx]}
-    _ZETOPT_PARSED_LIST[$ididx]="$1:$2:$3:$refsstr:$5:$rtn:$7"
+    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+        return 1
+    fi
+
+    local head_lines=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+    local tail_lines=${BASH_REMATCH[$((10 + IDX_OFFSET))]}
+    local offset=2
+    local line=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
+    local id=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_ID))]}
+    local short=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_SHORT))]}
+    local long=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_LONG))]}
+    #local arg=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_ARG))]}
+    local type=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_TYPE))]}
+    #local status=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_STATUS))]}
+    local count=${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_COUNT))]}
+
+    ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$type:$rtn:$count$tail_lines
     return $rtn
 }
 
@@ -1327,13 +1244,12 @@ _zetopt::parser::assign_args()
 _zetopt::data::init()
 {
     ZETOPT_PARSED=
-    _ZETOPT_PARSED_LIST=()
     local IFS=$'\n' line=
     for line in ${ZETOPT_DEFINED//+/} # remove global signs
     do
         IFS=:
         set -- $line
-        _ZETOPT_PARSED_LIST+=("$1:$2:$3::::0")
+        ZETOPT_PARSED+="$1:$2:$3::::0"$'\n'
     done
     ZETOPT_OPTVALS=()
     ZETOPT_ARGS=()
@@ -1361,21 +1277,22 @@ _zetopt::data::get()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
+    IFS=$'\n'
+    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
-    local field="${2-0}"
-    if [[ $field -eq 0 ]]; then
-        \echo "${_ZETOPT_PARSED_LIST[$ididx]}"
-    else
-        if [[ $field =~ [^0-9] ]]; then
-            return 1
-        fi
-        IFS=:
-        set -- ${_ZETOPT_PARSED_LIST[$ididx]}
-        \eval echo '$'$field
-    fi
+    local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
+    case "$field" in
+        $ZETOPT_FIELD_DATA_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ALL))]}";;
+        $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ID))]}";;
+        $ZETOPT_FIELD_DATA_SHORT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_SHORT))]}";;
+        $ZETOPT_FIELD_DATA_LONG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_LONG))]}";;
+        $ZETOPT_FIELD_DATA_ARG)    \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_ARG))]}";;
+        $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_TYPE))]}";;
+        $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_STATUS))]}";;
+        $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $IDX_OFFSET + $ZETOPT_FIELD_DATA_COUNT))]}";;
+        *) return 1;;
+    esac
 }
 
 # Check if the option is set
@@ -1409,7 +1326,7 @@ _zetopt::data::isok()
     fi
 
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
+    if ! _zetopt::def::exists "$id"; then
         return 1
     fi
     if [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]; then
@@ -1427,62 +1344,43 @@ _zetopt::data::isok()
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_ARGS|$ZETOPT_FILED_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
+# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FILED_DATA_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
 {
-    if [[ -z ${ZETOPT_PARSED:-} ]]; then
+    if [[ -z ${ZETOPT_PARSED:-} ||  $# -lt 2 || -z ${1-} ]]; then
         return 1
     fi
-    if [[ $# -lt 2 ]]; then
-        return 1
-    fi
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local ididx=$(_zetopt::def::ididx "$id")
-    if [[ $ididx == $ZETOPT_IDX_NOT_FOUND ]]; then
-        return 1
-    fi
-
-    local field="$2"
-    case $field in
+    case $2 in
         $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
 
-    shift 2
-    local args
-    args=("$@")
-
-    # get the definition
-    local IFS=:
-    \set -- ${_ZETOPT_DEFINED_LIST[$ididx]}
-    local def_str="$(\eval echo '"${'$field'-}"')"
-
-    # get the actual arguments list
-    \set -- ${_ZETOPT_PARSED_LIST[$ididx]}
-    local lists_str="$(\eval echo '$'$field)"
-    if [[ -z $lists_str ]]; then
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local lists output_list
+    IFS=,
+    lists=($(_zetopt::data::get "$id" $2))
+    if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
-    IFS=$','
-    local lists output_list
-    lists=($lists_str) output_list=()
+    output_list=()
     local lists_last_idx="$((${#lists[@]} - 1 + $IDX_OFFSET))"
 
-    IFS=$' '
-    if [[ ${#args[@]} -eq 0 ]]; then
+    shift 2
+    IFS=' '
+    if [[ $# -eq 0 ]]; then
         output_list=(${lists[$lists_last_idx]})
     else
+        # get the arg definition for param names
+        local def_str=$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)
+
         local list_last_vals
         list_last_vals=(${lists[$lists_last_idx]})
         local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1 + $IDX_OFFSET))
 
         local input_idx= tmp_list
-        for input_idx in "${args[@]}"
+        for input_idx in "$@"
         do            
             if [[ ! $input_idx =~ ^(@|([$\^0]|-?[1-9][0-9]*)(,([$\^0]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
@@ -1547,7 +1445,10 @@ _zetopt::data::validx()
             if [[ $list_start_idx -lt $IDX_OFFSET || $list_end_idx -gt $lists_last_idx
                 || $list_end_idx -lt $IDX_OFFSET || $list_start_idx -gt $lists_last_idx
             ]]; then
-                _zetopt::msg::script_error "Group Index Out of Range:" "$tmp_list_idx -> $list_start_idx~$list_end_idx (Valid: $IDX_OFFSET~$lists_last_idx)"
+                [[ $list_start_idx == $list_end_idx ]] \
+                && local translated_idx=$list_start_idx \
+                || local translated_idx=$list_start_idx~$list_end_idx
+                _zetopt::msg::script_error "Session Index Out of Range ($IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -1640,7 +1541,10 @@ _zetopt::data::validx()
                 if [[ $val_start_idx -lt $IDX_OFFSET || $val_end_idx -gt $maxidx
                     || $val_end_idx -lt $IDX_OFFSET || $val_start_idx -gt $maxidx
                 ]]; then
-                    _zetopt::msg::script_error "Value Index Out of Range:" "$tmp_val_idx -> $val_start_idx~$val_end_idx (Valid: $IDX_OFFSET~$maxidx)"
+                    [[ $val_start_idx == $val_end_idx ]] \
+                    && local translated_idx=$val_start_idx \
+                    || local translated_idx=$val_start_idx~$val_end_idx
+                    _zetopt::msg::script_error "Value Index Out of Range ($IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
@@ -1779,7 +1683,7 @@ _zetopt::data::argvalue()
 _zetopt::data::arglength()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
+    if ! _zetopt::def::exists "$id"; then
         return 1
     fi
     shift
@@ -1793,7 +1697,7 @@ _zetopt::data::arglength()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx:@")
@@ -1812,7 +1716,7 @@ _zetopt::data::arglength()
 _zetopt::data::status()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
+    if ! _zetopt::def::exists "$id"; then
         return 1
     fi
     shift
@@ -1826,7 +1730,7 @@ _zetopt::data::status()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -1842,7 +1746,7 @@ _zetopt::data::status()
 _zetopt::data::type()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::idexist "$id"; then
+    if ! _zetopt::def::exists "$id"; then
         return 1
     fi
     shift
@@ -1856,7 +1760,7 @@ _zetopt::data::type()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Index:" "$idx"
+                _zetopt::msg::script_error "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -1864,7 +1768,6 @@ _zetopt::data::type()
     fi
     _zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_TYPE "${idxarr[@]}"
 }
-
 
 # Print the number of times the option was set
 # def.) _zetopt::data::count {ID}
@@ -1875,26 +1778,13 @@ _zetopt::data::count()
     _zetopt::data::get "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
-
 # Print the list of IDs set
 # def.) _zetopt::data::setids
 # e.g.) _zetopt::data::setids
-# STDOUT: string separated with spaces
+# STDOUT: string separated with \n
 _zetopt::data::setids()
 {
-    local line= ids
-    ids=()
-    local IFS=:
-    for line in "${_ZETOPT_PARSED_LIST[@]}"
-    do
-        \set -- $line
-        # $7 is ZETOPT_FIELD_DATA_COUNT
-        if [[ $7 -ne 0 ]]; then
-            ids+=("$1")
-        fi
-    done
-    IFS=' '
-    \echo "${ids[*]}"
+    <<< "$ZETOPT_PARSED" \grep -E ':[^0]$' | \sed -e 's/:.*//'
 }
 
 
@@ -1929,24 +1819,66 @@ _zetopt::msg::error()
 _zetopt::msg::script_error()
 {
     local text=${1-} value=${2-}
-    local lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
+    local src_lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
     local appname=${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}
     local filename=${ZETOPT_SOURCE_FILE_PATH##*/}
     local title="Script Error"
     local funcname="$(_zetopt::utils::funcname 1)"
     local col=${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}
     local textcol=${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}
+    local before=2 after=2
     local IFS=$'\n' stack
     stack=($(_zetopt::utils::stack_trace))
-    IFS=$' \t\n'
-    \printf >&2 "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($lineno)"
-    \printf >&2 -- "\n\e[1;${col}mMessage:\e[m\n %b %b\n" "$text" "$value"
-    \printf >&2 -- "\n\e[1;${col}mCommand Line:\e[m\n %s\n" "${stack[$((${#stack[@]} -1 + $IDX_OFFSET))]}"
-    \printf >&2 -- " %s" "$(_zetopt::utils::quote zetopt "${_COMMAND_LINE[@]}")"
-    \printf >&2 -- "\n\n\e[1;${col}mStack Trace:\e[m\n"
-    IFS=$'\n'
-    \printf >&2 -- " -> %b\n" ${stack[@]}
-    echo
+    local caller_info=${stack[$((${#stack[@]} -1 + $IDX_OFFSET))]}
+    [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
+    && local caller_lineno=${BASH_REMATCH[$((1 + $IDX_OFFSET))]} \
+    || local caller_lineno=0
+    {
+        \printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"
+        \printf -- " %b %b\n" "$text" "$value"
+        \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
+        \printf -- " -> %b\n" ${stack[@]}
+        _zetopt::msg::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
+            | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
+    } >&2
+}
+
+_zetopt::msg::viewfile()
+{
+    local lineno=1 before=2 after=2 filepath=
+
+    while [[ ! $# -eq 0 ]]
+    do
+        case $1 in
+            -L|--line) shift; lineno=${1-}; shift;;
+            -B|--before) shift; before=${1-}; shift;;
+            -A|--after) shift; after=${1-}; shift;;
+            --) shift; filepath=${1-}; shift;;
+            *) filepath=${1-}; shift;;
+        esac
+    done
+    if [[ ! -f $filepath ]]; then
+        return 1
+    fi
+    if [[ ! $lineno$before$after =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+    local lines=$(grep -c "" "$filepath")
+    if [[ $lineno -le 0 || $lineno -gt $lines ]]; then
+        return 1
+    fi
+    if [[ $((lineno - before)) -le 0 ]]; then
+        before=$((lineno - 1))
+    fi
+    if [[ $((lineno + after)) -gt $lines ]]; then
+        after=$((lines - lineno))
+    fi
+    local lastline=$((lineno + after))
+    local digits=${#lastline}
+
+    \head -n $((lineno + after)) "$filepath" \
+        | \tail -n $((before + after + 1)) \
+        | \nl -n rz -w $digits -b a -v $((lineno - before))
 }
 
 _zetopt::msg::output()
@@ -1961,22 +1893,26 @@ _zetopt::msg::output()
 
 _zetopt::msg::should_decorate()
 {
-    [[ -n ${ZSH_VERSION-} ]] \
-    && \setopt localoptions NOCASEMATCH \
-    || \shopt -s nocasematch
-    local fd="${1-}"
-    case "${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}" in
-        always)   return 0;;
-        never)    return 1;;
-        auto)     
-            case "$fd" in
-                $FD_STDOUT) return $TTY_STDOUT;;
-                $FD_STDERR) return $TTY_STDERR;;
-                *) return 1;;
-            esac
-            ;;
-        *) return 1;;
-    esac
+    local fd=${1-}
+    local colmode=${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}
+    return $(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        if [[ $colmode == auto ]]; then
+            if [[ $fd == $FD_STDOUT ]]; then
+                echo $TTY_STDOUT
+            elif [[ $fd == $FD_STDERR ]]; then
+                echo $TTY_STDERR
+            else
+                echo 1
+            fi
+        elif [[ $colmode == always ]]; then
+            echo 0
+        else #never and the others
+            echo 1
+        fi
+    )
 }
 
 
@@ -2113,13 +2049,12 @@ _zetopt::utils::is_true()
         return 1
     fi
 
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
-    [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] \
-    && rtn=$? || rtn=$?
+    rtn=$(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] && echo 0 || echo 1
+    )
 
     if [[ $stdout == true ]]; then
         if [[ $rtn -eq 0 ]]; then
@@ -2134,15 +2069,12 @@ _zetopt::utils::is_true()
 
 _zetopt::utils::isCJKLocale()
 {
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-    else
-        \shopt -s nocasematch
-    fi
-    local rtn
-    [[ ${1-} =~ ^(zh_|ja_|ko_) ]] \
-    && rtn=$? || rtn=$?
-    return $rtn
+    return $(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        [[ ${1-} =~ ^(zh_|ja_|ko_) ]] && echo 0 || echo 1
+    )
 }
 
 _zetopt::utils::fold()
@@ -2285,8 +2217,8 @@ _zetopt::utils::max()
         return 1
     fi
     [[ $1 -ge $2 ]] \
-    && \printf "%s\n" "$1" \
-    || \printf "%s\n" "$2"
+    && \printf -- "%s\n" "$1" \
+    || \printf -- "%s\n" "$2"
 }
 
 _zetopt::utils::min()
@@ -2295,8 +2227,8 @@ _zetopt::utils::min()
         return 1
     fi
     [[ $1 -le $2 ]] \
-    && \printf "%s\n" "$1" \
-    || \printf "%s\n" "$2"
+    && \printf -- "%s\n" "$1" \
+    || \printf -- "%s\n" "$2"
 }
 
 #------------------------------------------------------------
@@ -2324,21 +2256,15 @@ _zetopt::help::search()
     if [[ -z $title ]]; then
         return $ZETOPT_IDX_NOT_FOUND
     fi
-
-    # for search with ignoring case
-    if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions NOCASEMATCH
-        \setopt localoptions KSH_ARRAYS # for BASH_REMATCH
-    else
-        \shopt -s nocasematch
-    fi
-
-    local IFS=$'\n'
-    if [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]]; then
-        \printf -- "%s" ${BASH_REMATCH[1]}
-    else
-        \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
-    fi
+    \printf -- "%s" "$(
+        [[ -n ${ZSH_VERSION-} ]] \
+        && \setopt localoptions NOCASEMATCH \
+        || \shopt -s nocasematch
+        local IFS=$'\n'
+        [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]] \
+        && \printf -- "%s" ${BASH_REMATCH[$((1 + $IDX_OFFSET))]} \
+        || \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
+    )"
 }
 
 _zetopt::help::body()
@@ -2420,11 +2346,9 @@ _zetopt::help::show()
 
     titles=()
     IFS=$' '
-    if [[ -z "${@-}" ]]; then
-        titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
-    else
-        titles=("$@")
-    fi
+    [[ -z "${@-}" ]] \
+    && titles=("${_ZETOPT_HELPS_IDX[@]#*:}") \
+    || titles=("$@")
     IFS=$'\n'
     
     for title in "${titles[@]}"
