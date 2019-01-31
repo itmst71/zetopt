@@ -1,10 +1,10 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-28 07:30)
+# Version     : 1.2.0a (2019-01-30 13:00)
+# Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
-# Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 #------------------------------------------------------------
 
 
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-28 07:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-30 13:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -224,267 +224,281 @@ _zetopt::def::define()
         _ZETOPT_OPTHELPS=("")
     fi
 
-    local IFS=$' ' origin="$*" lines=
-    IFS=$';\n'
-    lines=($origin)
-    if [[ ${#lines[@]} -eq 0 ]]; then
+    if [[ -z ${@-} ]]; then
         _zetopt::msg::script_error "No Definition Given"
         return 1
     fi
 
-    local line namespace id short long namedef paramdef cmdmode helpdef helpidx helpidx_cmd global arr
-    for line in "${lines[@]}"
-    do 
-        namespace= id= short= long= namedef= paramdef= cmdmode=false helpidx=0 helpidx_cmd=0 helpdef= global=
-        if [[ -z ${line//[$' \t']/} ]]; then
-            continue
+    local IFS=$' \n\t' arglen=$# 
+    local args=("$@") idx=$IDX_OFFSET maxloop=$((arglen + IDX_OFFSET))
+    local namespace= id= short= long= namedef= cmdmode=false helpdef= helpidx=0 helpidx_cmd=0 global= 
+    local help_only=false has_param=false
+
+    local arg=${args[$idx]}
+    if [[ $arglen -eq 1 ]]; then
+        # param only
+        if [[ $arg =~ ^-{0,2}[@%] ]]; then
+            namedef=/
+            has_param=true
+        # help only
+        elif [[ $arg =~ ^\# ]]; then
+            namedef=/
+            help_only=true
+        # id only
+        else
+            namedef=$arg
+            : $((idx++))
         fi
-
-        # help
-        IFS=$''
-        if [[ $line =~ \# ]]; then
-            helpdef="${line#*\ #}"
-            line=${line%%\ #*}
-
-            # help only
-            if [[ $line =~ ^\# ]]; then
-                line=/
-            fi
-        fi
-
-        IFS=$' '
-        \read line <<< "$line" #trim
-
-        # only parameters
-        if [[ $line =~ ^-{0,2}[@%] ]]; then
-            line="/ $line"
-        fi
-
-        namedef="${line%% *}"
-        paramdef="${line#* }"
-
-        # no parameter definition
-        if [[ $namedef == $paramdef ]]; then
-            paramdef=
-        fi
-        
-        # add an omittable root /
-        if [[ ! $namedef =~ ^/ ]]; then
-            namedef="/$namedef"
-        fi
-
-        # regard as a subcommand
-        if [[ ! $namedef =~ : && ! $namedef =~ /$ ]]; then
-            namedef="$namedef/"
-        fi
-
-        IFS=:
-        \set -- $namedef
-        if [[ $# -gt 3 ]]; then
-            _zetopt::msg::script_error "Invalid Definition:" "$line"
+    else
+        if [[ $arg =~ ^-{0,2}[@%] ]]; then
+            namedef=/
+            has_param=true
+        elif [[ $arg =~ ^\# ]]; then
+            _zetopt::msg::script_error "Help must be placed in the last argument"
             return 1
-        fi
-
-        id=${1-}
-        namespace=${id%/*}/
-
-        if [[ $id =~ [+]$ ]]; then
-            global=+
-            id=${id//+/}
-        fi
-
-        # can not determine whether it is a subcommand or an option
-        if [[ $namedef =~ : && $id =~ /$ ]]; then
-            _zetopt::msg::script_error "Invalid Definition:" "$line"
-            return 1
-        fi
-
-        if [[ ! $id =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ ]]; then
-            _zetopt::msg::script_error "Invalid Identifier:" "$id"
-            return 1
-        fi
-
-        # namespace(subcommand) definition
-        if [[ $id == $namespace ]]; then
-            cmdmode=true
-
-            if [[ -n $global ]]; then
-                _zetopt::msg::script_error "Sub-Command Difinition with Global Option Sign +:" "$line"
+        else
+            namedef=$arg
+            : $((idx++))
+            arg=${args[$idx]}
+            if [[ $arg =~ ^-{0,2}[@%] ]]; then
+                has_param=true
+            elif [[ $arg =~ ^\# ]]; then
+                help_only=true
+            else
+                _zetopt::msg::script_error "Invalid Definition"
                 return 1
             fi
-
-            # command has two indices for itself and its argument
-            helpidx="0 0"
-            
-            # help only
-            [[ -z $paramdef && -n $helpdef ]] \
-            && local help_only_definition=true \
-            || local help_only_definition=false
-
-            IFS=$'\n'
-            if [[ $'\n'$ZETOPT_DEFINED =~ (.*$'\n')((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
-                local head_lines=${BASH_REMATCH[$((1 + $IDX_OFFSET))]}
-                local tmp_line=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
-                local tmp_line_nohelp=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
-                helpidx_cmd=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
-                local helpidx_cmdarg=${BASH_REMATCH[$((5 + $IDX_OFFSET))]}
-                local tail_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
-
-                # remove auto defined namespace
-                if [[ $tmp_line == "${id}::::0 0" ]]; then
-                    ZETOPT_DEFINED="$head_lines$tail_lines"
-                
-                elif [[ -n $paramdef && $tmp_line =~ [@%] ]] || [[ $help_only_definition == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
-                    _zetopt::msg::script_error "Already Defined:" "$id"
-                    return 1
-
-                # help only definition: rewrite help reference number part of existing definition
-                elif [[ $help_only_definition == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
-                    _ZETOPT_OPTHELPS+=("$helpdef")
-                    helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
-                    ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
-                    continue
-
-                # remove help only definition and continue parsing
-                else
-                    ZETOPT_DEFINED="$head_lines$tail_lines"
-                fi
-            fi
         fi
-        
-        if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]; then
-            _zetopt::msg::script_error "Duplicated Identifier:" "$1"
+    fi
+
+    arg=${args[$((arglen - 1 + IDX_OFFSET))]}
+    if [[ $arg =~ ^\# ]]; then
+        helpdef=${arg###}
+        : $((maxloop--))
+    fi
+
+    # add an omittable root /
+    if [[ ! $namedef =~ ^/ ]]; then
+        namedef="/$namedef"
+    fi
+
+    # regard as a subcommand
+    if [[ ! $namedef =~ : && ! $namedef =~ /$ ]]; then
+        namedef="$namedef/"
+    fi
+
+    IFS=:
+    \set -- $namedef
+    IFS=$' \t\n'
+    if [[ $# -gt 3 ]]; then
+        _zetopt::msg::script_error "Invalid Definition"
+        return 1
+    fi
+
+    id=${1-}
+    namespace=${id%/*}/
+
+    if [[ $id =~ [+]$ ]]; then
+        global=+
+        id=${id//+/}
+    fi
+
+    # can not determine whether it is a subcommand or an option
+    if [[ $namedef =~ : && $id =~ /$ ]]; then
+        _zetopt::msg::script_error "Invalid Definition"
+        return 1
+    fi
+
+    if [[ ! $id =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ ]]; then
+        _zetopt::msg::script_error "Invalid Identifier:" "$id"
+        return 1
+    fi
+
+    # namespace(subcommand) definition
+    if [[ $id == $namespace ]]; then
+        cmdmode=true
+
+        if [[ -n $global ]]; then
+            _zetopt::msg::script_error "Sub-Command Difinition with Global Option Sign +"
             return 1
         fi
 
-        shift
+        # command has two help indices for itself and its argument
+        helpidx="0 0"
+        
+        if [[ $'\n'$ZETOPT_DEFINED =~ (.*)$'\n'((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
+            local head_lines=${BASH_REMATCH[$((1 + $IDX_OFFSET))]}
+            local tmp_line=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
+            local tmp_line_nohelp=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
+            helpidx_cmd=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
+            local helpidx_cmdarg=${BASH_REMATCH[$((5 + $IDX_OFFSET))]}
+            local tail_lines=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
+            
+            # remove auto defined namespace
+            if [[ $tmp_line == "${id}::::0 0" ]]; then
+                ZETOPT_DEFINED="${head_lines#$'\n'}$tail_lines"
+            
+            elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
+                _zetopt::msg::script_error "Already Defined:" "$id"
+                return 1
 
-        # options
-        if [[ $line =~ : ]]; then
-            IFS=,
-            \set -- $*
+            # help only definition: rewrite help reference number part of existing definition
+            elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
+                _ZETOPT_OPTHELPS+=("$helpdef")
+                helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
+                ZETOPT_DEFINED="${head_lines#$'\n'}$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
+                return 0
 
-            while [[ $# -ne 0 ]]
-            do
-                if [[ -z $1 ]]; then
-                    shift
-                    continue
-                fi
-                
-                # short option
-                if [[ ${#1} -eq 1 ]]; then
-                    if [[ -n $short ]]; then
-                        _zetopt::msg::script_error "2 Short Options at once:" "$1"
-                        return 1
-                    fi
+            # remove help only definition and continue parsing
+            else
+                ZETOPT_DEFINED="${head_lines#$'\n'}$tail_lines"
+            fi
+        fi
+    fi
+    
+    if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]; then
+        _zetopt::msg::script_error "Duplicate Identifier:" "$id"
+        return 1
+    fi
 
-                    if [[ ! $1 =~ ^[a-zA-Z0-9_]$ ]]; then
-                        _zetopt::msg::script_error "Invalid Short Option Name:" "$1"
-                        return 1
-                    fi
-                    
-                    # subcommand scope option
-                    if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
-                        _zetopt::msg::script_error "Already Defined:" "-$1 : $line"
-                        return 1
-                    fi
-                    short=$1
+    shift
 
-                # long option
-                else
-                    if [[ -n $long ]]; then
-                        _zetopt::msg::script_error "2 Long Options at once:" "$1"
-                        return 1
-                    fi
+    # options
+    if [[ $namedef =~ : ]]; then
+        IFS=,
+        \set -- $*
 
-                    if [[ ! $1 =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
-                        _zetopt::msg::script_error "Invalid Long Option Name:" "$1"
-                        return 1
-                    fi
-
-                    # subcommand scope option
-                    if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
-                        _zetopt::msg::script_error "Already Defined:" "--$1"
-                        return 1
-                    fi
-                    long=$1
-                fi
+        while [[ $# -ne 0 ]]
+        do
+            if [[ -z $1 ]]; then
                 shift
-            done
+                continue
+            fi
+            
+            # short option
+            if [[ ${#1} -eq 1 ]]; then
+                if [[ -n $short ]]; then
+                    _zetopt::msg::script_error "2 Short Options at once:" "$1"
+                    return 1
+                fi
 
-            # no short nor long
-            if [[ -z $short$long ]]; then
+                if [[ ! $1 =~ ^[a-zA-Z0-9_]$ ]]; then
+                    _zetopt::msg::script_error "Invalid Short Option Name:" "$1"
+                    return 1
+                fi
+                
+                # subcommand scope option
+                if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
+                    _zetopt::msg::script_error "Already Defined:" "-$1"
+                    return 1
+                fi
+                short=$1
+
+            # long option
+            else
+                if [[ -n $long ]]; then
+                    _zetopt::msg::script_error "2 Long Options at once:" "$1"
+                    return 1
+                fi
+
+                if [[ ! $1 =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
+                    _zetopt::msg::script_error "Invalid Long Option Name:" "$1"
+                    return 1
+                fi
+
+                # subcommand scope option
+                if [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
+                    _zetopt::msg::script_error "Already Defined:" "--$1"
+                    return 1
+                fi
+                long=$1
+            fi
+            shift
+        done
+
+        # no short nor long
+        if [[ -z $short$long ]]; then
+            return 1
+        fi
+    fi
+    
+    # parameters
+    local param_def=
+    if [[ $has_param == true ]]; then
+        local param_required=false param_optional=false param params param_idx=$IDX_OFFSET
+        local param_hyphens param_type param_name param_varlen param_names=
+        params=()
+        for ((; idx<maxloop; idx++))
+        do
+            param=${args[$idx]}
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)*)?$ ]]; then
+                _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
-        fi
 
-        # parameters
-        if [[ -n $paramdef ]]; then
-            IFS=$' ' read paramdef <<< "$paramdef" # trim spaces
-            
-            if [[ ! $paramdef =~ ^(\ *-{0,2}[@%]([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)*)?)+$ ]]; then
-                _zetopt::msg::script_error "Invalid Parameter Definition:" "$paramdef"
-                return 1
+            param_hyphens=${BASH_REMATCH[$((1 + $IDX_OFFSET))]}
+            param_type=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
+            param_name=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
+            param_varlen=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
 
-            elif [[ ${paramdef//[\ .-]/} =~ ^%+@ ]]; then
-                _zetopt::msg::script_error "Required Parameter after Optional:" "$paramdef"
-                return 1
+            case $param_type in
+            @)  param_required=true
+                if [[ $param_optional == true ]]; then
+                    _zetopt::msg::script_error "Required Parameter after Optional"
+                    return 1
+                fi
+                ;;
+            %)  param_optional=true;;
+            esac
 
-            elif [[ $paramdef =~ [.]{3,3} && ! ${paramdef//[\ -]/} =~ [%@][a-zA-Z0-9_]*[.]{3,3}([1-9][0-9]*)*$ ]]; then
-                _zetopt::msg::script_error "Variable-length parameter must be at the last:" "$paramdef"
+            if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then  
+                _zetopt::msg::script_error "Variable-length parameter must be at the last"
                 return 1
             fi
 
             # check if parameter names are duplicated
-            if [[ $paramdef =~ [a-zA-Z0-9_] ]]; then
-                local paramnames= paramname=
-                IFS=$' '
-                set -- ${paramdef//[@%-.]/}
-                if [[ $# -ge 1 ]]; then
-                    for paramname in $@
-                    do
-                        if [[ \ $paramnames\  =~ \ $paramname\  ]]; then
-                            _zetopt::msg::script_error "Duplicated Parameter Name:" "$paramdef"
-                            return 1
-                        fi
-                        paramnames="$paramnames $paramname "
-                    done
+            if [[ -n $param_name ]]; then
+                if [[ $param_names =~ \ $param_name\  ]]; then
+                    _zetopt::msg::script_error "Duplicate Parameter Name:" "$param_name"
+                    return 1
                 fi
+                param_names+=" $param_name "
             fi
-            IFS=$' '
-            \set -- $paramdef
-            paramdef="$*"
-        fi
-
-        if [[ -n "$helpdef" ]]; then
-            _ZETOPT_OPTHELPS+=("$helpdef")
-            helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
-            if [[ $cmdmode == true ]]; then
-                [[ -n $paramdef ]] \
-                && helpidx="$helpidx_cmd $helpidx" \
-                || helpidx+=" 0"
-            fi
-        fi
-
-        line="$id$global:$short:$long:$paramdef:$helpidx"
-        ZETOPT_DEFINED+="$line"$'\n'
-
-        # defines parent subcommands automatically
-        if [[ $namespace == / ]]; then
-            [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && continue
-            ZETOPT_DEFINED+="/::::0 0"$'\n'
-            continue
-        fi
-
-        IFS=$' '
-        local ns= curr_ns=
-        for ns in ${namespace//\// }
-        do
-            curr_ns="${curr_ns%*/}/$ns/"
-            [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && continue
-            ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
+            params+=("$param_hyphens$param_type$param_name$param_varlen")
+            : $((param_idx++))
         done
+        IFS=$' '
+        param_def="${params[*]}"
+    fi
+
+    if [[ -n "$helpdef" ]]; then
+        _ZETOPT_OPTHELPS+=("$helpdef")
+        helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
+        if [[ $cmdmode == true ]]; then
+            [[ $has_param == true ]] \
+            && helpidx="$helpidx_cmd $helpidx" \
+            || helpidx+=" 0"
+        fi
+    fi
+
+    ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$helpidx"$'\n'
+
+    # defines parent subcommands automatically
+    if [[ $namespace == / ]]; then
+        [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && return 0
+        ZETOPT_DEFINED+="/::::0 0"$'\n'
+        return 0
+    fi
+
+    IFS=$' '
+    local ns= curr_ns=
+    for ns in ${namespace//\// }
+    do
+        curr_ns="${curr_ns%*/}/$ns/"
+        [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && return 0
+        ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
     done
+    
 }
 
 # Initialize variables concerned with the definition. 
