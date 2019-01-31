@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-01-30 13:00)
+# Version     : 1.2.0a (2019-01-31 15:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-01-30 13:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-01-31 15:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -361,10 +361,9 @@ _zetopt::def::define()
         return 1
     fi
 
-    shift
-
     # options
     if [[ $namedef =~ : ]]; then
+        shift
         IFS=,
         \set -- $*
 
@@ -464,7 +463,7 @@ _zetopt::def::define()
                 fi
                 param_names+=" $param_name "
             fi
-            params+=("$param_hyphens$param_type$param_name$param_varlen")
+            params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen")
             : $((param_idx++))
         done
         IFS=$' '
@@ -682,25 +681,18 @@ _zetopt::def::paramidx()
     if [[ $# -lt 2 ]]; then
         return 1
     fi
-    if [[ ! $2 =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*-?$ ]]; then
+    if [[ ! $2 =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
-    if [[ -z $paramdef_str ]]; then
+    local def_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    if [[ -z $def_str ]]; then
         return 1
     fi
-    local name=${2//-/}
-
-    local IFS=$' ' def= defidx=$IDX_OFFSET
-    for def in $paramdef_str
-    do
-        if [[ ${def//[-@%.]/} == $name ]]; then
-            \echo $defidx
-            return 0
-        fi
-        : $((defidx++))
-    done
+    if [[ $def_str =~ [@%]${2}[.]([0-9]+) ]]; then
+        \printf -- "%s" ${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+        return 0
+    fi
     return 1
 }
 
@@ -1490,37 +1482,27 @@ _zetopt::data::validx()
             esac
 
             # index by name : look up a name from parameter definition
-            local def= defidx= idx=0 param_names=
-            for param_names in $tmp_val_start_idx $tmp_val_end_idx
+            local idx=0 param_name=
+            for param_name in $tmp_val_start_idx $tmp_val_end_idx
             do
-                if [[ ! $param_names =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
+                if [[ ! $param_name =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
                     : $((idx++))
                     continue
                 fi
 
-                defidx=$IDX_OFFSET nameidx=
-                for def in $def_str
-                do
-                    if [[ ${def//[-@%.]/} == $param_names ]]; then
-                        nameidx=$defidx
-                        break
-                    fi
-                    : $((defidx++))
-                done
-
-                if [[ -z $nameidx ]]; then
-                    _zetopt::msg::script_error "Parameter Name Not Found:" "$input_idx"
+                if [[ ! $def_str =~ [@%]${param_name}[.]([0-9]+) ]]; then
+                    _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
                     return 1
                 fi
 
                 if [[ $idx -eq 0 ]]; then
-                    tmp_val_start_idx=$nameidx
+                    tmp_val_start_idx=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
                 else
-                    tmp_val_end_idx=$nameidx
+                    tmp_val_end_idx=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
                 fi
                 : $((idx++))
             done
-
+            
             local list_idx= val_idx= maxidx= val_start_idx= val_end_idx=
             tmp_list=()
             for list_idx in $(\eval "echo {$list_start_idx..$list_end_idx}")
@@ -2703,6 +2685,7 @@ _zetopt::help::format()
         local cnt=1 lastchar=
         for arg in $args
         do
+            arg=${arg%.*}
             if [[ $arg == @ ]]; then
                 optargs="$optargs <$default_argname$cnt>"
                 : $((cnt++))
