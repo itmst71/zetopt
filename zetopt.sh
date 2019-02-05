@@ -139,6 +139,7 @@ zetopt()
             _ZETOPT_OPTHELPS=()
             _ZETOPT_HELPS_IDX=()
             _ZETOPT_HELPS=()
+            _ZETOPT_DEFAULTS=()
 
             ZETOPT_PARSED=
             ZETOPT_OPTVALS=()
@@ -222,6 +223,7 @@ _zetopt::def::define()
     if [[ -z ${ZETOPT_DEFINED:-} ]]; then
         ZETOPT_DEFINED="/::::0 0"$'\n'
         _ZETOPT_OPTHELPS=("")
+        _ZETOPT_DEFAULTS=("")
     fi
 
     if [[ -z ${@-} ]]; then
@@ -424,13 +426,14 @@ _zetopt::def::define()
     # parameters
     local param_def=
     if [[ $has_param == true ]]; then
-        local param_required=false param_optional=false param params param_idx=$IDX_OFFSET
-        local param_hyphens param_type param_name param_varlen param_names=
+        local param_optional=false param params param_idx=$IDX_OFFSET
+        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_default_idx
         params=()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)*)?$ ]]; then
+            param_default_idx=0
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -439,16 +442,17 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + $IDX_OFFSET))]}
             param_name=${BASH_REMATCH[$((3 + $IDX_OFFSET))]}
             param_varlen=${BASH_REMATCH[$((4 + $IDX_OFFSET))]}
+            param_varlen_max=${BASH_REMATCH[$((5 + $IDX_OFFSET))]}
+            param_default=${BASH_REMATCH[$((6 + $IDX_OFFSET))]}
 
-            case $param_type in
-            @)  param_required=true
+            if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
                     _zetopt::msg::script_error "Required Parameter after Optional"
                     return 1
                 fi
-                ;;
-            %)  param_optional=true;;
-            esac
+            else
+                param_optional=true
+            fi
 
             if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then  
                 _zetopt::msg::script_error "Variable-length parameter must be at the last"
@@ -463,7 +467,12 @@ _zetopt::def::define()
                 fi
                 param_names+=" $param_name "
             fi
-            params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen")
+
+            if [[ -n $param_default ]]; then
+                _ZETOPT_DEFAULTS+=("${param_default##=}")
+                param_default_idx=${#_ZETOPT_DEFAULTS[@]}
+            fi
+            params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen=$param_default_idx")
             : $((param_idx++))
         done
         IFS=$' '
@@ -483,12 +492,6 @@ _zetopt::def::define()
     ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$helpidx"$'\n'
 
     # defines parent subcommands automatically
-    if [[ $namespace == / ]]; then
-        [[ $'\n'$ZETOPT_DEFINED =~ $'\n'/: ]] && return 0
-        ZETOPT_DEFINED+="/::::0 0"$'\n'
-        return 0
-    fi
-
     IFS=$' '
     local ns= curr_ns=
     for ns in ${namespace//\// }
@@ -2645,7 +2648,7 @@ _zetopt::help::fmtcmdopt()
 
 _zetopt::help::format()
 {
-    local id short long args dummy opt tmparr optargs default_argname
+    local id short long args dummy opt optargs default_argname
     local sep=", " synopsis=false
     if [[ ${1-} == "--synopsis" ]]; then
         synopsis=true
@@ -2678,31 +2681,27 @@ _zetopt::help::format()
 
     if [[ -n $args ]]; then
         args=${args//-/}
-        if [[ $args =~ \.\.\. ]]; then
-            args=${args//.../ ...}
-        fi
         IFS=$' '
-        local cnt=1 lastchar=
+        declare -i cnt=1
+        local arg param
         for arg in $args
         do
-            arg=${arg%.*}
-            if [[ $arg == @ ]]; then
-                optargs="$optargs <$default_argname$cnt>"
-                : $((cnt++))
-            elif [[ $arg == % ]]; then
-                optargs="$optargs [<$default_argname$cnt>]"
-                : $((cnt++))
-            elif [[ ${arg:0:1} == @ ]]; then
-                optargs="$optargs <${arg:1}>"
-                : $((cnt++))
-            elif [[ ${arg:0:1} == % ]]; then
-                optargs="$optargs [<${arg:1}>]"
-                : $((cnt++))
-            elif [[ $arg =~ \.\.\. ]]; then
-                lastchar=${optargs:$((${#optargs}-1)):1}
-                optargs="${optargs:0:$((${#optargs}-1))} $arg$lastchar"
+            param=${arg%%.*}
+            if [[ $param == @ ]]; then
+                optargs+=" <$default_argname$cnt>"
+            elif [[ $param == % ]]; then
+                optargs+=" [<$default_argname$cnt>]"
+            elif [[ ${param:0:1} == @ ]]; then
+                optargs+=" <${param:1}>"
+            elif [[ ${param:0:1} == % ]]; then
+                optargs+=" [<${param:1}>]"
             fi
+            cnt+=1
         done
+        # variable length
+        if [[ $arg =~ ([.]{3,3}[0-9]*)= ]]; then
+            optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[$((1 + IDX_OFFSET))]}]"
+        fi
         IFS=$'\n'
     fi
     \printf -- "%b" "$optargs"
