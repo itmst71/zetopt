@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-05 13:00)
+# Version     : 1.2.0a (2019-02-07 14:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-05 13:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-07 14:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -153,7 +153,6 @@ zetopt()
             ;;
         reset)
             _zetopt::parser::init
-            _zetopt::def::init
             _zetopt::data::init
             ;;
         define | def)
@@ -181,7 +180,7 @@ zetopt()
         isset)
             _zetopt::data::isset "${@-}";;
         isvalid | isok)
-            _zetopt::data::isok "${@-}";;
+            _zetopt::data::isvalid "${@-}";;
         count | cnt)
             _zetopt::data::count "${@-}";;
         status | stat)
@@ -330,7 +329,7 @@ _zetopt::def::define()
         helpidx="0 0"
 
         if [[ $'\n'$ZETOPT_DEFINED =~ (.*)$'\n'((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
-            local head_lines="${BASH_REMATCH[$((1 + $IDX_OFFSET))]}"
+            local head_lines="${BASH_REMATCH[$((1 + $IDX_OFFSET))]#*$'\n'}"
             local tmp_line="${BASH_REMATCH[$((2 + $IDX_OFFSET))]}"
             local tmp_line_nohelp="${BASH_REMATCH[$((3 + $IDX_OFFSET))]}"
             helpidx_cmd="${BASH_REMATCH[$((4 + $IDX_OFFSET))]}"
@@ -339,7 +338,7 @@ _zetopt::def::define()
 
             # remove auto defined namespace
             if [[ $tmp_line == "${id}::::0 0" ]]; then
-                ZETOPT_DEFINED="${head_lines#$'\n'}$tail_lines"
+                ZETOPT_DEFINED="$head_lines$tail_lines"
             
             elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
                 _zetopt::msg::script_error "Already Defined:" "$id"
@@ -349,12 +348,12 @@ _zetopt::def::define()
             elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
                 _ZETOPT_OPTHELPS+=("$helpdef")
                 helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $IDX_OFFSET))
-                ZETOPT_DEFINED="${head_lines#$'\n'}$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
+                ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
                 return 0
 
             # remove help only definition and continue parsing
             else
-                ZETOPT_DEFINED="${head_lines#$'\n'}$tail_lines"
+                ZETOPT_DEFINED="$head_lines$tail_lines"
             fi
         fi
     fi
@@ -504,18 +503,6 @@ _zetopt::def::define()
     
 }
 
-# Initialize variables concerned with the definition. 
-# ** Must be executed in the current shell **
-# def.) _zetopt::def::init
-# STDOUT: NONE
-_zetopt::def::init()
-{
-    if [[ -z ${ZETOPT_DEFINED+_} ]]; then
-        return 1
-    fi
-    ZETOPT_DEFINED=$(<<< "$ZETOPT_DEFINED" \sort -t : -k 1,1 | \sed '/^$/d') 
-}
-
 # Load definition data from a file.
 # def.) _zetopt::def::load {FILE-PATH}
 # e.g.) _zetopt::def::load option.txt
@@ -538,7 +525,7 @@ _zetopt::def::load()
 _zetopt::def::defined()
 {
     if [[ -z ${ZETOPT_DEFINED-} ]]; then
-        _zetopt::def::init
+        ZETOPT_DEFINED="/:::"$'\n'
     fi
     if [[ -z ${1-} ]]; then
         \printf -- "%s\n" "$ZETOPT_DEFINED"
@@ -728,7 +715,7 @@ _zetopt::def::paramlen()
             if [[ ! $paramdef_str =~ [.]{3,3}([1-9][0-9]*)*$ ]]; then
                 out=$((reqcnt + optcnt))
             elif [[ $paramdef_str =~ [.]{3,3}$ ]]; then
-                out=$((1<<31))
+                out=$((1<<31)) #2147483648
             elif [[ $paramdef_str =~ [.]{3,3}([1-9][0-9]*)$ ]]; then
                 out=$((reqcnt + optcnt + ${paramdef_str##*...} - 1))
             fi
@@ -769,7 +756,6 @@ _zetopt::parser::parse()
         ZETOPT_DEFINED="/:::"$'\n'
     fi
     _zetopt::parser::init
-    _zetopt::def::init
     _zetopt::data::init
     
     local optname= optarg= idx= optsign= added_cnt=0 args
@@ -1010,12 +996,12 @@ _zetopt::parser::parse()
 _zetopt::parser::setsub()
 {
     local id=${1-}
-    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
 
-    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + IDX_OFFSET))]}"
     local offset=2
 
@@ -1043,10 +1029,10 @@ _zetopt::parser::setopt()
         return 1
     fi
 
-    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         return 1
     fi
-    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + IDX_OFFSET))]}"
     local IFS=:
     \set -- ${BASH_REMATCH[$((2 + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
@@ -1165,7 +1151,7 @@ _zetopt::parser::setopt()
         types="$types $type"
     fi
     : $((cnt++))
-    
+
     ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$types:$stat:$cnt$tail_lines
     [[ $curr_stat -le $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS ]] \
     && return $? || return $?
@@ -1223,11 +1209,11 @@ _zetopt::parser::assign_args()
         fi
     fi
 
-    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         return 1
     fi
 
-    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + IDX_OFFSET))]}"
     local offset=2
     local line="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}"
@@ -1238,7 +1224,6 @@ _zetopt::parser::assign_args()
     local type="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_TYPE))]}"
     #local status="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_COUNT))]}"
-
     ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$type:$rtn:$count$tail_lines
     return $rtn
 }
@@ -1320,10 +1305,10 @@ _zetopt::data::isset()
 }
 
 # Check if the option is set and its status is OK
-# def.) _zetopt::data::isok {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::isok /foo @
+# def.) _zetopt::data::isvalid {ID} [ONE-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::isvalid /foo @
 # STDOUT: NONE
-_zetopt::data::isok()
+_zetopt::data::isvalid()
 {
     if [[ -z ${ZETOPT_PARSED:-} ]]; then
         return 1
@@ -1366,11 +1351,11 @@ _zetopt::data::validx()
         $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
-
+    local field="$2"
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     local lists output_list
     IFS=,
-    lists=($(_zetopt::data::get "$id" $2))
+    lists=($(_zetopt::data::get "$id" $field))
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
@@ -1383,7 +1368,10 @@ _zetopt::data::validx()
         output_list=(${lists[$lists_last_idx]})
     else
         # get the arg definition for param names
-        local def_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+        local def_args=
+        if [[ $field -eq $ZETOPT_FIELD_DEF_ARG ]]; then
+            def_args="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+        fi
 
         local list_last_vals
         list_last_vals=(${lists[$lists_last_idx]})
@@ -1494,7 +1482,7 @@ _zetopt::data::validx()
                     continue
                 fi
 
-                if [[ ! $def_str =~ [@%]${param_name}[.]([0-9]+) ]]; then
+                if [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
                     _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
                     return 1
                 fi
@@ -1555,7 +1543,7 @@ _zetopt::data::validx()
             done
         done
     fi
-    \echo ${output_list[@]}
+    \printf -- "%s\n" "${output_list[*]}"
 }
 
 # Check if it has value
@@ -1728,7 +1716,7 @@ _zetopt::data::status()
     else
         local idx=
         for idx in "$@"
-        do 
+        do
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$idx"
                 return 1
@@ -1819,7 +1807,7 @@ _zetopt::msg::error()
 _zetopt::msg::script_error()
 {
     local text="${1-}" value="${2-}"
-    local src_lineno=${BASH_LINENO-${funcfiletrace[1]##*:}}
+    local src_lineno=${BASH_LINENO-${funcfiletrace[$((0 + $IDX_OFFSET))]##*:}}
     local appname="${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}"
     local filename="${ZETOPT_SOURCE_FILE_PATH##*/}"
     local title="Script Error"
@@ -1926,9 +1914,9 @@ _zetopt::utils::funcname()
         skip_stack_count=$1
     fi
 
-    if [[ -n $BASH_VERSION ]]; then
+    if [[ -n ${BASH_VERSION-} ]]; then
         \printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
-    elif [[ -n $ZSH_VERSION ]]; then
+    elif [[ -n ${ZSH_VERSION-} ]]; then
         \printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $IDX_OFFSET))]}"
     fi
 }
@@ -2128,7 +2116,8 @@ _zetopt::utils::fold()
         return 1
     fi
 
-    local LC_ALL="$locale"
+    local LC_ALL=
+    local LANG="$locale"
     local wide_char_width=$(_zetopt::utils::isCJKLocale "$locale" && echo 2 || echo 1)
     local max_buff_size=$width
     local IFS=$'\n'
@@ -2764,7 +2753,7 @@ SUB-COMMANDS
 
     isset
 
-    isok
+    isvalid
 
     hasval
 
