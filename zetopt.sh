@@ -426,7 +426,7 @@ _zetopt::def::define()
     # parameters
     local param_def=
     if [[ $has_param == true ]]; then
-        local param_optional=false param params param_idx=$IDX_OFFSET
+        local param_optional=false param params param_idx=$IDX_OFFSET default_is_set=false
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_default_idx
         params=()
         for ((; idx<maxloop; idx++))
@@ -468,9 +468,14 @@ _zetopt::def::define()
                 param_names+=" $param_name "
             fi
 
+            # save default value
             if [[ -n $param_default ]]; then
                 _ZETOPT_DEFAULTS+=("${param_default##=}")
                 param_default_idx=${#_ZETOPT_DEFAULTS[@]}
+                default_is_set=true
+            elif [[ $default_is_set == true ]]; then
+                _zetopt::msg::script_error "Non-default Argument Following Default Argument:" "$param_name"
+                return 1
             fi
             params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen=$param_default_idx")
             : $((param_idx++))
