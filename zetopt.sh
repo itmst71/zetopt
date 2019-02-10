@@ -454,7 +454,7 @@ _zetopt::def::define()
                 param_optional=true
             fi
 
-            if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then  
+            if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then
                 _zetopt::msg::script_error "Variable-length parameter must be at the last"
                 return 1
             fi
@@ -471,7 +471,7 @@ _zetopt::def::define()
             # save default value
             if [[ -n $param_default ]]; then
                 _ZETOPT_DEFAULTS+=("${param_default##=}")
-                param_default_idx=${#_ZETOPT_DEFAULTS[@]}
+                param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + IDX_OFFSET))
                 default_is_set=true
             elif [[ $default_is_set == true ]]; then
                 _zetopt::msg::script_error "Non-default Argument Following Default Argument:" "$param_name"
@@ -699,36 +699,35 @@ _zetopt::def::paramidx()
 _zetopt::def::paramlen()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
-    if [[ -z $paramdef_str ]]; then
-        \echo 0
-        return 0
+    if ! _zetopt::def::exists "$id"; then
+        \echo 0; return 1
+    fi
+    local def="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    if [[ -z $def ]]; then
+        \echo 0; return 0
     fi
 
-    local tmp= reqcnt= optcnt= out=
-    tmp=${paramdef_str//[!@]/}
+    declare -i reqcnt optcnt out
+    local tmp=${def//[!@]/}
     reqcnt=${#tmp} 
-    tmp=${paramdef_str//[!%]/}
+    tmp=${def//[!%]/}
     optcnt=${#tmp}
 
     case ${2-} in
-        required | @)
-                out=$reqcnt;;
-        optional | %)
-                out=$optcnt;;
+        required | @) out=$reqcnt;;
+        optional | %) out=$optcnt;;
         max)
-            if [[ ! $paramdef_str =~ [.]{3,3}([1-9][0-9]*)*$ ]]; then
-                out=$((reqcnt + optcnt))
-            elif [[ $paramdef_str =~ [.]{3,3}$ ]]; then
-                out=$((1<<31)) #2147483648
-            elif [[ $paramdef_str =~ [.]{3,3}([1-9][0-9]*)$ ]]; then
-                out=$((reqcnt + optcnt + ${paramdef_str##*...} - 1))
+            [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=[0-9]+$ ]] || :
+            if [[ -n ${BASH_REMATCH[$((1 + IDX_OFFSET))]} ]]; then
+                [[ -n ${BASH_REMATCH[$((2 + IDX_OFFSET))]} ]] \
+                && out=$reqcnt+$optcnt+${BASH_REMATCH[$((2 + IDX_OFFSET))]}-1 \
+                || out=$((1<<31)) #2147483648
+            else
+                out=$reqcnt+$optcnt
             fi
             ;;
-        "" | all)
-                out=$((reqcnt + optcnt));;
-        *)      
-                out=$((reqcnt + optcnt));;
+        "" | all) out=$reqcnt+$optcnt;;
+        *)        out=$reqcnt+$optcnt;;
     esac
     \echo $out
 }
@@ -1041,101 +1040,123 @@ _zetopt::parser::setopt()
     local tail_lines="${BASH_REMATCH[$((10 + IDX_OFFSET))]}"
     local IFS=:
     \set -- ${BASH_REMATCH[$((2 + IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
-    local id="$1" short="$2" long="$3" refsstr="$4" types="$5" stat="$6" cnt="$7"
+    local id="$1" short="$2" long="$3" refs_str="$4" types="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
-    local refs paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
-    local arg arg_idx=$IDX_OFFSET arglen=${#args[@]}
-    local optarg_idx=$((${#ZETOPT_OPTVALS[@]} + $IDX_OFFSET))
-    refs=()
+    local ref_arr paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    declare -i optarg_idx=$((${#ZETOPT_OPTVALS[@]} + $IDX_OFFSET))
+    ref_arr=()
 
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
         [[ $optsign =~ ^--?$ ]] \
         && ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}") \
         || ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
-        refs=($optarg_idx)
+        ref_arr=($optarg_idx)
 
-    # options requring arguments
+    # options requiring arguments
     else
         IFS=$' '
         \set -- $paramdef_str
-        local def= defarr deflen=$# defidx=$IDX_OFFSET varlen_mode=false argcnt=0 argmax=$(_zetopt::def::paramlen $id max)
+        local arg def defarr varlen_mode=false no_avail_args=false
+        declare -i def_len=$(($# + IDX_OFFSET)) def_idx=$IDX_OFFSET
+        declare -i arg_cnt=0 arg_max arg_idx=$IDX_OFFSET arg_len=$((${#args[@]} + $IDX_OFFSET))
         defarr=($@)
 
-        while [[ $defidx -lt $(($deflen + $IDX_OFFSET)) ]]
+        while [[ $def_idx -lt $def_len ]]
         do
-            def=${defarr[$defidx]}
+            def=${defarr[$def_idx]}
 
-            # args not enough
-            if [[ $arg_idx -ge $(($arglen + $IDX_OFFSET)) ]]; then
-                if [[ $varlen_mode == false ]]; then
-                    if [[ $def =~ @ ]]; then
-                        curr_stat=$ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS
-                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS))
-                        ZETOPT_OPTERR_MISSING_REQUIRED+=("$optsign$opt")
-                    else
-                        curr_stat=$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
-                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS))
-                        ZETOPT_OPTERR_MISSING_OPTIONAL+=("$optsign$opt")
-                    fi
+            # there are available args 
+            if [[ $arg_idx -lt $arg_len ]]; then
+                arg="${args[$arg_idx]}"
+                if [[ $arg == "" && $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
+                    arg_idx+=1
+                    continue
                 fi
+
+                # check arg format
+                if [[ $arg =~ ^[^-+]
+                    || $arg =~ ^[-+]$
+                    || $arg == ""
+                    || ($arg =~ ^-[^-] && $def =~ ^-[^-])
+                    || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
+                    || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS == true)
+                    || ($arg == "--" && $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
+                ]]; then
+                    ZETOPT_OPTVALS+=("$arg")
+                    ref_arr+=($optarg_idx)
+                    arg_cnt+=1
+                    : $((_CONSUMED_ARGS_COUNT++))
+
+                    arg_idx+=1
+                    optarg_idx+=1
+
+                    if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
+                        varlen_mode=true
+                        arg_max=$(_zetopt::def::paramlen $id max)
+                    fi
+
+                    if [[ $varlen_mode == true && $arg_cnt -ge $arg_max ]]; then
+                        break
+                    fi
+
+                    # increment def_idx if def is not a variable-length argument
+                    if [[ $varlen_mode == false ]]; then
+                        def_idx+=1
+                    fi
+                else
+                    no_avail_args=true
+                    break
+                fi
+            else
+                no_avail_args=true
                 break
             fi
+        done
 
-            arg="${args[$arg_idx]}"
-            if [[ $arg == "" && $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
-                : $((arg_idx++))
-                continue
-            fi
-
-            # add optarg
-            if [[ $arg =~ ^[^-+]
-                || $arg =~ ^[-+]$
-                || $arg == ""
-                || ($arg =~ ^-[^-] && $def =~ ^-[^-])
-                || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
-                || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS == true)
-                || ($arg == "--" && $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
-            ]]; then
-                ZETOPT_OPTVALS+=("$arg")
-                refs+=($optarg_idx)
-                : $((argcnt++))
-            
-            # error: missing required arguments 
-            elif [[ $def =~ @ && $varlen_mode == false ]]; then
+        if [[ $no_avail_args == true && $varlen_mode == false ]]; then
+            # required
+            if [[ $def =~ @ ]]; then
                 curr_stat=$ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
                 ZETOPT_OPTERR_MISSING_REQUIRED+=("$optsign$opt")
-                break
             
-            # warning: missing optional arguments
+            # optional
             else
-                if [[ $varlen_mode == false ]]; then
-                    curr_stat=$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
-                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
-                fi
-                ZETOPT_OPTERR_MISSING_OPTIONAL+=("$optsign$opt")
-                break
-            fi
+                while [[ $def_idx -lt $def_len ]]
+                do
+                    def=${defarr[$def_idx]}
 
-            : $((arg_idx++))
-            : $((optarg_idx++))
-
-            if [[ $varlen_mode == false && $def =~ [%@]([a-zA-Z_][0-9a-zA-Z_]*)?[.]{3,3} ]]; then
-                varlen_mode=true
+                    # has default value
+                    if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
+                        arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + IDX_OFFSET))]}]}
+                        ZETOPT_OPTVALS+=("$arg")
+                        ref_arr+=($optarg_idx)
+                        if [[ -n ${BASH_REMATCH[$((1 + IDX_OFFSET))]} ]]; then
+                            local varlen_max="${BASH_REMATCH[$((2 + IDX_OFFSET))]}"
+                            if [[ -n $varlen_max && $varlen_max -ge 2 ]]; then
+                                for idx in $(eval echo "{2..$varlen_max}")
+                                do
+                                    ref_arr+=($optarg_idx)
+                                done
+                            fi
+                            break
+                        fi
+                        optarg_idx+=1
+                        def_idx+=1
+                        continue
+                    
+                    # warning: missing optional optarg
+                    else
+                        curr_stat=$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
+                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
+                        ZETOPT_OPTERR_MISSING_OPTIONAL+=("$optsign$opt")
+                        break
+                    fi
+                done
             fi
-
-            if [[ $varlen_mode == true && $argcnt -ge $argmax ]]; then
-                break
-            fi
-
-            # increment defidx if def is not a variable-length argument
-            if [[ $varlen_mode == false ]]; then
-                : $((defidx++))
-            fi
-        done
-        _CONSUMED_ARGS_COUNT=${#refs[@]}
+        fi
     fi
 
     local type=$ZETOPT_TYPE_CMD
@@ -1148,17 +1169,17 @@ _zetopt::parser::setopt()
     IFS=$' '
     if [[ $cnt -eq 0 ]]; then
         stat="$curr_stat"
-        refsstr="${refs[*]-}"
+        refs_str="${ref_arr[*]-}"
         types="$type"
     else
         stat="$stat $curr_stat"
-        refsstr="$refsstr,${refs[*]-}"
-        types="$types $type"
+        refs_str="$refs_str,${ref_arr[*]-}"
+        types+=" $type"
     fi
     : $((cnt++))
 
-    ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$types:$stat:$cnt$tail_lines
-    [[ $curr_stat -le $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS ]] \
+    ZETOPT_PARSED=$head_lines$id:$short:$long:$refs_str:$types:$stat:$cnt$tail_lines
+    [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
     && return $? || return $?
 }
 
