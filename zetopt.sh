@@ -2334,6 +2334,10 @@ _zetopt::help::rename()
         _zetopt::msg::script_error "No Such Help Title: $oldtitle"
         return 1
     fi
+    if _zetopt::help::search "$newtitle" >/dev/null; then
+        _zetopt::msg::script_error "Already Exists: $newtitle"
+        return 1
+    fi
     local refidx=$(($idx + $IDX_OFFSET))
     _ZETOPT_HELPS_IDX[$refidx]="$idx:$newtitle"
 }
@@ -2702,18 +2706,23 @@ _zetopt::help::format()
         args=${args//-/}
         IFS=$' '
         declare -i cnt=1
-        local arg param
+        local arg param default_idx default_value=
         for arg in $args
         do
             param=${arg%%.*}
+            default_idx=${arg#*=}
+            default_value=
+            if [[ $default_idx -ne 0 ]]; then
+                default_value="=${_ZETOPT_DEFAULTS[$default_idx]}"
+            fi
             if [[ $param == @ ]]; then
                 optargs+=" <$default_argname$cnt>"
             elif [[ $param == % ]]; then
-                optargs+=" [<$default_argname$cnt>]"
+                optargs+=" [<$default_argname$cnt$default_value>]"
             elif [[ ${param:0:1} == @ ]]; then
                 optargs+=" <${param:1}>"
             elif [[ ${param:0:1} == % ]]; then
-                optargs+=" [<${param:1}>]"
+                optargs+=" [<${param:1}$default_value>]"
             fi
             cnt+=1
         done
