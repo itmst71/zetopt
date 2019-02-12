@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-07 14:00)
+# Version     : 1.2.0a (2019-02-12 13:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-07 14:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-12 13:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -230,10 +230,11 @@ _zetopt::def::define()
         return 1
     fi
 
-    local IFS=$' \n\t' arglen=$# args
+    local IFS=$' \n\t' args
+    declare -i arglen=$#
     args=("$@")
-    local idx=$IDX_OFFSET maxloop=$((arglen + IDX_OFFSET))
-    local namespace= id= short= long= namedef= cmdmode=false helpdef= helpidx=0 helpidx_cmd=0 global= 
+    declare -i idx=$IDX_OFFSET maxloop=$arglen+$IDX_OFFSET
+    local namespace= id= short= long= namedef= cmdmode=false helpdef= global= helpidx=0 helpidx_cmd=0
     local help_only=false has_param=false
 
     local arg="${args[$idx]}"
@@ -249,7 +250,7 @@ _zetopt::def::define()
         # id only
         else
             namedef=$arg
-            : $((idx++))
+            idx+=1
         fi
     else
         if [[ $arg =~ ^-{0,2}[@%] ]]; then
@@ -260,7 +261,7 @@ _zetopt::def::define()
             return 1
         else
             namedef=$arg
-            : $((idx++))
+            idx+=1
             arg=${args[$idx]}
             if [[ $arg =~ ^-{0,2}[@%] ]]; then
                 has_param=true
@@ -766,7 +767,7 @@ _zetopt::parser::parse()
     local namespace=/ ns= check_subcmd=true error_subcmd_name=
     
     # internal global variables
-    local _CONSUMED_ARGS_COUNT=0
+    declare -i _CONSUMED_ARGS_COUNT=0
     local _ZETOPT_CFG_CLUSTERED_AS_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CLUSTERED_AS_LONG-}")"
     local _ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
     local _ZETOPT_CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
@@ -1087,7 +1088,7 @@ _zetopt::parser::setopt()
                     ZETOPT_OPTVALS+=("$arg")
                     ref_arr+=($optarg_idx)
                     arg_cnt+=1
-                    : $((_CONSUMED_ARGS_COUNT++))
+                    _CONSUMED_ARGS_COUNT+=1
 
                     arg_idx+=1
                     optarg_idx+=1
@@ -1506,7 +1507,7 @@ _zetopt::data::validx()
             for param_name in $tmp_val_start_idx $tmp_val_end_idx
             do
                 if [[ ! $param_name =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
-                    : $((idx++))
+                    idx+=1
                     continue
                 fi
 
@@ -1520,7 +1521,7 @@ _zetopt::data::validx()
                 else
                     tmp_val_end_idx=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
                 fi
-                : $((idx++))
+                idx+=1
             done
             
             local list_idx= val_idx= maxidx= val_start_idx= val_end_idx=
@@ -2095,8 +2096,9 @@ _zetopt::utils::isCJKLocale()
 
 _zetopt::utils::fold()
 {
-    local width=80 min_width=4 locale="${_LC_ALL:-${_LANG:-C}}" indent_cnt=0 indent_str=" "
-    local error=false tab_cnt=4 tab_spaces=
+    local locale="${_LC_ALL:-${_LANG:-C}}" indent_str=" "
+    declare -i width=80 min_width=4 indent_cnt=0 tab_cnt=4
+    local error=false tab_spaces=
     while [[ $# -ne 0 ]]
     do
         case "$1" in
@@ -2146,12 +2148,10 @@ _zetopt::utils::fold()
 
     local LC_ALL=
     local LANG="$locale"
-    local wide_char_width=$(_zetopt::utils::isCJKLocale "$locale" && echo 2 || echo 1)
-    local max_buff_size=$width
+    declare -i wide_char_width=$(_zetopt::utils::isCJKLocale "$locale" && echo 2 || echo 1)
+    declare -i max_buff_size=$width buff_size curr mbcnt pointer=0 skip
     local IFS=$'\n'
-    local line buff_size tmp_buff buff curr mbcnt
-    local pointer=0
-    local indent=
+    local line tmp_buff buff indent=
     if [[ $indent_cnt -ne 0 ]]; then
         indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")
     fi
@@ -2166,12 +2166,12 @@ _zetopt::utils::fold()
         rest_buff_size=$max_buff_size
         while true
         do
-            curr_buff_size=$(($rest_buff_size / $wide_char_width))
+            curr_buff_size=$rest_buff_size/$wide_char_width
             tmp_buff=${line:$pointer:$curr_buff_size}
             ascii=${tmp_buff//[! -\~]/}
-            mbcnt=$((${#tmp_buff} - ${#ascii}))
-            rest_buff_size=$((rest_buff_size - $mbcnt * $wide_char_width - ${#ascii}))
-            pointer=$((pointer + curr_buff_size))
+            mbcnt=${#tmp_buff}-${#ascii}
+            rest_buff_size=$((rest_buff_size - mbcnt * wide_char_width - ${#ascii}))
+            pointer+=$curr_buff_size
             if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
                 continue
             fi
@@ -2180,24 +2180,24 @@ _zetopt::utils::fold()
             skip=0
             if [[ $rest_buff_size -eq 1 ]]; then
                 if [[ ${line:$pointer:1} =~ ^[\!-/:-@\{-\~]$ ]]; then
-                    : $((pointer++))
+                    pointer+=1
                 fi
 
                 if [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
-                    : $((pointer++))
+                    pointer+=1
                 fi
             fi
             if [[ ${line:$((pointer - 2)):2} =~ ^\ [\ -\~]{1,2}$ ]]; then
-                : $((pointer--))
+                pointer=$pointer-1
             elif [[ ${line:$pointer:1} == " " ]]; then
                 skip=1
             fi
 
-            total_buff_size=$((pointer - curr))
+            total_buff_size=$pointer-$curr
             buff=${line:$curr:$total_buff_size}
             printf -- "%s\n" "$indent$buff"
 
-            curr=$((curr + total_buff_size + skip))
+            curr+=$total_buff_size+$skip
             pointer=$curr
             rest_buff_size=$max_buff_size
 
@@ -2343,15 +2343,15 @@ _zetopt::help::show()
     if [[ -z ${_ZETOPT_HELPS_IDX[@]-} ]]; then
         _zetopt::help::init
     fi
-    local idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=
-    local _TERM_MAX_COLS=$(($(\tput cols) - 3))
-    local default_max_cols=120
-    local _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
-    local _BASE_COLS=0
-    local _OPT_COLS=4
-    local _OPT_DESC_MARGIN=2
-    local _INDENT_STEP=4
-    local _INDENT_LEVEL=0
+    declare -i idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=0
+    declare -i _TERM_MAX_COLS=$(($(\tput cols) - 3))
+    declare -i default_max_cols=120
+    declare -i _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
+    declare -i _BASE_COLS=0
+    declare -i _OPT_COLS=4
+    declare -i _OPT_DESC_MARGIN=2
+    declare -i _INDENT_STEP=4
+    declare -i _INDENT_LEVEL=0
     local _DECORATION=false
     local IFS body bodyarr title titles cols indent_cnt deco_title
     local _DECO_BOLD= _DECO_END=
@@ -2405,11 +2405,11 @@ _zetopt::help::general()
     local title="${1-}"
     local body="${2-}"
     \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
-    : $((_INDENT_LEVEL++))
-    local indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
-    local cols=$((_MAX_COLS - $indent_cnt))
+    _INDENT_LEVEL+=1
+    declare -i indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
+    declare -i cols=$_MAX_COLS-$indent_cnt
     \printf -- "%b\n" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt
-    : $((_INDENT_LEVEL--))
+    _INDENT_LEVEL=$_INDENT_LEVEL-1
     echo " "
 }
 
@@ -2419,7 +2419,7 @@ _zetopt::help::indent()
     if [[ ! -z ${1-} ]]; then
         additional_cols=$1
     fi
-    local count=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL + additional_cols))
+    declare -i count=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL + additional_cols))
     \printf -- "%${count}s" ""
 }
 
@@ -2427,7 +2427,8 @@ _zetopt::help::synopsis()
 {
     local title="${1-}"
     local IFS=$'\n' app="$ZETOPT_CALLER_NAME"
-    local ns cmd has_arg has_arg_req has_opt has_sub line args cmdcol loop bodyarr idx
+    local ns cmd has_arg has_arg_req has_opt has_sub line args bodyarr
+    declare -i idx loop cmdcol
     local ignore_subcmd_undef=$(_zetopt::utils::is_true -t true -f false "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")
     local did_output=false
     local nslist
@@ -2437,7 +2438,7 @@ _zetopt::help::synopsis()
     fi
 
     \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
-    : $((_INDENT_LEVEL++))
+    _INDENT_LEVEL+=1
 
     for ns in ${nslist[@]}
     do
@@ -2471,7 +2472,7 @@ _zetopt::help::synopsis()
             has_sub=true
         fi
 
-        cmdcol=$((${#cmd} + 1))
+        cmdcol=${#cmd}+1
         if [[ $_DECORATION == true ]]; then
             cmd=$(IFS=$' '; \printf -- "$_DECO_BOLD%s$_DECO_END " $cmd)
         fi
@@ -2488,7 +2489,7 @@ _zetopt::help::synopsis()
         
         local base_indent=$(_zetopt::help::indent)
         local cmd_indent=$(_zetopt::help::indent $cmdcol)
-        local cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
+        declare -i cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
         for ((idx=0; idx<$loop; idx++))
         do
             bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols))
@@ -2508,7 +2509,7 @@ _zetopt::help::synopsis()
     if [[ $did_output == false ]]; then
         \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$app$_DECO_END"
     fi
-    : $((_INDENT_LEVEL--))
+    _INDENT_LEVEL=$_INDENT_LEVEL-1
     echo " "
 }
 
@@ -2550,8 +2551,8 @@ _zetopt::help::fmtcmdopt()
     local id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen subcmd_title
     local nslist ns prev_ns=/
     local incremented=false did_output=false
-    local IFS=$'\n'
-    local cols max_cols indent_cnt indent
+    local IFS=$'\n' indent
+    declare -i cols max_cols indent_cnt 
 
     local sub_title_deco= sub_deco=
     if [[ $_DECORATION == true ]]; then
@@ -2579,7 +2580,7 @@ _zetopt::help::fmtcmdopt()
             if [[ $did_output == false ]]; then
                 did_output=true
                 \printf -- "$(_zetopt::help::indent)%b\n" "$_DECO_BOLD$title$_DECO_END"
-                : $((_INDENT_LEVEL++))
+                _INDENT_LEVEL+=1
             fi
 
             helpidx=${line##*:}
@@ -2597,7 +2598,7 @@ _zetopt::help::fmtcmdopt()
             fi
 
             if [[ $subcmd_mode == true && $ns != $prev_ns && $incremented == true ]]; then
-                : $((_INDENT_LEVEL--))
+                _INDENT_LEVEL=$_INDENT_LEVEL-1
                 incremented=false
             fi
 
@@ -2607,14 +2608,14 @@ _zetopt::help::fmtcmdopt()
             if [[ $prev_ns != $ns ]]; then 
                 subcmd_title=$(IFS=$' '; \printf -- "$sub_title_deco%s$_DECO_END " $cmd)
                 \printf -- "$(_zetopt::help::indent)%b\n" "$subcmd_title"
-                : $((_INDENT_LEVEL++))
+                _INDENT_LEVEL+=1
                 prev_ns=$ns
                 incremented=true
 
                 if [[ $cmdhelpidx -ne 0 ]]; then
                     # calc rest cols
                     indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
-                    cols=$(($_MAX_COLS - $indent_cnt))
+                    cols=$_MAX_COLS-$indent_cnt
                     \printf -- "%b\n" "$(<<<"${_ZETOPT_OPTHELPS[$cmdhelpidx]}" _zetopt::utils::fold --width $cols --indent $indent_cnt)"
                     \printf -- "%s\n" " "
                 fi
@@ -2655,12 +2656,12 @@ _zetopt::help::fmtcmdopt()
     done | _zetopt::help::decorate --options
 
     if [[ $incremented == true ]]; then
-        : $((_INDENT_LEVEL--))
+        _INDENT_LEVEL=$_INDENT_LEVEL-1
     fi
 
     if [[ $did_output == true ]]; then
         echo " "
-        : $((_INDENT_LEVEL--))
+        _INDENT_LEVEL=$_INDENT_LEVEL-1
     fi
 }
 
