@@ -92,8 +92,8 @@ zetopt()
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
         [[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] \
-        && declare -r IDX_OFFSET=0 \
-        || declare -r IDX_OFFSET=1
+        && declare -ri IDX_OFFSET=0 \
+        || declare -ri IDX_OFFSET=1
         \setopt localoptions SH_WORD_SPLIT
         \setopt localoptions BSD_ECHO
         \setopt localoptions NO_NOMATCH
@@ -101,7 +101,7 @@ zetopt()
         \setopt localoptions NO_EXTENDED_GLOB
         \setopt localoptions BASH_REMATCH
     else
-        declare -r IDX_OFFSET=0
+        declare -ri IDX_OFFSET=0
     fi
 
     # save whether the stdin/out/err of the main function is TTY or not.
@@ -983,7 +983,7 @@ _zetopt::parser::parse()
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_TOO_MATCH_ARGS)) -ne 0 ]]; then
-            msg=($subcmdstr "Given ${#ZETOPT_ARGS[@]} Arguments (Up To "$(_zetopt::def::paramlen $namespace max)")")
+            msg=($subcmdstr "${#ZETOPT_ARGS[@]} Arguments Given (Up To "$(_zetopt::def::paramlen $namespace max)")")
             _zetopt::msg::error Error "Too Match Arguments:" "${msg[*]}"
         fi
     fi
@@ -1058,14 +1058,14 @@ _zetopt::parser::setopt()
     else
         IFS=$' '
         \set -- $paramdef_str
-        local arg def defarr varlen_mode=false no_avail_args=false
+        local arg def def_arr varlen_mode=false no_avail_args=false
         declare -i def_len=$(($# + IDX_OFFSET)) def_idx=$IDX_OFFSET
         declare -i arg_cnt=0 arg_max arg_idx=$IDX_OFFSET arg_len=$((${#args[@]} + $IDX_OFFSET))
-        defarr=($@)
+        def_arr=($@)
 
         while [[ $def_idx -lt $def_len ]]
         do
-            def=${defarr[$def_idx]}
+            def=${def_arr[$def_idx]}
 
             # there are available args 
             if [[ $arg_idx -lt $arg_len ]]; then
@@ -1115,6 +1115,7 @@ _zetopt::parser::setopt()
             fi
         done
 
+        # arg length not enough
         if [[ $no_avail_args == true && $varlen_mode == false ]]; then
             # required
             if [[ $def =~ @ ]]; then
@@ -1126,23 +1127,13 @@ _zetopt::parser::setopt()
             else
                 while [[ $def_idx -lt $def_len ]]
                 do
-                    def=${defarr[$def_idx]}
+                    def=${def_arr[$def_idx]}
 
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
                         arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + IDX_OFFSET))]}]}
                         ZETOPT_OPTVALS+=("$arg")
                         ref_arr+=($optarg_idx)
-                        if [[ -n ${BASH_REMATCH[$((1 + IDX_OFFSET))]} ]]; then
-                            local varlen_max="${BASH_REMATCH[$((2 + IDX_OFFSET))]}"
-                            if [[ -n $varlen_max && $varlen_max -ge 2 ]]; then
-                                for idx in $(eval echo "{2..$varlen_max}")
-                                do
-                                    ref_arr+=($optarg_idx)
-                                done
-                            fi
-                            break
-                        fi
                         optarg_idx+=1
                         def_idx+=1
                         continue
@@ -1178,7 +1169,7 @@ _zetopt::parser::setopt()
     fi
     : $((cnt++))
 
-    ZETOPT_PARSED=$head_lines$id:$short:$long:$refs_str:$types:$stat:$cnt$tail_lines
+    ZETOPT_PARSED="$head_lines$id:$short:$long:$refs_str:$types:$stat:$cnt$tail_lines"
     [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
     && return $? || return $?
 }
@@ -1191,54 +1182,63 @@ _zetopt::parser::setopt()
 _zetopt::parser::assign_args()
 {
     local id="${1-}"
-    if ! _zetopt::def::exists "$id"; then
-        return 1
-    fi
-
-    local IFS=' ' defarr
-    defarr=($(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG))
-    local deflen=${#defarr[@]}
-    if [[ $deflen -eq 0 ]]; then
+    declare -i def_max_len=$(_zetopt::def::paramlen "$id" max)
+    if [[ $def_max_len -eq 0 ]]; then
         return 0
     fi
-    local arglen=${#ZETOPT_ARGS[@]}
-    local len=$(($arglen > $deflen ? $deflen : $arglen))
-    local refsstr=
-    local rtn=$ZETOPT_STATUS_NORMAL
-    if [[ $len -ne 0 ]]; then
-        # variable length
-        local lastdef="${defarr[$((deflen - 1 + $IDX_OFFSET))]}"
-        if [[ $lastdef =~ [.]{3,3}([1-9][0-9]*)*$ ]]; then
-            local defmaxlen=${lastdef##*...}
-            local maxlen=$arglen
-            if [[ ! -z "$defmaxlen" ]]; then
-                maxlen=$(($arglen > $defmaxlen ? $defmaxlen : $arglen))
-                if [[ $maxlen -lt $arglen ]]; then
-                    rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
-                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_TOO_MATCH_ARGS))
-                fi
+    local def_arr ref_arr IFS=' '
+    def_arr=($(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG))
+    ref_arr=()
+    declare -i arg_len=${#ZETOPT_ARGS[@]} rtn=$ZETOPT_STATUS_NORMAL idx
+
+    # enough
+    if [[ $arg_len -ge $def_max_len ]]; then
+        ref_arr=($(\eval "\echo {$IDX_OFFSET..$((def_max_len - 1 + IDX_OFFSET))}"))
+
+        # too match arguments
+        if [[ $arg_len -gt $def_max_len ]]; then
+            if [[ ${def_arr[$((${#def_arr[@]} - 1 + IDX_OFFSET))]} =~ [.]{3,3}[1-9][0-9]*=[0-9]+$ ]]; then
+                rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
+                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
             fi
-            refsstr=$(\eval "\echo {$IDX_OFFSET..$(($maxlen - 1 + $IDX_OFFSET))}")
-        else
-            refsstr=$(\eval "\echo {$IDX_OFFSET..$(($len - 1 + $IDX_OFFSET))}")
         fi
+
+    # not enough
+    else
+        declare -i ref_idx=$IDX_OFFSET
+        if [[ $arg_len -ne 0 ]]; then
+            ref_idx=arg_len-1+IDX_OFFSET
+            ref_arr=($(\eval "\echo {$IDX_OFFSET..$ref_idx}"))
+            ref_idx+=1
+        fi
+        declare -i def_loops=$((${#def_arr[@]} + IDX_OFFSET)) default_idx
+        for ((; ref_idx<def_loops; ref_idx++))
+        do
+            # missing required
+            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
+                rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
+                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+                break
+            fi
+            default_idx=${BASH_REMATCH[$((4 + IDX_OFFSET))]}
+
+            # missing optional : has no default value
+            if [[ $default_idx -eq 0 ]]; then
+                rtn=$((rtn | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
+                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+                break
+            fi
+
+            # set default value
+            ZETOPT_ARGS+=("${_ZETOPT_DEFAULTS[default_idx]}")
+            ref_arr+=($ref_idx)
+        done
     fi
 
-    # actual arguments length is shorter than defined
-    if [[ $len -lt $deflen ]]; then
-        if [[ ${defarr[$(($len + $IDX_OFFSET))]} =~ @ ]]; then
-            rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
-            ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
-        elif [[ ${defarr[$(($len + $IDX_OFFSET))]} =~ % ]]; then
-            rtn=$((rtn | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
-            ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
-        fi
-    fi
-
+    # update parsed data
     if [[ ! $'\n'$ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         return 1
     fi
-
     local head_lines="${BASH_REMATCH[$((1 + IDX_OFFSET))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + IDX_OFFSET))]}"
     local offset=2
@@ -1250,7 +1250,9 @@ _zetopt::parser::assign_args()
     local type="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_TYPE))]}"
     #local status="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + IDX_OFFSET + ZETOPT_FIELD_DATA_COUNT))]}"
-    ZETOPT_PARSED=$head_lines$id:$short:$long:$refsstr:$type:$rtn:$count$tail_lines
+    IFS=' '
+    local refs_str="${ref_arr[*]}"
+    ZETOPT_PARSED="$head_lines$id:$short:$long:$refs_str:$type:$rtn:$count$tail_lines"
     return $rtn
 }
 
