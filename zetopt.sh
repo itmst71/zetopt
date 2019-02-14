@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-12 13:30)
+# Version     : 1.2.0a (2019-02-14 12:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-12 13:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-14 12:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -159,8 +159,6 @@ zetopt()
             _zetopt::def::define "${@-}";;
         defined)
             _zetopt::def::defined "${@-}";;
-        defined-field)
-            _zetopt::def::get "${@-}";;
         load)
             _zetopt::def::load "${@-}";;
         parse)
@@ -201,6 +199,8 @@ zetopt()
             _zetopt::data::argvalue "${@-}";;
         length | len)
             _zetopt::data::arglength "${@-}";;
+        default)
+            _zetopt::def::default "${@-}";;
         *)
             _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
             return 1;;
@@ -733,6 +733,138 @@ _zetopt::def::paramlen()
     \echo $out
 }
 
+# Print default values
+# def.) _zetopt::def::default {ID} [ONE-DIMENSIONAL-KEY]
+# e.g.) _zetopt::def::default /foo @ FOO $ FOO,$
+# STDOUT: default values separated with $ZETOPT_CFG_VALUE_IFS
+_zetopt::def::default()
+{
+    if [[ -z ${ZETOPT_DEFINED:-} || -z ${1-} ]]; then
+        _zetopt::msg::script_error "Syntax Error"
+        return 1
+    fi
+
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    if ! _zetopt::def::exists "$id"; then
+        _zetopt::msg::script_error "No Such Indentifier:" "${1-}"
+        return 1
+    fi
+    shift
+
+    local IFS=' ' params defaults_idx_arr output_list=
+    local def_args="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    params=($def_args)
+    if [[ ${#params[@]} -eq 0 ]]; then
+        _zetopt::msg::script_error "No Parameter Defined"
+        return 1
+    fi
+
+    defaults_idx_arr=(${params[@]#*=})
+    if [[ "${defaults_idx_arr[*]}" =~ ^[0\ ]$ ]]; then
+        _zetopt::msg::script_error "Default Value Not Set"
+        return 1
+    fi
+    local key
+    declare -i last_idx="$((${#params[@]} - 1 + $IDX_OFFSET))"
+    for key in "${@-}"
+    do
+        if [[ ! $key =~ ^(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
+            _zetopt::msg::script_error "Bad Key:" "$key"
+            return 1
+        fi
+
+        # split the value index range string
+        local tmp_start_idx= tmp_end_idx=
+        if [[ $key =~ , ]]; then
+            tmp_start_idx="${key%%,*}"
+            tmp_end_idx="${key#*,}"
+        else
+            tmp_start_idx=$key
+            tmp_end_idx=$key
+        fi
+
+        case "$tmp_start_idx" in
+            @ | "") tmp_start_idx=$IDX_OFFSET;;
+            ^)      tmp_start_idx=$IDX_OFFSET;;
+            $)      tmp_start_idx=$;; # the last index will be determined later
+            *)      tmp_start_idx=$tmp_start_idx;;
+        esac
+        case "$tmp_end_idx" in
+            @ | "") tmp_end_idx=$;; # the last index will be determined later
+            ^)      tmp_end_idx=$IDX_OFFSET;;
+            $)      tmp_end_idx=$;; # the last index will be determined later
+            *)      tmp_end_idx=$tmp_end_idx;;
+        esac
+
+        # index by name
+        declare -i idx=0
+        local param_name=
+        for param_name in $tmp_start_idx $tmp_end_idx
+        do
+            if [[ ! $param_name =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
+                idx+=1
+                continue
+            elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
+                _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
+                return 1
+            fi
+
+            if [[ $idx -eq 0 ]]; then
+                tmp_start_idx=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+            else
+                tmp_end_idx=${BASH_REMATCH[$((1 + IDX_OFFSET))]}
+            fi
+            idx+=1
+        done
+
+        # determine the value start/end index
+        declare -i start_idx end_idx
+        if [[ $tmp_start_idx == $ ]]; then
+            start_idx=$last_idx  # set the last index
+        else
+            start_idx=$tmp_start_idx
+        fi
+        if [[ $tmp_end_idx == $ ]]; then
+            end_idx=$last_idx    # set the last index
+        else
+            end_idx=$tmp_end_idx
+        fi
+
+        # convert negative indices to positive
+        if [[ $start_idx =~ ^- ]]; then
+            start_idx=$((last_idx - (start_idx * -1 - 1)))
+        fi
+        if [[ $end_idx =~ ^- ]]; then
+            end_idx=$((last_idx - (end_idx * -1 - 1)))
+        fi
+
+        # check the range
+        if [[ $start_idx -lt $IDX_OFFSET || $end_idx -gt $last_idx
+            || $end_idx -lt $IDX_OFFSET || $start_idx -gt $last_idx
+        ]]; then
+            [[ $start_idx == $end_idx ]] \
+            && local translated_idx=$start_idx \
+            || local translated_idx=$start_idx~$end_idx
+            _zetopt::msg::script_error "Index Out of Range ($IDX_OFFSET~$last_idx):" "Translate \"$key\" -> $translated_idx"
+            return 1
+        fi
+
+        declare -i default_idx idx
+        for idx in $(\eval "\echo {$start_idx..$end_idx}")
+        do
+            default_idx=${defaults_idx_arr[idx]}
+            if [[ $default_idx -eq 0 ]]; then
+                _zetopt::msg::script_error "Default Value Not Set"
+                return 1
+            fi
+            output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")
+        done
+    done
+    IFS=$ZETOPT_CFG_VALUE_IFS
+    \printf -- "%s" "${output_list[*]}"
+}
+
+
 #------------------------------------------------------------
 # _zetopt::parser
 #------------------------------------------------------------
@@ -1187,9 +1319,8 @@ _zetopt::parser::assign_args()
     if [[ $def_max_len -eq 0 ]]; then
         return 0
     fi
-    local def_arr ref_arr IFS=' '
+    local def_arr ref_arr= IFS=' '
     def_arr=($(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG))
-    ref_arr=()
     declare -i arg_len=${#ZETOPT_ARGS[@]} rtn=$ZETOPT_STATUS_NORMAL idx
 
     # enough
@@ -1382,8 +1513,7 @@ _zetopt::data::validx()
     esac
     local field="$2"
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local lists output_list
-    IFS=,
+    local IFS=, lists output_list
     lists=($(_zetopt::data::get "$id" $field))
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
@@ -1682,11 +1812,15 @@ _zetopt::data::argvalue()
     local __idx= __i=$IDX_OFFSET
     local __ifs=${ZETOPT_CFG_VALUE_IFS-$'\n'}
     \set -- $__list_str
+    local __max=$(($# + IDX_OFFSET - 1))
     for __idx in "$@"
     do
         if [[ $__array_mode == true ]]; then
             \eval $__arrname'[$__i]=${__args[$__idx]}'
         else
+            if [[ $__i -eq $__max ]]; then
+                __ifs=
+            fi
             \printf -- "%s$__ifs" "${__args[$__idx]}"
         fi
         : $((__i++))
