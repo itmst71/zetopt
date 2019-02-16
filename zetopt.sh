@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-14 12:30)
+# Version     : 1.2.0a (2019-02-17 03:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-14 12:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-17 03:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -277,7 +277,7 @@ _zetopt::def::define()
     arg=${args[$((arglen - 1 + IDX_OFFSET))]}
     if [[ $arg =~ ^\# ]]; then
         helpdef=${arg###}
-        : $((maxloop--))
+        maxloop=$maxloop-1
     fi
 
     # add an omittable root /
@@ -427,8 +427,9 @@ _zetopt::def::define()
     # parameters
     local param_def=
     if [[ $has_param == true ]]; then
-        local param_optional=false param params param_idx=$IDX_OFFSET default_is_set=false
-        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_default_idx
+        local param_optional=false param params default_is_set=false
+        declare -i param_idx=$IDX_OFFSET param_default_idx
+        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= 
         params=()
         for ((; idx<maxloop; idx++))
         do
@@ -479,7 +480,7 @@ _zetopt::def::define()
                 return 1
             fi
             params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen=$param_default_idx")
-            : $((param_idx++))
+            param_idx+=1
         done
         IFS=$' '
         param_def="${params[*]}"
@@ -636,7 +637,7 @@ _zetopt::def::namespaces()
     <<< "$ZETOPT_DEFINED" \grep -E '^/([^:]+/)?:' | \sed -e 's/:.*//'
 }
 
-# Print the index of the definition by searching with a namespace and a option name.
+# Print the identifier by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
 # def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME}
 # e.g.) _zetopt::def::opt2id /remote/add/ version
@@ -1058,7 +1059,7 @@ _zetopt::parser::parse()
                         continue
                     fi
                     error_subcmd_name="${ns//\// }"
-                    _zetopt::msg::error Error "Undefined Sub-Command:" "$error_subcmd_name"
+                    _zetopt::msg::user_error Error "Undefined Sub-Command:" "$error_subcmd_name"
                     ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
                     break
                 fi
@@ -1093,31 +1094,31 @@ _zetopt::parser::parse()
         # Undefined Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_UNDEFINED_OPTION)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_UNDEFINED[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::msg::error Warning "Undefined Option(s):" "${msg[*]}"
+            _zetopt::msg::user_error Warning "Undefined Option(s):" "${msg[*]}"
         fi
 
         # Invalid Format Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_INVALID_OPTFORMAT)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_INVALID[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::msg::error Error "Invalid Format Option(s):" "${msg[*]}"
+            _zetopt::msg::user_error Error "Invalid Format Option(s):" "${msg[*]}"
         fi
 
         # Missing Required Option Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS)) -ne 0 ]]; then
             msg=($subcmdstr $(<<< "${ZETOPT_OPTERR_MISSING_REQUIRED[*]}" \tr " " "\n" | \sort | \uniq))
-            _zetopt::msg::error Error "Missing Required Option Argument(s):" "${msg[*]}"
+            _zetopt::msg::user_error Error "Missing Required Option Argument(s):" "${msg[*]}"
         fi
 
         # Missing Required Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_MISSING_REQUIRED_ARGS)) -ne 0 ]]; then
             msg=($subcmdstr "$(_zetopt::def::paramlen $namespace required) Argument(s) Required")
-            _zetopt::msg::error Error "Missing Required Argument(s):" "${msg[*]}"
+            _zetopt::msg::user_error Error "Missing Required Argument(s):" "${msg[*]}"
         fi
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_TOO_MATCH_ARGS)) -ne 0 ]]; then
             msg=($subcmdstr "${#ZETOPT_ARGS[@]} Arguments Given (Up To "$(_zetopt::def::paramlen $namespace max)")")
-            _zetopt::msg::error Error "Too Match Arguments:" "${msg[*]}"
+            _zetopt::msg::user_error Error "Too Match Arguments:" "${msg[*]}"
         fi
     fi
 
@@ -1794,7 +1795,7 @@ _zetopt::data::argvalue()
     local __id="${__args[$((0 + $IDX_OFFSET))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
     __args=(${__args[@]:1})
     
-    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]}")"
+    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]-}")"
     if [[ -z "$__list_str" ]]; then
         return 1
     fi
@@ -1809,7 +1810,7 @@ _zetopt::data::argvalue()
         __args=("${ZETOPT_OPTVALS[@]}")
     fi
 
-    local __idx= __i=$IDX_OFFSET
+    declare -i __idx= __i=$IDX_OFFSET
     local __ifs=${ZETOPT_CFG_VALUE_IFS-$'\n'}
     \set -- $__list_str
     local __max=$(($# + IDX_OFFSET - 1))
@@ -1823,7 +1824,7 @@ _zetopt::data::argvalue()
             fi
             \printf -- "%s$__ifs" "${__args[$__idx]}"
         fi
-        : $((__i++))
+        __i+=1
     done
 }
 
@@ -1935,14 +1936,14 @@ _zetopt::data::count()
 # STDOUT: string separated with \n
 _zetopt::data::setids()
 {
-    <<< "$ZETOPT_PARSED" \grep -E ':[^0]$' | \sed -e 's/:.*//'
+    <<< "$ZETOPT_PARSED" \grep -E ':[1-9][0-9]*$' | \sed -e 's/:.*//'
 }
 
 
 #------------------------------------------------------------
 # _zetopt::msg
 #------------------------------------------------------------
-_zetopt::msg::error()
+_zetopt::msg::user_error()
 {
     if ! _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
         return 0
