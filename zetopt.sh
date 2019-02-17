@@ -161,8 +161,6 @@ zetopt()
             _zetopt::def::define "${@-}";;
         defined)
             _zetopt::def::defined "${@-}";;
-        load)
-            _zetopt::def::load "${@-}";;
         parse)
             # for supporting blank string argument
             if [[ $# -eq 0 ]]; then
@@ -510,22 +508,6 @@ _zetopt::def::define()
         ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
     done
     
-}
-
-# Load definition data from a file.
-# def.) _zetopt::def::load {FILE-PATH}
-# e.g.) _zetopt::def::load option.txt
-# STDOUT: NONE
-_zetopt::def::load()
-{
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    if [[ ! -f $1 ]]; then
-        _zetopt::msg::script_error "No Such File:" "$1"
-        return 1
-    fi
-    ZETOPT_DEFINED=$(\cat "${1-}")
 }
 
 # Print the defined data. Print all if ID not given.
@@ -2919,8 +2901,6 @@ SUB-COMMANDS
     define, def
 
     defined
-
-    load
 
     parse
 
