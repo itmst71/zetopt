@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-18 05:30)
+# Version     : 1.2.0a (2019-02-18 09:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-18 05:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-18 09:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -159,18 +159,12 @@ zetopt()
             ;;
         define | def)
             _zetopt::def::define "${@-}";;
-        defined)
-            _zetopt::def::defined "${@-}";;
         parse)
             # for supporting blank string argument
-            if [[ $# -eq 0 ]]; then
-                _zetopt::parser::parse
-            else
-                _zetopt::parser::parse "${@-}"
-            fi
+            [[ $# -eq 0 ]] \
+                && _zetopt::parser::parse \
+                || _zetopt::parser::parse "${@-}"
             ;;
-        parsed)
-            _zetopt::data::parsed "${@-}";;
         define-help | def-help)
             _zetopt::help::define "${@-}";;
         show-help)
@@ -201,6 +195,10 @@ zetopt()
             _zetopt::data::arglength "${@-}";;
         default)
             _zetopt::def::default "${@-}";;
+        defined)
+            _zetopt::def::defined "${@-}";;
+        parsed)
+            _zetopt::data::parsed "${@-}";;
         *)
             _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
             return 1;;
@@ -522,14 +520,14 @@ _zetopt::def::defined()
         \printf -- "%s\n" "$ZETOPT_DEFINED"
         return 0
     fi
-    _zetopt::def::get "$1" $ZETOPT_FIELD_DEF_ALL
+    _zetopt::def::field "$1" $ZETOPT_FIELD_DEF_ALL
 }
 
 # Search and print the definition.
-# def.) _zetopt::def::get {ID} [FIELD-DEF-NUMBER-TO-PRINT]
-# e.g.) _zetopt::def::get /foo $ZETOPT_FIELD_DEF_ARG
+# def.) _zetopt::def::field {ID} [FIELD-DEF-NUMBER-TO-PRINT]
+# e.g.) _zetopt::def::field /foo $ZETOPT_FIELD_DEF_ARG
 # STDOUT: string
-_zetopt::def::get()
+_zetopt::def::field()
 {
     if [[ -z ${1-} ]]; then
         return 1
@@ -667,7 +665,7 @@ _zetopt::def::paramidx()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local def_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     if [[ -z $def_str ]]; then
         return 1
     fi
@@ -688,7 +686,7 @@ _zetopt::def::paramlen()
     if ! _zetopt::def::exists "$id"; then
         \echo 0; return 1
     fi
-    local def="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     if [[ -z $def ]]; then
         \echo 0; return 0
     fi
@@ -737,7 +735,7 @@ _zetopt::def::default()
     shift
 
     local IFS=' ' params defaults_idx_arr output_list=
-    local def_args="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
         _zetopt::msg::script_error "No Parameter Defined"
@@ -1161,7 +1159,7 @@ _zetopt::parser::setopt()
     local id="$1" short="$2" long="$3" refs_str="$4" types="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
-    local ref_arr paramdef_str="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     declare -i optarg_idx=$((${#ZETOPT_OPTVALS[@]} + $ZETOPT_IDX_OFFSET))
     ref_arr=()
 
@@ -1305,7 +1303,7 @@ _zetopt::parser::assign_args()
         return 0
     fi
     local def_arr ref_arr= IFS=' '
-    def_arr=($(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG))
+    def_arr=($(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG))
     declare -i arg_len=${#ZETOPT_ARGS[@]} rtn=$ZETOPT_STATUS_NORMAL idx
 
     # enough
@@ -1514,7 +1512,7 @@ _zetopt::data::validx()
         # get the arg definition for param names
         local def_args=
         if [[ $field -eq $ZETOPT_FIELD_DEF_ARG ]]; then
-            def_args="$(_zetopt::def::get "$id" $ZETOPT_FIELD_DEF_ARG)"
+            def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
         fi
 
         local list_last_vals
@@ -2581,7 +2579,7 @@ _zetopt::help::synopsis()
         # has arguments
         if _zetopt::def::has_arguments $ns; then
             has_arg=true
-            args=$(_zetopt::help::format --synopsis "$(_zetopt::def::get "$ns")")
+            args=$(_zetopt::help::format --synopsis "$(_zetopt::def::field "$ns")")
             line="${line%%\ } ${args#\ }"
         fi
 
@@ -2692,7 +2690,7 @@ _zetopt::help::fmtcmdopt()
         if [[ $subcmd_mode == true && $ns == / ]]; then
             continue
         fi
-        for line in $(_zetopt::def::get $ns) $(_zetopt::def::options $ns)
+        for line in $(_zetopt::def::field $ns) $(_zetopt::def::options $ns)
         do
             id=${line%%:*} cmd= cmdcol=0
             if [[ "$id" == / ]]; then
@@ -2900,11 +2898,7 @@ SUB-COMMANDS
     
     define, def
 
-    defined
-
     parse
-
-    parsed
 
     isset
 
