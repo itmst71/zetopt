@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-18 09:30)
+# Version     : 1.2.0a (2019-02-19 07:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-18 09:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-19 07:00)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -2201,7 +2201,7 @@ _zetopt::utils::is_true()
     return $rtn
 }
 
-_zetopt::utils::isCJKLocale()
+_zetopt::utils::isLangCJK()
 {
     return $(
         [[ -n ${ZSH_VERSION-} ]] \
@@ -2213,7 +2213,7 @@ _zetopt::utils::isCJKLocale()
 
 _zetopt::utils::fold()
 {
-    local locale="${_LC_ALL:-${_LANG:-C}}" indent_str=" "
+    local lang="${_LC_ALL:-${_LANG:-en_US.UTF-8}}" indent_str=" "
     declare -i width=80 min_width=4 indent_cnt=0 tab_cnt=4
     local error=false tab_spaces=
     while [[ $# -ne 0 ]]
@@ -2226,9 +2226,9 @@ _zetopt::utils::fold()
                     error=true; break
                 fi
                 shift 2;;
-            -l | --locale)
+            -l | --lang)
                 if [[ -n ${2-} ]]; then
-                    locale=$2
+                    lang=$2
                 else
                     error=true; break
                 fi
@@ -2259,13 +2259,13 @@ _zetopt::utils::fold()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--locale <LOCALE>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
+        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--lang <LANG>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
         return 1
     fi
 
     local LC_ALL=
-    local LANG="$locale"
-    declare -i wide_char_width=$(_zetopt::utils::isCJKLocale "$locale" && echo 2 || echo 1)
+    local LANG="en_US.UTF-8" #$(locale -a | grep -iE "^${lang//-/}$" || echo "en_US.UTF-8")
+    declare -i wide_char_width=$(_zetopt::utils::isLangCJK "$lang" && echo 2 || echo 1)
     declare -i max_buff_size=$width buff_size curr mbcnt pointer=0 skip
     local IFS=$'\n'
     local line tmp_buff buff indent=
@@ -2483,10 +2483,29 @@ _zetopt::help::show()
     fi
 
     titles=()
+    local _HELP_LANG="${_LC_ALL:-${_LANG:-en_US.UTF-8}}" error=false
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            -l | --lang)
+                if [[ -n ${2-} ]]; then
+                    _HELP_LANG=$2
+                else
+                    error=true; break
+                fi
+                shift 2;;
+            --) shift; titles+=("${@-}"); break;;
+            *)  titles+=("$1"); shift;;
+        esac
+    done
+    if [[ $error == true ]]; then
+        _zetopt::msg::script_error "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
+        return 1
+    fi
     IFS=$' '
-    [[ -z "${@-}" ]] \
-    && titles=("${_ZETOPT_HELPS_IDX[@]#*:}") \
-    || titles=("$@")
+    if [[ -z "${titles[@]-}" ]]; then
+        titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
+    fi
     IFS=$'\n'
     
     for title in "${titles[@]}"
@@ -2529,7 +2548,7 @@ _zetopt::help::general()
     _INDENT_LEVEL+=1
     declare -i indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
     declare -i cols=$_MAX_COLS-$indent_cnt
-    \printf -- "%b\n" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt
+    \printf -- "%b\n" "$body" | _zetopt::utils::fold --width $cols --indent $indent_cnt --lang "$_HELP_LANG"
     _INDENT_LEVEL=$_INDENT_LEVEL-1
     echo " "
 }
@@ -2613,7 +2632,7 @@ _zetopt::help::synopsis()
         declare -i cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
         for ((idx=0; idx<$loop; idx++))
         do
-            bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols))
+            bodyarr=($(\printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
             \printf -- "$base_indent%b\n" "$cmd ${bodyarr[$ZETOPT_IDX_OFFSET]# *}"
             if [[ ${#bodyarr[@]} -gt 1 ]]; then
                 if [[ $ZETOPT_OLDBASH == true ]]; then
@@ -2737,7 +2756,7 @@ _zetopt::help::fmtcmdopt()
                     # calc rest cols
                     indent_cnt=$((_BASE_COLS + _INDENT_STEP * _INDENT_LEVEL))
                     cols=$_MAX_COLS-$indent_cnt
-                    \printf -- "%b\n" "$(<<<"${_ZETOPT_OPTHELPS[$cmdhelpidx]}" _zetopt::utils::fold --width $cols --indent $indent_cnt)"
+                    \printf -- "%b\n" "$(<<<"${_ZETOPT_OPTHELPS[$cmdhelpidx]}" _zetopt::utils::fold --width $cols --indent $indent_cnt --lang "$_HELP_LANG")"
                     \printf -- "%s\n" " "
                 fi
 
@@ -2755,7 +2774,7 @@ _zetopt::help::fmtcmdopt()
             indent=$(\printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
 
-            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols))
+            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $ZETOPT_IDX_OFFSET))]}"
                 if [[ ${#desc[@]} -gt 1 ]]; then
