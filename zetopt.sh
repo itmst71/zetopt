@@ -572,9 +572,14 @@ _zetopt::def::def_validator()
         _zetopt::msg::script_error "Invalid Validator Name:" "$name"
         return 1
     fi
-    if [[ $type == f && $(type -t "$validator") != "function" ]]; then
-        _zetopt::msg::script_error "No Such Shell Function:" "$validator"
-        return 1
+    if [[ $type == f ]]; then
+        [[ -n ${ZSH_VERSION-} ]] \
+        && local _type=$(whence -w "$validator") \
+        || local _type=$(type -t "$validator")
+        if [[ ! ${_type#*:} =~ function ]]; then
+            _zetopt::msg::script_error "No Such Shell Function:" "$validator"
+            return 1
+        fi
     fi
     if [[ $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'$name: ]]; then
         _zetopt::msg::script_error "Duplicate Validator Name:" "$name"
@@ -1387,7 +1392,7 @@ _zetopt::parser::validate()
     local def="${1-}" arg="${2-}"
 
     # no validator
-    if [[ ! $def =~ ~([1-9][0-9]*) ]]; then
+    if [[ ! $def =~ [~]([1-9][0-9]*) ]]; then
         return 0
     fi
 
@@ -1480,7 +1485,7 @@ _zetopt::parser::assign_args()
         for ((; ref_idx<def_loops; ref_idx++))
         do
             # missing required
-            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+~[0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
+            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+[~][0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
