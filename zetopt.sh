@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-19 07:00)
+# Version     : 1.2.0a (2019-02-21 19:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-19 07:00)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-21 19:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -43,12 +43,13 @@ declare -r ZETOPT_TYPE_PLUS=3
 declare -r ZETOPT_STATUS_NORMAL=0
 declare -r ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS=$((1 << 0))
 declare -r ZETOPT_STATUS_MISSING_OPTIONAL_ARGS=$((1 << 1))
-declare -r ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 2))
-declare -r ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 3))
-declare -r ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 4))
-declare -r ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 5))
-declare -r ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 6))
-declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 7))
+declare -r ZETOPT_STATUS_VALIDATOR_FAILED=$((1 << 2))
+declare -r ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 3))
+declare -r ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 4))
+declare -r ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 5))
+declare -r ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 6))
+declare -r ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 7))
+declare -r ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 8))
 declare -r ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
 
 # misc
@@ -166,8 +167,8 @@ zetopt()
         parse)
             # for supporting blank string argument
             [[ $# -eq 0 ]] \
-                && _zetopt::parser::parse \
-                || _zetopt::parser::parse "${@-}"
+            && _zetopt::parser::parse \
+            || _zetopt::parser::parse "${@-}"
             ;;
         define-help | def-help)
             _zetopt::help::define "${@-}";;
@@ -431,13 +432,13 @@ _zetopt::def::define()
     if [[ $has_param == true ]]; then
         local param_optional=false param params default_is_set=false
         declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx param_validator_idx
-        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_sign=
+        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator=
         params=()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~^])[a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(~[a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -446,10 +447,9 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]}
             param_name=${BASH_REMATCH[$((3 + $ZETOPT_IDX_OFFSET))]}
             param_validator=${BASH_REMATCH[$((4 + $ZETOPT_IDX_OFFSET))]}
-            param_validator_sign=${BASH_REMATCH[$((5 + $ZETOPT_IDX_OFFSET))]}
-            param_varlen=${BASH_REMATCH[$((6 + $ZETOPT_IDX_OFFSET))]}
-            param_varlen_max=${BASH_REMATCH[$((7 + $ZETOPT_IDX_OFFSET))]}
-            param_default=${BASH_REMATCH[$((8 + $ZETOPT_IDX_OFFSET))]}
+            param_varlen=${BASH_REMATCH[$((5 + $ZETOPT_IDX_OFFSET))]}
+            param_varlen_max=${BASH_REMATCH[$((6 + $ZETOPT_IDX_OFFSET))]}
+            param_default=${BASH_REMATCH[$((7 + $ZETOPT_IDX_OFFSET))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -474,15 +474,13 @@ _zetopt::def::define()
                 param_names+=" $param_name "
             fi
 
+            param_validator_idx=0
             if [[ -n $param_validator ]]; then
-                if [[ ! $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'${param_validator:1}:([0-9]+): ]]; then
+                if [[ ! $'\n'${_ZETOPT_VALIDATOR_KEYS-} =~ $'\n'${param_validator:1}:([0-9]+)$'\n' ]]; then
                     _zetopt::msg::script_error "Undefined Validator:" "${param_validator:1}"
                     return 1
                 fi
                 param_validator_idx=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
-            else
-                param_validator_idx=0
-                param_validator_sign='~'
             fi
 
             # save default value
@@ -494,7 +492,7 @@ _zetopt::def::define()
                 _zetopt::msg::script_error "Non-default Argument Following Default Argument:" "$param_name"
                 return 1
             fi
-            params+=("$param_hyphens$param_type$param_name.$param_idx$param_validator_sign$param_validator_idx$param_varlen=$param_default_idx")
+            params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idx$param_varlen=$param_default_idx")
             param_idx+=1
         done
         IFS=$' '
@@ -538,12 +536,14 @@ _zetopt::def::def_validator()
     while [[ $# -ne 0 ]]
     do
         case "$1" in
-            -i | --ignore-case)
-                flags+=i; shift;;
             -f | --function)
                 type=f; shift;;
-            -if | -fi)
-                flags+=i; type=f; shift;;
+            -i | --ignore-case)
+                flags+=i; shift;;
+            -n | --not)
+                flags+=n; shift;;
+            -*)
+                error=true; break;;
             *)
                 if [[ -n $name ]]; then
                     error=true; break
@@ -563,6 +563,7 @@ _zetopt::def::def_validator()
         esac
     done
 
+    # check errors
     if [[ $error == true ]]; then
         _zetopt::msg::script_error "zetopt def-validator [-i | --ignore-case] [-f | --function] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
@@ -571,8 +572,8 @@ _zetopt::def::def_validator()
         _zetopt::msg::script_error "Invalid Validator Name:" "$name"
         return 1
     fi
-    if [[ $type == f && ! $validator =~ ^[a-zA-Z_:][a-zA-Z0-9_:]*$ ]]; then
-        _zetopt::msg::script_error "Invalid Shell Function Name:" "$validator"
+    if [[ $type == f && $(type -t "$validator") != "function" ]]; then
+        _zetopt::msg::script_error "No Such Shell Function:" "$validator"
         return 1
     fi
     if [[ $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'$name: ]]; then
@@ -584,13 +585,14 @@ _zetopt::def::def_validator()
         return 1
     fi
 
-    _ZETOPT_VALIDATOR_DATA+=("$validator")
-    validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $ZETOPT_IDX_OFFSET))
+    # save validator
     if [[ -n $errmsg ]]; then
-        _ZETOPT_VALIDATOR_ERRMSG+=("$errmsg")
+        _ZETOPT_VALIDATOR_ERRMSG+=("${errmsg:1}")
         msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $ZETOPT_IDX_OFFSET))
     fi
-    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx:$type:$flags:$msg_idx$'\n'
+    _ZETOPT_VALIDATOR_DATA+=("$name:$type:$flags:$msg_idx:$validator")
+    validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $ZETOPT_IDX_OFFSET))
+    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$'\n'
 }
 
 
@@ -644,8 +646,7 @@ _zetopt::def::exists()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id=/$id
-    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]] \
-    && return $? || return $?
+    [[ $'\n'$ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]
 }
 
 # Check if the current namespace has subcommands
@@ -1152,7 +1153,7 @@ _zetopt::parser::parse()
     done
 
     # assign positional args
-    _zetopt::parser::assign_args "$namespace"
+    _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
     if _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
@@ -1286,6 +1287,11 @@ _zetopt::parser::setopt()
                     || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS == true)
                     || ($arg == "--" && $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
                 ]]; then
+                    # validate
+                    if ! _zetopt::parser::validate "$def" "$arg"; then
+                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_VALIDATOR_FAILED))
+                        return 1
+                    fi
                     ZETOPT_OPTVALS+=("$arg")
                     ref_arr+=($optarg_idx)
                     arg_cnt+=1
@@ -1376,6 +1382,64 @@ _zetopt::parser::setopt()
     && return $? || return $?
 }
 
+_zetopt::parser::validate()
+{
+    local def="${1-}" arg="${2-}"
+
+    # no validator
+    if [[ ! $def =~ ~([1-9][0-9]*) ]]; then
+        return 0
+    fi
+
+    declare -i validator_idx="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+    if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
+        _zetopt::msg::script_error "Internal Error:" "Validator Broken"
+        return 1
+    fi
+
+    local error=false
+    local validator_name=${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+    local validator_type=${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}
+    local validator_flags=${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}
+    declare -i validator_msgidx=${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}
+    local validator=${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}
+
+    local result=$(
+        # set ignore case option temporally
+        if [[ ! $validator_flags =~ i ]]; then
+            [[ -n ${ZSH_VERSION-} ]] \
+            && \setopt localoptions NOCASEMATCH \
+            || \shopt -s nocasematch
+        fi
+
+        # r: regexp
+        if [[ $validator_type == r ]]; then
+            if [[ ! $validator_flags =~ n ]]; then
+                [[ $arg =~ $validator ]] && echo true || echo false
+            else
+                [[ $arg =~ $validator ]] && echo false || echo true
+            fi
+
+        # f: function
+        else
+            if [[ ! $validator_flags =~ n ]]; then
+                "$validator" "$arg" && echo true || echo false
+            else
+                "$validator" "$arg" && echo false || echo true
+            fi
+        fi
+    )
+
+    if [[ $result == false ]]; then
+        if [[ $validator_msgidx -ne 0 ]]; then
+            local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
+            _zetopt::msg::user_error Error "Validator \"$validator_name\" Failed: $arg:" "$errmsg"
+        fi
+        return 1
+    fi
+    return 0
+}
+
 # Assign indices to subcommand parameters. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::assign_args {NAMESPACE}
@@ -1416,7 +1480,7 @@ _zetopt::parser::assign_args()
         for ((; ref_idx<def_loops; ref_idx++))
         do
             # missing required
-            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
+            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+~[0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
@@ -1529,8 +1593,7 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && ! $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]] \
-    && return $? || return $?
+    [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && ! $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
 # Check if the option is set and its status is OK
@@ -1563,8 +1626,7 @@ _zetopt::data::isvalid()
         return 1
     fi
     # 0 $ZETOPT_STATUS_NORMAL, 1 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS, 2 $ZETOPT_STATUS_MISSING_OPTIONAL_ARGS
-    [[ ! $stat =~ [^012\ ] ]] \
-    && return $? || return $?
+    [[ ! $stat =~ [^012\ ] ]]
 }
 
 # Print option arguments/status index list
@@ -1791,8 +1853,7 @@ _zetopt::data::hasvalue()
     if [[ -z $len ]]; then
         return 1
     fi
-    [[ $len -ne 0 ]] \
-    && return $? || return $?
+    [[ $len -ne 0 ]]
 }
 
 # Print option arguments index list to refer $ZETOPT_OPTVALS
