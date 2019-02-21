@@ -142,8 +142,8 @@ zetopt()
             _ZETOPT_HELPS_IDX=()
             _ZETOPT_HELPS=()
             _ZETOPT_DEFAULTS=()
-            _ZETOPT_VALIDATOR_IDX=
-            _ZETOPT_VALIDATOR=
+            _ZETOPT_VALIDATOR_KEYS=
+            _ZETOPT_VALIDATOR_DATA=
             _ZETOPT_VALIDATOR_ERRMSG=
             ZETOPT_PARSED=
             ZETOPT_OPTVALS=()
@@ -430,14 +430,14 @@ _zetopt::def::define()
     local param_def=
     if [[ $has_param == true ]]; then
         local param_optional=false param params default_is_set=false
-        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx
-        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= 
+        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx param_validator_idx
+        local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_sign=
         params=()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~^])[a-zA-Z_][a-zA-Z0-9_]*)?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -445,9 +445,11 @@ _zetopt::def::define()
             param_hyphens=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
             param_type=${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]}
             param_name=${BASH_REMATCH[$((3 + $ZETOPT_IDX_OFFSET))]}
-            param_varlen=${BASH_REMATCH[$((4 + $ZETOPT_IDX_OFFSET))]}
-            param_varlen_max=${BASH_REMATCH[$((5 + $ZETOPT_IDX_OFFSET))]}
-            param_default=${BASH_REMATCH[$((6 + $ZETOPT_IDX_OFFSET))]}
+            param_validator=${BASH_REMATCH[$((4 + $ZETOPT_IDX_OFFSET))]}
+            param_validator_sign=${BASH_REMATCH[$((5 + $ZETOPT_IDX_OFFSET))]}
+            param_varlen=${BASH_REMATCH[$((6 + $ZETOPT_IDX_OFFSET))]}
+            param_varlen_max=${BASH_REMATCH[$((7 + $ZETOPT_IDX_OFFSET))]}
+            param_default=${BASH_REMATCH[$((8 + $ZETOPT_IDX_OFFSET))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -472,6 +474,17 @@ _zetopt::def::define()
                 param_names+=" $param_name "
             fi
 
+            if [[ -n $param_validator ]]; then
+                if [[ ! $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'${param_validator:1}:([0-9]+): ]]; then
+                    _zetopt::msg::script_error "Undefined Validator:" "${param_validator:1}"
+                    return 1
+                fi
+                param_validator_idx=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
+            else
+                param_validator_idx=0
+                param_validator_sign='~'
+            fi
+
             # save default value
             if [[ -n $param_default ]]; then
                 _ZETOPT_DEFAULTS+=("${param_default##=}")
@@ -481,7 +494,7 @@ _zetopt::def::define()
                 _zetopt::msg::script_error "Non-default Argument Following Default Argument:" "$param_name"
                 return 1
             fi
-            params+=("$param_hyphens$param_type$param_name.$param_idx$param_varlen=$param_default_idx")
+            params+=("$param_hyphens$param_type$param_name.$param_idx$param_validator_sign$param_validator_idx$param_varlen=$param_default_idx")
             param_idx+=1
         done
         IFS=$' '
@@ -514,9 +527,9 @@ _zetopt::def::define()
 
 _zetopt::def::def_validator()
 {
-    if [[ -z ${_ZETOPT_VALIDATOR_IDX:-} ]]; then
-        _ZETOPT_VALIDATOR_IDX=
-        _ZETOPT_VALIDATOR=
+    if [[ -z ${_ZETOPT_VALIDATOR_KEYS:-} ]]; then
+        _ZETOPT_VALIDATOR_KEYS=
+        _ZETOPT_VALIDATOR_DATA=
         _ZETOPT_VALIDATOR_ERRMSG=
     fi
 
@@ -562,7 +575,7 @@ _zetopt::def::def_validator()
         _zetopt::msg::script_error "Invalid Shell Function Name:" "$validator"
         return 1
     fi
-    if [[ $'\n'$_ZETOPT_VALIDATOR_IDX =~ $'\n'$name: ]]; then
+    if [[ $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'$name: ]]; then
         _zetopt::msg::script_error "Duplicate Validator Name:" "$name"
         return 1
     fi
@@ -571,13 +584,13 @@ _zetopt::def::def_validator()
         return 1
     fi
 
-    _ZETOPT_VALIDATOR+=("$validator")
-    validator_idx=$((${#_ZETOPT_VALIDATOR[@]} - 1 + $ZETOPT_IDX_OFFSET))
+    _ZETOPT_VALIDATOR_DATA+=("$validator")
+    validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $ZETOPT_IDX_OFFSET))
     if [[ -n $errmsg ]]; then
         _ZETOPT_VALIDATOR_ERRMSG+=("$errmsg")
         msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $ZETOPT_IDX_OFFSET))
     fi
-    _ZETOPT_VALIDATOR_IDX+=$name:$type:$flags:$validator_idx:$msg_idx$'\n'
+    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx:$type:$flags:$msg_idx$'\n'
 }
 
 
