@@ -142,7 +142,9 @@ zetopt()
             _ZETOPT_HELPS_IDX=()
             _ZETOPT_HELPS=()
             _ZETOPT_DEFAULTS=()
-
+            _ZETOPT_VALIDATOR_IDX=
+            _ZETOPT_VALIDATOR=
+            _ZETOPT_VALIDATOR_ERRMSG=
             ZETOPT_PARSED=
             ZETOPT_OPTVALS=()
             ZETOPT_ARGS=()
@@ -159,6 +161,8 @@ zetopt()
             ;;
         define | def)
             _zetopt::def::define "${@-}";;
+        def-validator | define-validator)
+            _zetopt::def::def_validator "${@-}";;
         parse)
             # for supporting blank string argument
             [[ $# -eq 0 ]] \
@@ -507,6 +511,75 @@ _zetopt::def::define()
     done
     
 }
+
+_zetopt::def::def_validator()
+{
+    if [[ -z ${_ZETOPT_VALIDATOR_IDX:-} ]]; then
+        _ZETOPT_VALIDATOR_IDX=
+        _ZETOPT_VALIDATOR=
+        _ZETOPT_VALIDATOR_ERRMSG=
+    fi
+
+    declare -i validator_idx=0 msg_idx=0
+    local IFS=$' \n\t' name= validator= type=r errmsg= flags= error=false 
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            -i | --ignore-case)
+                flags+=i; shift;;
+            -f | --function)
+                type=f; shift;;
+            -if | -fi)
+                flags+=i; type=f; shift;;
+            *)
+                if [[ -n $name ]]; then
+                    error=true; break
+                fi
+                name=$1
+                if [[ -z ${2-} ]]; then
+                    error=true; break
+                fi
+                validator=$2
+                if [[ -n ${3-} ]]; then
+                    errmsg=$3
+                    if [[ -n ${4-} ]]; then
+                        error=true; break
+                    fi
+                fi
+                break;;
+        esac
+    done
+
+    if [[ $error == true ]]; then
+        _zetopt::msg::script_error "zetopt def-validator [-i | --ignore-case] [-f | --function] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
+        return 1
+    fi
+    if [[ ! $name =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        _zetopt::msg::script_error "Invalid Validator Name:" "$name"
+        return 1
+    fi
+    if [[ $type == f && ! $validator =~ ^[a-zA-Z_:][a-zA-Z0-9_:]*$ ]]; then
+        _zetopt::msg::script_error "Invalid Shell Function Name:" "$validator"
+        return 1
+    fi
+    if [[ $'\n'$_ZETOPT_VALIDATOR_IDX =~ $'\n'$name: ]]; then
+        _zetopt::msg::script_error "Duplicate Validator Name:" "$name"
+        return 1
+    fi
+    if [[ -n $errmsg && $errmsg =~ ^[^\#] ]]; then
+        _zetopt::msg::script_error "Help message should start with \"#\""
+        return 1
+    fi
+
+    _ZETOPT_VALIDATOR+=("$validator")
+    validator_idx=$((${#_ZETOPT_VALIDATOR[@]} - 1 + $ZETOPT_IDX_OFFSET))
+    if [[ -n $errmsg ]]; then
+        _ZETOPT_VALIDATOR_ERRMSG+=("$errmsg")
+        msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $ZETOPT_IDX_OFFSET))
+    fi
+    _ZETOPT_VALIDATOR_IDX+=$name:$type:$flags:$validator_idx:$msg_idx$'\n'
+}
+
 
 # Print the defined data. Print all if ID not given.
 # def.) _zetopt::def::defined [ID]
