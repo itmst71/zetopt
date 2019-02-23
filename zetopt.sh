@@ -1453,17 +1453,33 @@ _zetopt::parser::assign_args()
     if [[ $def_max_len -eq 0 ]]; then
         return 0
     fi
-    local def_arr ref_arr= IFS=' '
-    def_arr=($(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG))
-    declare -i arg_len=${#ZETOPT_ARGS[@]} rtn=$ZETOPT_STATUS_NORMAL idx
+    local def_str def_arr ref_arr= IFS=' ' has_validator=false
+    def_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    if [[ $def_str =~ [~][1-9][0-9]* ]]; then
+        has_validator=true
+    fi
+    def_arr=($def_str)
+    declare -i def_len=${#def_arr[@]} arg_len=${#ZETOPT_ARGS[@]} rtn=$ZETOPT_STATUS_NORMAL idx maxloop
 
     # enough
     if [[ $arg_len -ge $def_max_len ]]; then
         ref_arr=($(\eval "\echo {$ZETOPT_IDX_OFFSET..$((def_max_len - 1 + ZETOPT_IDX_OFFSET))}"))
 
+        # validate
+        if [[ $has_validator == true ]]; then
+            maxloop=$def_len+$ZETOPT_IDX_OFFSET
+            for ((idx=ZETOPT_IDX_OFFSET; idx<maxloop; idx++))
+            do
+                if ! _zetopt::parser::validate "${def_arr[idx]}" "${ZETOPT_ARGS[ref_arr[idx]]}"; then
+                    rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
+                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+                fi
+            done
+        fi
+
         # too match arguments
         if [[ $arg_len -gt $def_max_len ]]; then
-            if [[ ${def_arr[$((${#def_arr[@]} - 1 + ZETOPT_IDX_OFFSET))]} =~ [.]{3,3}[1-9][0-9]*=[0-9]+$ ]]; then
+            if [[ ${def_arr[$((def_len - 1 + ZETOPT_IDX_OFFSET))]} =~ [.]{3,3}[1-9][0-9]*=[0-9]+$ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
             fi
@@ -1473,11 +1489,24 @@ _zetopt::parser::assign_args()
     else
         declare -i ref_idx=$ZETOPT_IDX_OFFSET
         if [[ $arg_len -ne 0 ]]; then
-            ref_idx=arg_len-1+ZETOPT_IDX_OFFSET
+            ref_idx=$arg_len-1+$ZETOPT_IDX_OFFSET
             ref_arr=($(\eval "\echo {$ZETOPT_IDX_OFFSET..$ref_idx}"))
             ref_idx+=1
+
+            # validate
+            if [[ $has_validator == true ]]; then
+                maxloop=$arg_len+$ZETOPT_IDX_OFFSET
+                for ((idx=ZETOPT_IDX_OFFSET; idx<maxloop; idx++))
+                do
+                    if ! _zetopt::parser::validate "${def_arr[idx]}" "${ZETOPT_ARGS[ref_arr[idx]]}"; then
+                        rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
+                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+                    fi
+                done
+            fi
         fi
-        declare -i def_loops=$((${#def_arr[@]} + ZETOPT_IDX_OFFSET)) default_idx
+
+        declare -i def_loops=$def_len+$ZETOPT_IDX_OFFSET default_idx
         for ((; ref_idx<def_loops; ref_idx++))
         do
             # missing required
