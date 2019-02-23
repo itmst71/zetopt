@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-21 19:30)
+# Version     : 1.2.0a (2019-02-23 22:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-21 19:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-23 22:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -67,22 +67,21 @@ else
 fi
 
 # config
-export ZETOPT_CFG_VALUE_IFS=$'\n'
-export ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
-export ZETOPT_CFG_CLUSTERED_AS_LONG=false
-export ZETOPT_CFG_IGNORE_BLANK_STRING=false
-export ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
-export ZETOPT_CFG_OPTTYPE_PLUS=false
-export ZETOPT_CFG_FLAGVAL_TRUE=true
-export ZETOPT_CFG_FLAGVAL_FALSE=false
-export ZETOPT_CFG_ERRMSG=true
-export ZETOPT_CFG_ERRMSG_APPNAME="$ZETOPT_CALLER_NAME"
-export ZETOPT_CFG_ERRMSG_COL_MODE=auto
-export ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
-export ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
-export ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
-export ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
-export ZETOPT_CFG_HELP_INDENT_SPACES=4
+ZETOPT_CFG_VALUE_IFS=$'\n'
+ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
+ZETOPT_CFG_CLUSTERED_AS_LONG=false
+ZETOPT_CFG_IGNORE_BLANK_STRING=false
+ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
+ZETOPT_CFG_OPTTYPE_PLUS=false
+ZETOPT_CFG_FLAGVAL_TRUE=true
+ZETOPT_CFG_FLAGVAL_FALSE=false
+ZETOPT_CFG_ERRMSG=true
+ZETOPT_CFG_ERRMSG_APPNAME="$ZETOPT_CALLER_NAME"
+ZETOPT_CFG_ERRMSG_COL_MODE=auto
+ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
+ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
+ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
+ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 
 
 #------------------------------------------------------------
@@ -1389,10 +1388,10 @@ _zetopt::parser::setopt()
 
 _zetopt::parser::validate()
 {
-    local def="${1-}" arg="${2-}"
+    local param_def="${1-}" arg="${2-}"
 
     # no validator
-    if [[ ! $def =~ [~]([1-9][0-9]*) ]]; then
+    if [[ ! $param_def =~ [~]([1-9][0-9]*) ]]; then
         return 0
     fi
 
@@ -1401,17 +1400,15 @@ _zetopt::parser::validate()
         _zetopt::msg::script_error "Internal Error:" "Validator Broken"
         return 1
     fi
-
-    local error=false
-    local validator_name=${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
-    local validator_type=${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}
-    local validator_flags=${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}
-    declare -i validator_msgidx=${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}
-    local validator=${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}
+    local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+    local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
+    local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
+    declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
+    local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
 
     local result=$(
         # set ignore case option temporally
-        if [[ ! $validator_flags =~ i ]]; then
+        if [[ $validator_flags =~ i ]]; then
             [[ -n ${ZSH_VERSION-} ]] \
             && \setopt localoptions NOCASEMATCH \
             || \shopt -s nocasematch
@@ -1424,7 +1421,6 @@ _zetopt::parser::validate()
             else
                 [[ $arg =~ $validator ]] && echo false || echo true
             fi
-
         # f: function
         else
             if [[ ! $validator_flags =~ n ]]; then
@@ -1640,7 +1636,7 @@ _zetopt::data::isvalid()
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
 {
-    if [[ -z ${ZETOPT_PARSED:-} ||  $# -lt 2 || -z ${1-} ]]; then
+    if [[ -z ${ZETOPT_PARSED:-} || $# -lt 2 || -z ${1-} ]]; then
         return 1
     fi
     case $2 in
@@ -1929,7 +1925,7 @@ _zetopt::data::argvalue()
     local __id="${__args[$((0 + $ZETOPT_IDX_OFFSET))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
     __args=(${__args[@]:1})
     
-    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]-}")"
+    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]-@}")"
     if [[ -z "$__list_str" ]]; then
         return 1
     fi
@@ -2663,7 +2659,7 @@ _zetopt::help::show()
     for title in "${titles[@]}"
     do
         idx=$(_zetopt::help::search "$title")
-        if [[ -z "${_ZETOPT_HELPS[$(($idx + $ZETOPT_IDX_OFFSET))]-}" ]]; then
+        if [[ $idx -eq $ZETOPT_IDX_NOT_FOUND || -z "${_ZETOPT_HELPS[$(($idx + $ZETOPT_IDX_OFFSET))]-}" ]]; then
             continue
         fi
 
@@ -2925,8 +2921,9 @@ _zetopt::help::fmtcmdopt()
             indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
             indent=$(\printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
-
-            desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
+            if [[ $helpidx -ne 0 ]]; then
+                desc=($(\printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
+            fi
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
                 \printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $ZETOPT_IDX_OFFSET))]}"
                 if [[ ${#desc[@]} -gt 1 ]]; then
