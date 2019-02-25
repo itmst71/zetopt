@@ -541,8 +541,16 @@ _zetopt::def::def_validator()
                 flags+=i; shift;;
             -n | --not)
                 flags+=n; shift;;
-            -*)
+            --*)
                 error=true; break;;
+            -*)
+                if [[ ! $1 =~ ^-[fin]+$ ]]; then
+                    error=true; break
+                fi
+                [[ $1 =~ f ]] && type=f
+                [[ $1 =~ i ]] && flags+=i
+                [[ $1 =~ n ]] && flags+=n
+                shift;;
             *)
                 if [[ -n $name ]]; then
                     error=true; break
@@ -564,7 +572,7 @@ _zetopt::def::def_validator()
 
     # check errors
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "zetopt def-validator [-i | --ignore-case] [-f | --function] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
+        _zetopt::msg::script_error "zetopt def-validator [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
     if [[ ! $name =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
