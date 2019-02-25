@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-23 22:30)
+# Version     : 1.2.0a (2019-02-25 12:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 declare -r ZETOPT_APPNAME="zetopt"
-declare -r ZETOPT_VERSION="1.2.0a (2019-02-23 22:30)"
+declare -r ZETOPT_VERSION="1.2.0a (2019-02-25 12:30)"
 
 # field numbers for definition
 declare -r ZETOPT_FIELD_DEF_ALL=0
@@ -520,7 +520,6 @@ _zetopt::def::define()
         [[ $'\n'$ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && return 0
         ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
     done
-    
 }
 
 _zetopt::def::def_validator()
@@ -1196,8 +1195,7 @@ _zetopt::parser::parse()
         fi
     fi
 
-    [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
-    && return $? || return $?
+    [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
 # Increment the set count of a sub-command. 
@@ -1383,8 +1381,7 @@ _zetopt::parser::setopt()
     : $((cnt++))
 
     ZETOPT_PARSED="$head_lines$id:$short:$long:$refs_str:$types:$stat:$cnt$tail_lines"
-    [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]] \
-    && return $? || return $?
+    [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
 _zetopt::parser::validate()
@@ -1583,21 +1580,20 @@ _zetopt::data::parsed()
         \echo "${ZETOPT_PARSED-}"
         return 0
     fi
-    _zetopt::data::get "$1" $ZETOPT_FIELD_DATA_ALL
+    _zetopt::data::field "$1" $ZETOPT_FIELD_DATA_ALL
 }
 
 # Search and print the parsed data
-# def.) _zetopt::data::get {ID} [FILED-DATA-NUMBER]
-# e.g.) _zetopt::data::get /foo $ZETOPT_FIELD_DATA_ARG
+# def.) _zetopt::data::field {ID} [FILED-DATA-NUMBER]
+# e.g.) _zetopt::data::field /foo $ZETOPT_FIELD_DATA_ARG
 # STDOUT: string
-_zetopt::data::get()
+_zetopt::data::field()
 {
     if [[ -z ${1-} ]]; then
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    IFS=$'\n'
-    if [[ ! $'\n'$ZETOPT_PARSED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
+    if [[ ! $'\n'${ZETOPT_PARSED-}$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
@@ -1624,7 +1620,7 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $'\n'$ZETOPT_PARSED =~ $'\n'$id: && ! $'\n'$ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
+    [[ $'\n'${ZETOPT_PARSED-} =~ $'\n'$id: && ! $'\n'${ZETOPT_PARSED-} =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
 # Check if the option is set and its status is OK
@@ -1633,16 +1629,9 @@ _zetopt::data::isset()
 # STDOUT: NONE
 _zetopt::data::isvalid()
 {
-    if [[ -z ${ZETOPT_PARSED:-} ]]; then
+    if [[ -z ${ZETOPT_PARSED:-} || $# -eq 0 || -z ${1-} ]]; then
         return 1
     fi
-    if [[ $# -eq 0 ]]; then
-        return 1
-    fi
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
         return 1
@@ -1676,7 +1665,7 @@ _zetopt::data::validx()
     local field="$2"
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     local IFS=, lists output_list
-    lists=($(_zetopt::data::get "$id" $field))
+    lists=($(_zetopt::data::field "$id" $field))
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
@@ -2087,7 +2076,7 @@ _zetopt::data::type()
 # STDOUT: an integer
 _zetopt::data::count()
 {
-    _zetopt::data::get "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
+    _zetopt::data::field "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
 # Print the list of IDs set
