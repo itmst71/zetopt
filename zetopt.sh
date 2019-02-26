@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-26 12:30)
+# Version     : 1.2.0a (2019-02-26 17:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2019-02-26 12:30)"
+readonly ZETOPT_VERSION="1.2.0a (2019-02-26 17:30)"
 
 # field numbers for definition
 readonly ZETOPT_FIELD_DEF_ALL=0
@@ -846,7 +846,8 @@ _zetopt::def::default()
     fi
     shift
 
-    local IFS=' ' params defaults_idx_arr output_list=
+    local IFS=' ' params defaults_idx_arr output_list
+    output_list=()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
@@ -859,11 +860,13 @@ _zetopt::def::default()
         _zetopt::msg::script_error "Default Value Not Set"
         return 1
     fi
+
+    [[ $# -eq 0 ]] && set -- @
     local key
     declare -i last_idx="$((${#params[@]} - 1 + $ZETOPT_IDX_OFFSET))"
     for key in "${@-}"
     do
-        if [[ ! $key =~ ^(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
+        if [[ ! $key =~ ^(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
             _zetopt::msg::script_error "Bad Key:" "$key"
             return 1
         fi
@@ -955,8 +958,10 @@ _zetopt::def::default()
             output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")
         done
     done
-    IFS=$ZETOPT_CFG_VALUE_IFS
-    \printf -- "%s" "${output_list[*]}"
+    if [[ ${#output_list[@]} -ne 0 ]]; then
+        IFS=$ZETOPT_CFG_VALUE_IFS
+        \printf -- "%s" "${output_list[*]}"
+    fi
 }
 
 
@@ -1711,7 +1716,7 @@ _zetopt::data::validx()
         local input_idx= tmp_list
         for input_idx in "$@"
         do            
-            if [[ ! $input_idx =~ ^(@|([$\^0]|-?[1-9][0-9]*)(,([$\^0]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^0]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
+            if [[ ! $input_idx =~ ^(@|([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
