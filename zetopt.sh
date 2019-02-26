@@ -26,12 +26,10 @@ readonly ZETOPT_FIELD_DEF_HELP=5
 # field numbers for parsed data
 readonly ZETOPT_FIELD_DATA_ALL=0
 readonly ZETOPT_FIELD_DATA_ID=1
-readonly ZETOPT_FIELD_DATA_SHORT=2
-readonly ZETOPT_FIELD_DATA_LONG=3
-readonly ZETOPT_FIELD_DATA_ARG=4
-readonly ZETOPT_FIELD_DATA_TYPE=5
-readonly ZETOPT_FIELD_DATA_STATUS=6
-readonly ZETOPT_FIELD_DATA_COUNT=7
+readonly ZETOPT_FIELD_DATA_ARG=2
+readonly ZETOPT_FIELD_DATA_TYPE=3
+readonly ZETOPT_FIELD_DATA_STATUS=4
+readonly ZETOPT_FIELD_DATA_COUNT=5
 
 # types
 readonly ZETOPT_TYPE_CMD=0
@@ -1232,19 +1230,19 @@ _zetopt::parser::parse()
 _zetopt::parser::setsub()
 {
     local id=${1-}
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
 
     local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((10 + ZETOPT_IDX_OFFSET))]}"
+    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
     local offset=2
 
     local IFS=:
     \set -- ${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
-    local cnt=$(($7 + 1))
-    _ZETOPT_PARSED=$head_lines$1:$2:$3:$4:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
+    local cnt=$(($5 + 1))
+    _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
 # Set option data. 
@@ -1265,14 +1263,14 @@ _zetopt::parser::setopt()
         return 1
     fi
 
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((10 + ZETOPT_IDX_OFFSET))]}"
+    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
     local IFS=:
     \set -- ${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
-    local id="$1" short="$2" long="$3" refs_str="$4" types="$5" stat="$6" cnt="$7"
+    local id="$1" refs_str="$2" types="$3" stat="$4" cnt="$5"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
     local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
@@ -1406,7 +1404,7 @@ _zetopt::parser::setopt()
     fi
     : $((cnt++))
 
-    _ZETOPT_PARSED="$head_lines$id:$short:$long:$refs_str:$types:$stat:$cnt$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$types:$stat:$cnt$tail_lines"
     [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
@@ -1555,23 +1553,21 @@ _zetopt::parser::assign_args()
     fi
 
     # update parsed data
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((10 + ZETOPT_IDX_OFFSET))]}"
+    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
     local offset=2
     local line="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}"
     local id="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ID))]}"
-    local short="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_SHORT))]}"
-    local long="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_LONG))]}"
     #local arg="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ARG))]}"
     local type="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_TYPE))]}"
     #local status="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]}"
-    _ZETOPT_PARSED="$head_lines$id:$short:$long:$refs_str:$type:$rtn:$count$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$rtn:$count$tail_lines"
     return $rtn
 }
 
@@ -1591,7 +1587,7 @@ _zetopt::data::init()
     do
         IFS=:
         set -- $line
-        _ZETOPT_PARSED+="$1:$2:$3::::0"$'\n'
+        _ZETOPT_PARSED+="$1::::0"$'\n'
     done
     _ZETOPT_OPTVALS=()
     ZETOPT_ARGS=()
@@ -1619,15 +1615,13 @@ _zetopt::data::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $'\n'${_ZETOPT_PARSED-}$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
+    if [[ ! $'\n'${_ZETOPT_PARSED-}$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
     case "$field" in
         $ZETOPT_FIELD_DATA_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_ALL))]}";;
         $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_ID))]}";;
-        $ZETOPT_FIELD_DATA_SHORT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_SHORT))]}";;
-        $ZETOPT_FIELD_DATA_LONG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_LONG))]}";;
         $ZETOPT_FIELD_DATA_ARG)    \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_ARG))]}";;
         $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_TYPE))]}";;
         $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET + $ZETOPT_FIELD_DATA_STATUS))]}";;
@@ -1646,7 +1640,7 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id: && ! $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
+    [[ $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id: && ! $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
 # Check if the option is set and its status is OK
@@ -1662,7 +1656,7 @@ _zetopt::data::isvalid()
     if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]; then
+    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id:[^:]*:[^:]*:[^:]*:0 ]]; then
         return 1
     fi
 
@@ -1705,7 +1699,7 @@ _zetopt::data::validx()
     else
         # get the arg definition for param names
         local def_args=
-        if [[ $field -eq $ZETOPT_FIELD_DEF_ARG ]]; then
+        if [[ $field -eq $ZETOPT_FIELD_DATA_ARG ]]; then
             def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
         fi
 
@@ -1715,7 +1709,7 @@ _zetopt::data::validx()
 
         local input_idx= tmp_list
         for input_idx in "$@"
-        do            
+        do
             if [[ ! $input_idx =~ ^(@|([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
@@ -1892,7 +1886,7 @@ _zetopt::data::hasvalue()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id: && $'\n'$_ZETOPT_PARSED =~ $'\n'$id:[^:]?:[^:]*::[^:]*:[^:]*:[^:]* ]]; then
+    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id: && $'\n'$_ZETOPT_PARSED =~ $'\n'$id::[^:]*:[^:]*:[^:]* ]]; then
         return 1
     fi
     local len=$(_zetopt::data::arglength "$@")
