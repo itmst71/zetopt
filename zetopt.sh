@@ -196,6 +196,7 @@ _zetopt::init::init()
     ZETOPT_OPTERR_MISSING_REQUIRED=()
     ZETOPT_OPTERR_MISSING_OPTIONAL=()
 
+    ZETOPT_LAST_COMMAND=/
     _zetopt::init::init_config
 }
 
@@ -978,6 +979,7 @@ _zetopt::parser::init()
     ZETOPT_OPTERR_UNDEFINED=()
     ZETOPT_OPTERR_MISSING_OPTIONAL=()
     ZETOPT_PARSE_ERRORS=$ZETOPT_STATUS_NORMAL
+    ZETOPT_LAST_COMMAND=/
 }
 
 # Parse arguments. 
@@ -1164,6 +1166,7 @@ _zetopt::parser::parse()
                 # change namespace
                 if _zetopt::parser::setsub $ns; then
                     namespace=$ns
+                    ZETOPT_LAST_COMMAND=$ns
                 fi
                 shift
                 continue
