@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-02-26 17:30)
+# Version     : 1.2.0a (2019-03-01 21:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -13,7 +13,7 @@
 #------------------------------------------------------------
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2019-02-26 17:30)"
+readonly ZETOPT_VERSION="1.2.0a (2019-03-01 21:00)"
 
 # field numbers for definition
 readonly ZETOPT_FIELD_DEF_ALL=0
@@ -233,7 +233,7 @@ _zetopt::init::init_config()
 _zetopt::def::define()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/::::0 0"$'\n'
+        _ZETOPT_DEFINED=$'/::::0 0\n'
         _ZETOPT_OPTHELPS=("")
         _ZETOPT_DEFAULTS=("")
     fi
@@ -342,8 +342,8 @@ _zetopt::def::define()
         # command has two help indices for itself and its argument
         helpidx="0 0"
 
-        if [[ $'\n'$_ZETOPT_DEFINED =~ (.*)$'\n'((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+))($'\n'.*) ]]; then
-            local head_lines="${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]#*$'\n'}"
+        if [[ $_ZETOPT_DEFINED =~ (^|.*$'\n')((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+)$'\n')(.*) ]]; then
+            local head_lines="${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}"
             local tmp_line="${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]}"
             local tmp_line_nohelp="${BASH_REMATCH[$((3 + $ZETOPT_IDX_OFFSET))]}"
             helpidx_cmd="${BASH_REMATCH[$((4 + $ZETOPT_IDX_OFFSET))]}"
@@ -354,15 +354,15 @@ _zetopt::def::define()
             if [[ $tmp_line == "${id}::::0 0" ]]; then
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
-            elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$ ]]; then
+            elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$'\n'$ ]]; then
                 _zetopt::msg::script_error "Already Defined:" "$id"
                 return 1
 
             # help only definition: rewrite help reference number part of existing definition
-            elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$ ]]; then
+            elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$'\n'$ ]]; then
                 _ZETOPT_OPTHELPS+=("$helpdef")
                 helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $ZETOPT_IDX_OFFSET))
-                _ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$tail_lines"
+                _ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg"$'\n'"$tail_lines"
                 return 0
 
             # remove help only definition and continue parsing
@@ -628,7 +628,7 @@ _zetopt::def::defined()
         _ZETOPT_DEFINED="/:::"$'\n'
     fi
     if [[ -z ${1-} ]]; then
-        \printf -- "%s\n" "$_ZETOPT_DEFINED"
+        \printf -- "%s" "$_ZETOPT_DEFINED"
         return 0
     fi
     _zetopt::def::field "$1" $ZETOPT_FIELD_DEF_ALL
