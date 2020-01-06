@@ -72,6 +72,7 @@ fi
 # STDOUT: depending on each sub-commands
 zetopt()
 {
+    declare -r _PATH=$PATH
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
     local _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
@@ -182,6 +183,7 @@ _zetopt::init::init()
     _ZETOPT_OPTHELPS=()
     _ZETOPT_HELPS_IDX=()
     _ZETOPT_HELPS=()
+    _ZETOPT_HELPS_CUSTOM=
     _ZETOPT_DEFAULTS=()
     _ZETOPT_VALIDATOR_KEYS=
     _ZETOPT_VALIDATOR_DATA=
@@ -1448,11 +1450,14 @@ _zetopt::parser::validate()
             fi
         # f: function
         else
+            local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
+            local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
             if [[ ! $validator_flags =~ n ]]; then
                 "$validator" "$arg" && echo true || echo false
             else
                 "$validator" "$arg" && echo false || echo true
             fi
+            PATH=$_path LC_ALL=$_lc_all LANG=$_lang
         fi
     )
 
@@ -2644,7 +2649,7 @@ _zetopt::help::rename()
         _zetopt::msg::script_error "No Such Help Title: $oldtitle"
         return 1
     fi
-    if _zetopt::help::search "$newtitle" >/dev/null; then
+    if [[ $(_zetopt::help::search "$newtitle") -ne $ZETOPT_IDX_NOT_FOUND ]]; then
         _zetopt::msg::script_error "Already Exists: $newtitle"
         return 1
     fi
