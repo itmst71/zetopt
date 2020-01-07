@@ -1,13 +1,16 @@
+[![Build Status](https://travis-ci.com/itmst71/zetopt.svg?branch=develop)](https://travis-ci.com/itmst71/zetopt)
+
 # zetopt
 An option parser for shell scripts.
 
-# :memo: Description
+
+# Description
 `zetopt` is a command-line option parser for all `Bash`/`Zsh` scriptors who are not satisfied with `getopt`/`getopts`.  
 It is no longer necessary to handle troublesome processing using `for/while-loop` or `case` statements to analyze complicated options,
 or prepare variables to store flags and arguments.  
 In addition to almost all option formats, `zetopt` also supports sub-commands.
 
-# :computer: Demo
+# Demo
 
 ```bash
 $ cat ./examples/demo.sh
@@ -81,7 +84,7 @@ $ ./demo.sh commit -m "first commit"
 first commit
 ```
 
-# :heart: Features
+# Features
 * Implemented as a `Bash` function.
 * Supports `Bash 3.2+` and `Zsh 5.0+`.
 * Supports long and short options. (e.g. `--long` and `-s`)
@@ -107,11 +110,11 @@ first commit
 * Supports configuring how to handle special arguments `""` and `--` by environment variables.
 * External commands and their options used in `zetopt` are only those defined by `POSIX`.
 
-# :white_check_mark: Requirements
+# Requirements
 * `Bash 3.2+` / `Zsh 5.0+`
 * Some `POSIX` commands
 
-# :floppy_disk: Installation
+# Installation
 1. `git clone`
 ```console
 $ git clone https://github.com/itmst71/zetopt.git
@@ -123,7 +126,7 @@ $ git clone https://github.com/itmst71/zetopt.git
 . /path/to/zetopt.sh
 ```
 
-# :wrench: Usage
+# Usage
 ## Synopsys
 ```
 zetopt [-v | --version | -h | --help]
@@ -146,13 +149,13 @@ if zetopt isset ver; then   # 4. Use parsed data
 fi
 ```
 
-# :speech_balloon: Tutorial
+# Tutorial
 See **[Tutorial](./docs/tutorial.md)**
 
-# :page_with_curl: Reference
+# Reference
 See **[Reference](./docs/reference.md)**
 
-# :exclamation: Todo
+# Todo
 * Documentation
 * Adding test code
 * Improving and adding sub-commands
@@ -191,5 +194,5 @@ Options
   -v, --version   Show version and exit.
 ```
 
-# :seedling: License
+# License
 MIT
