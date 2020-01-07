@@ -1,19 +1,62 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2019-03-01 21:00)
+# Version     : 1.2.0a (2020-01-07 13:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
 # URL         : https://github.com/itmst71/zetopt
 #------------------------------------------------------------
 
+# MIT License
+# 
+# Copyright (c) 2017-2020 itmst71
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# app info
+readonly ZETOPT_APPNAME="zetopt"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-07 13:00)"
+
 
 #------------------------------------------------------------
 # Global Constant Variables
 #------------------------------------------------------------
-# app info
-readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2019-03-01 21:00)"
+# bash
+if [[ -n ${BASH_VERSION-} ]]; then
+    readonly ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
+    readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
+    readonly ZETOPT_CALLER_FILE_PATH="$0"
+    readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && \echo true || \echo false)"
+    readonly ZETOPT_IDX_OFFSET=0
+# zsh
+elif [[ -n ${ZSH_VERSION-} ]]; then
+    readonly ZETOPT_SOURCE_FILE_PATH="$0"
+    readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
+    readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
+    readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_OLDBASH=false
+    readonly ZETOPT_IDX_OFFSET=$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)
+else
+    echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
+    return 1
+fi
 
 # field numbers for definition
 readonly ZETOPT_FIELD_DEF_ALL=0
@@ -52,17 +95,6 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
 
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
-readonly ZETOPT_OLDBASH="$([[ -n ${BASH_VERSION-} && ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)"
-readonly ZETOPT_CALLER_FILE_PATH="$([[ -n ${ZSH_VERSION-} ]] && __=${funcfiletrace%:*} || __=$0; echo "$__")"
-readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
-readonly ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
-if [[ -n ${ZSH_VERSION-} ]]; then
-    [[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] \
-    && readonly ZETOPT_IDX_OFFSET=0 \
-    || readonly ZETOPT_IDX_OFFSET=1
-else
-    readonly ZETOPT_IDX_OFFSET=0
-fi
 
 
 #------------------------------------------------------------
@@ -106,7 +138,7 @@ zetopt()
 
     # show help if subcommand not given
     if [[ $# -eq 0 ]]; then
-        _zetopt::selfhelp::show short
+        _zetopt::man::show short
         return 1
     fi
 
@@ -117,7 +149,7 @@ zetopt()
         -v | --version)
             \echo $ZETOPT_APPNAME $ZETOPT_VERSION;;
         -h | --help)
-            _zetopt::selfhelp::show;;
+            _zetopt::man::show;;
         init)
             _zetopt::init::init;;
         reset)
@@ -172,6 +204,7 @@ zetopt()
             return 1;;
     esac
 }
+
 
 
 #------------------------------------------------------------
@@ -2563,6 +2596,7 @@ _zetopt::utils::min()
     || \printf -- "%s\n" "$2"
 }
 
+
 #------------------------------------------------------------
 # _zetopt::help
 #------------------------------------------------------------
@@ -3071,11 +3105,10 @@ _zetopt::help::format()
 }
 
 
-
 #------------------------------------------------------------
-# _zetopt::selfhelp
+# _zetopt::man
 #------------------------------------------------------------
-_zetopt::selfhelp::show()
+_zetopt::man::show()
 {
     if [[ ${1-} == "short" ]]; then
 << __EOHELP__ \cat
@@ -3141,4 +3174,4 @@ SUB-COMMANDS
 __EOHELP__
 }
 
-_zetopt::init::init
+

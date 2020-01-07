@@ -1,0 +1,571 @@
+# Test zetopt with shUnit2
+# { bash | zsh } <FILE_PATH>
+# shUnit2
+# https://github.com/kward/shunit2
+
+if [[ -n ${ZSH_VERSION-} ]]; then
+    SHUNIT_PARENT=$0
+    setopt SH_WORD_SPLIT
+    #setopt KSH_ARRAYS
+fi
+. "$(cd -- "$(dirname -- "${BASH_SOURCE:-${(%):-%N}}")"; cd ..; pwd)/zetopt.sh"
+oneTimeSetUp() { :; }
+suite() { :; }
+
+__index__=1
+__index_width__=$(($(grep -cE '^test_.*\{' "${BASH_SOURCE:-${(%):-%N}}")))
+setUp() {
+    printf "%2s: " $((__index__++))
+    zetopt init
+    ZETOPT_CFG_DEBUG=false
+    ZETOPT_CFG_ERRMSG=false
+}
+tearDown() { :; }
+oneTimeTearDown() { :; }
+
+#------------------------------------------------------------
+# test functions
+#------------------------------------------------------------
+test_def_Short() {
+    zetopt def ver:v "#Help Message"
+    assertTrue "[def] Short: def ver:v" $?
+}
+
+test_def_Long() {
+    zetopt def ver:version "#Help Message"
+    assertTrue "[def] Long: def ver:version" $?
+}
+
+test_def_Short_and_Long() {
+    zetopt def ver:v:version "#Help Message"
+    assertTrue "[def] Short and Long: def ver:v:version" $?
+}
+
+test_def_Short_and_Long_in_Reverse_Position() {
+    zetopt def ver:version:v "#Help Message"
+    assertTrue "[def] Short and Long in Reverse Position: def ver:version:v" $?
+}
+
+test_def_Long_with_Blank() {
+    zetopt def ver::version "#Help Message"
+    assertTrue "[def] Long with Blank: def ver::version" $?
+}
+
+test_def_Short_with_Blank() {
+    zetopt def ver::v "#Help Message"
+    assertTrue "[def] Short with Blank: def ver::v" $?
+}
+
+test_def_Hyphenate_Long() {
+    zetopt def help:full-help "#Help Message"
+    assertTrue "[def] Hyphenate Long: def help:full-help" $?
+}
+
+test_def_with_Reqired_Argument() {
+    zetopt def req:r @ "#Help Message"
+    assertTrue "[def] with Reqired Argument: def req:r:require @" $?
+}
+
+test_def_with_Optional_Argument() {
+    zetopt def o:o % "#Help Message"
+    assertTrue "[def] with Optional Argument: def req:r:require %" $?
+}
+
+test_def_Multiple() {
+    zetopt def multi:m @ @ @ % % % "#Help Message"
+    assertTrue "[def] Multiple: def multi:m @ @ @ % % %" $?
+}
+
+test_def_Argument_Starting_with_Hyphen() {
+    zetopt def neg:n -@FOO "#Help Message"
+    assertTrue "[def] Argument starting with -: def neg:n -@FOO" $?
+}
+
+test_def_Argument_Starting_with_Double_Hyphen() {
+    zetopt def dash2:d --@FOO "#Help Message"
+    assertTrue "[def] Argument starting with --: def dash2:d --@FOO" $?
+}
+
+test_def_Variable_Length_Arguments() {
+    zetopt def var:v %... "#Help Message"
+    assertTrue "[def] Variable Length Arguments: def var:v %..." $?
+}
+
+test_def_Variable_Length_Arguments_with_Name() {
+    zetopt def var:v %FOO... "#Help Message"
+    assertTrue "[def] Variable Length Arguments with Name: def var:v %FOO..." $?
+}
+
+test_def_Global_Option() {
+    zetopt def verbose+:v "#Help Message"
+    assertTrue "[def] Global Option: def verbose+:v" $?
+}
+
+test_def_Arguments() {
+    zetopt def @ % "#Help Message"
+    assertTrue "[def] Arguments: def @ %" $?
+}
+
+test_def_Arguments_with_Name() {
+    zetopt def @FOO %BAR "#Help Message"
+    assertTrue "[def] Arguments with Name: def @FOO %BAR" $?
+}
+
+test_def_Help_Only() {
+    zetopt def / "#Help Message"
+    assertTrue "[def] Help Only: def \"#Help Message\"" $?
+}
+
+#
+# define Sub-Cmd
+#
+
+test_def_Sub_Cmd() {
+    zetopt def /remote/ "#Help Message"
+    assertTrue "[def] Sub-Cmd: def /remote/" $?
+}
+
+test_def_Sub_Sub_Cmd() {
+    zetopt def /remote/add/ "#Help Message"
+    assertTrue "[def] Sub-Sub-Cmd: def /remote/add/" $?
+}
+
+test_def_Sub_Cmd_without_Slash() {
+    zetopt def remote/add "#Help Message"
+    assertTrue "[def] Sub-Cmd without /: def remote/add" $?
+}
+
+test_def_Sub_Cmd_Name_Only() {
+    zetopt def remote "#Help Message"
+    assertTrue "[def] Sub-Cmd Name Only: def remote" $?
+}
+
+test_def_Sub_Cmd_with_Hyphenate_Name() {
+    zetopt def /remote-add/ "#Help Message"
+    assertTrue "[def] Sub-Cmd with Hyphenate Name: def /remote-add/" $?
+}
+
+test_def_Sub_Cmd_with_Arguments() {
+    zetopt def /remote/add/ @NAME @URL "#Help Message"
+    assertTrue "[def] Sub-Cmd with Arguments: def /remote/add/ @NAME @URL" $?
+}
+
+test_def_Sub_Cmd_Option() {
+    zetopt def /remote/add/ver:v:version "#Help Message"
+    assertTrue "[def] Sub-Cmd Option: def /remote/add/ver:v:version" $?
+}
+
+test_def_Sub_Cmd_Global_Option() {
+    zetopt def /remote/add/verbose+:v "#Help Message"
+    assertTrue "[def] Sub-Cmd Global Option: def /remote/add/verbose+:v" $?
+}
+
+test_def_Sub_Cmd_Override_Parent_Global_Option() {
+    zetopt def version+:v
+    zetopt def /sub/version+:v
+    assertTrue "[def] Sub-Cmd Override Parent Global Option" $?
+}
+
+test_def_Sub_Cmd_Help_Only() {
+    zetopt def /remote/add/ @ @ "#Help Message"
+    zetopt def /remote/add/     "#Help Message"
+    assertTrue "[def] Sub-Cmd Help Only: def /remote/add/ \"#Help Message\"" $?
+}
+
+#------------------------------------------------
+# define Error
+#------------------------------------------------
+test_def_ERR_Blank() {
+    zetopt def
+    assertFalse "[def][ERR] Blank: def" $?
+}
+
+test_def_ERR_Duplicate_Identifier() {
+    zetopt def ver:v:version "#Help Message"
+    zetopt def ver:x "#Help Message"
+    assertFalse "[def][ERR] Duplicate Identifier" $?
+}
+
+test_def_ERR_Duplicate_Short() {
+    zetopt def ver:v "#Help Message"
+    zetopt def vers:v "#Help Message"
+    assertFalse "[def][ERR] Duplicate Short" $?
+}
+
+test_def_ERR_Duplicate_Long() {
+    zetopt def ver:v:version "#Help Message"
+    zetopt def ver2:x:version "#Help Message"
+    assertFalse "[def][ERR] Duplicate Long" $?
+}
+
+test_def_ERR_Double_Short() {
+    zetopt def ver:v:w "#Help Message"
+    assertFalse "[def][ERR] Double Short: def ver:v:w" $?
+}
+
+test_def_ERR_Double_Long() {
+    zetopt def ver:version:ver-sion "#Help Message"
+    assertFalse "[def][ERR] Double Long: def ver:version:ver-sion" $?
+}
+
+test_def_ERR_Both_of_Short_and_Long_Blank() {
+    zetopt def ver:: "#Help Message"
+    assertFalse "[def][ERR] Both of Short and Long Blank: def ver::" $?
+}
+
+test_def_ERR_Invalid_Long_Name() {
+    zetopt def ver:ver.sion "#Help Message"
+    assertFalse "[def][ERR] Invalid Long Name: def ver:ver.sion" $?
+}
+
+test_def_ERR_Duplicate_Parameter_Names() {
+    zetopt def params:p @FOO %BAR %FOO
+    assertFalse "[def][ERR] Duplicate Parameter Name: def params:p @FOO %BAR %FOO" $?
+}
+
+test_def_ERR_Required_After_Optional() {
+    zetopt def % @
+    assertFalse "[def][ERR] Required After Optional: def % @" $?
+}
+
+test_def_ERR_Variable_Length_Arguments_is_Not_in_the_Last() {
+    zetopt def %...3 %
+    assertFalse "[def][ERR] Variable Length Arguments is Not in the Last: def %...3 %" $?
+}
+
+test_def_ERR_Missing_Help_Sign() {
+    zetopt def var:v "Help Message"
+    assertFalse "[def][ERR] Missing Help Sign#: def var:v \"Help Message\"" $?
+}
+
+test_def_ERR_Sub_Cmd_with_Global_Sign() {
+    zetopt def /remote/add+/ "#Help Message"
+    assertFalse "[def][ERR] Sub-Cmd with Global Sign+: def /remote/add+/" $?
+}
+
+#------------------------------------------------
+# parse
+#------------------------------------------------
+test_parse_Short() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt parse -v
+    assertTrue "[parse] Short: -v" $?
+}
+
+test_parse_Long() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt parse --version
+    assertTrue "[parse] Long: --version" $?
+}
+
+test_parse_Multiple() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt parse -v --version -h --help
+    assertTrue "[parse] Multiple: parse -v --version -h --help" $?
+}
+
+test_parse_Clustered() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt def opt:o          "#Help Message"
+    zetopt parse -vho
+    assertTrue "[parse] Clustered: parse -vho" $?
+}
+
+test_parse_Clustered_with_last_arguments() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt def opt:o @ %      "#Help Message"
+    zetopt parse -vho FOO BAR
+    assertTrue "[parse] Clustered with last arguments: parse -vho FOO BAR" $?
+}
+
+test_parse_Sub_Command() {
+    zetopt def /remote/add/ @NAME @URL  "#Help Message"
+    zetopt parse remote add -- FOO http://example.com/ 
+    assertTrue "[parse] Sub-Command: parse add remote NAME URL" $?
+}
+
+test_parse_Sub_Command_Option() {
+    zetopt def /remote/add/ver:v    "#Help Message"
+    zetopt parse remote add -v
+    assertTrue "[parse] Sub-Command Option: parse remote add -v" $?
+}
+
+#------------------------------------------------
+# parse Error
+#------------------------------------------------
+test_parse_ERR_Undefined_Option() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt parse "-h"
+    assertFalse "[parse][ERR] Undefined Option" $?
+}
+
+#------------------------------------------------
+# isset
+#------------------------------------------------
+test_isset_isset_ver() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt parse "-v"
+    zetopt isset ver
+    assertTrue "[isset] isset ver" $?
+}
+
+#------------------------------------------------
+# isset Error
+#------------------------------------------------
+test_isset_ERR_isset_ver() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt parse "-v"
+    zetopt isset help
+    assertFalse "[isset][ERR] --> isset ver" $?
+}
+
+#------------------------------------------------
+# isvalid
+#------------------------------------------------
+test_isvalid_isvalid_opt() {
+    zetopt def opt:o:option %
+    zetopt parse -o A
+    zetopt isvalid opt
+    assertTrue "[isvalid] isvalid opt" $?
+}
+
+test_isvalid_def_opt() {
+    zetopt def opt:o @ %
+    zetopt parse -o A
+    zetopt isvalid opt @
+    assertTrue "[isvalid] def opt:o @ % --> parse -o A " $?
+}
+
+test_isvalid_def_opt2() {
+    zetopt def opt:o @ %
+    zetopt parse -o A -o B
+    zetopt isvalid opt @
+    assertTrue "[isvalid] def opt:o @ % --> parse -o A -o B --> isvalid opt @" $?
+}
+
+#------------------------------------------------
+# isvalid Error
+#------------------------------------------------
+test_isvalid_ERR_isvalid_opt() {
+    zetopt def opt1:opt1 @
+    zetopt def opt2:opt2 @
+    zetopt parse --opt1 foo ||:
+    zetopt isvalid opt2
+    assertFalse "[isvalid][ERR] isvalid opt" $?
+}
+
+#------------------------------------------------
+# value
+#------------------------------------------------
+test_value() {
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -v foo bar baz1 baz2 baz3
+    local v="$(zetopt value val FOO BAR BAZ,$)"  
+    assertEquals "[value] @FOO @BAR %BAZ...3 --> FOO BAR BAZ,$" "foo bar baz1 baz2 baz3" "$v"
+}
+
+test_value_array() {
+    zetopt def val:v @FOO @BAR %BAZ %...3
+    zetopt parse -v foo bar baz1 baz2 baz3 baz4
+    local arr=
+    zetopt value -a arr val ^ BAR BAZ,-2
+    assertEquals '[value] -a arr val ^ BAR BAZ,-2' "foo bar baz1 baz2 baz3" "${arr[*]}"
+}
+
+test_value_CFG_IFS() {
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -v foo bar baz1 baz2 baz3
+    ZETOPT_CFG_VALUE_IFS=:
+    local v="$(zetopt value val $,^)"  
+    assertEquals "[value] @FOO @BAR %BAZ...3 --> $,^" "baz3:baz2:baz1:bar:foo" "$v"
+}
+
+test_value_array_newlines() {
+    zetopt def val:v @FOO
+    zetopt parse -v line1$'\n'line2$'\n'line3$'\n\n'line5$'\n\n\n'
+    local arr=
+    zetopt value -a arr val FOO
+    assertEquals "[value] -a arr val FOO" line1$'\n'line2$'\n'line3$'\n\n'line5$'\n\n\n' "${arr[@]}"
+}
+
+#------------------------------------------------
+# validator
+#------------------------------------------------
+test_def_validator() {
+    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt def alph:A @TEXT~ALPH
+    zetopt parse -A "CAPITAL ALPHABET"
+    assertTrue $?
+    zetopt parse -A "capital alphabet"
+    assertFalse $?
+}
+
+test_def_validator_with_ignore_case_flag() {
+    zetopt def-validator -i ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt def alph:A @TEXT~ALPH
+    zetopt parse -A "capital alphabet"
+    assertTrue $?
+}
+
+test_def_validator_with_not_flag() {
+    zetopt def-validator -n ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt def alph:A @TEXT~ALPH
+    zetopt parse -A "capital alphabet"
+    assertTrue "[validator] capital alphabets" $?
+    zetopt parse -A "CAPITAL ALPHABET"
+    assertFalse $?
+}
+
+validator_wkport(){ [[ ${1-} =~ ^[0-9]+$ && $1 -ge 1024 && $1 -le 65535 ]]; }
+test_def_validator_with_func_flag() {
+    zetopt def-validator -f wkport validator_wkport
+    zetopt def port:p @PORT~wkport
+    zetopt parse -p 1024
+    assertTrue $?
+    zetopt parse -p 1023
+    assertFalse $?
+    zetopt parse -p 65535
+    assertTrue $?
+    zetopt parse -p 65536
+    assertFalse $?
+}
+
+#------------------------------------------------
+# default
+#------------------------------------------------
+test_default() {
+    zetopt def val:v @FOO %BAR=bar %BAZ...3=baz
+    zetopt parse -v foo
+    local v=$(zetopt value val @)
+    assertEquals "foo bar baz" "$v"
+}
+
+test_default_ERR_def() {
+    zetopt def val:v @FOO %BAR=bar %BAZ...3
+    assertFalse $?
+}
+
+test_default_noarg() {
+    zetopt def val:v %...5=foo
+    zetopt parse -v
+    local v=$(zetopt value val)
+    assertEquals "foo" "$v"
+}
+
+test_default_noarg2() {
+    zetopt def val:v %...5=foo
+    zetopt parse -v
+    local v=$(zetopt value val)
+    assertEquals "foo" "$v"
+}
+
+test_default_noarg3() {
+    zetopt def val:v % %...5=bar
+    zetopt parse -v
+    local v=$(zetopt value val)
+    assertEquals "" "$v"
+}
+
+test_default_defval() {
+    zetopt def val:v @FOO=foo @BAR=bar
+    local v=$(zetopt default val)
+    assertEquals "foo bar" "$v"
+}
+
+test_default_defval_pickup() {
+    zetopt def val:v @FOO @BAR=bar
+    local v=$(zetopt default val BAR)
+    assertEquals "bar" "$v"
+}
+
+#------------------------------------------------
+# count
+#------------------------------------------------
+test_count() {
+    ZETOPT_CFG_OPTTYPE_PLUS=true
+    zetopt def verbose:v
+    zetopt parse -v -vvv +v +vvv
+    local v=$(zetopt count verbose)
+    assertEquals "8" "$v"
+}
+
+#------------------------------------------------
+# status
+#------------------------------------------------
+test_status() {
+    zetopt def flag:f
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -f -v foo bar
+    assertEquals "0" "$(zetopt status flag)"
+    assertEquals "$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val)"
+}
+
+test_status_multi() {
+    zetopt def flag:f
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -f -ff -f -v foo bar baz -v foo bar
+    assertEquals "0 0 0 0" "$(zetopt status flag @)"
+    assertEquals "0 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val @)"
+}
+
+test_status_multi_last() {
+    zetopt def flag:f
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -f -ff -f -v foo bar baz -v foo bar
+    assertEquals "0" "$(zetopt status flag)"
+    assertEquals "$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val)"
+}
+
+test_status_notset() {
+    zetopt def flag:f
+    zetopt def val:v @FOO @BAR %BAZ...3
+    zetopt parse -v foo bar
+    assertEquals "_" "_$(zetopt status flag)"
+}
+
+#------------------------------------------------
+# length
+#------------------------------------------------
+test_length() {
+    zetopt def val:v @FOO @BAR %BAZ
+    zetopt parse -v FOO BAR
+    assertEquals 2 "$(zetopt length val)"
+}
+
+test_length_variable() {
+    zetopt def val1:v @FOO @BAR %BAZ...3
+    zetopt def val2:V %FOO...
+    zetopt parse -v FOO BAR BAZ1 BAZ2 -V {a..z}
+    assertEquals 4 "$(zetopt length val1)"
+    assertEquals 26 "$(zetopt length val2)"
+}
+
+test_length_notset() {
+    zetopt def val1:v @FOO @BAR %BAZ...3
+    zetopt parse
+    assertEquals 0 "$(zetopt length val1)"
+}
+
+#------------------------------------------------
+# type
+#------------------------------------------------
+test_type() {
+    ZETOPT_CFG_OPTTYPE_PLUS=true
+    zetopt def /sub/ %FOO
+    zetopt def verbose:v:verbose
+    zetopt parse sub foo
+    assertEquals $ZETOPT_TYPE_CMD "$(zetopt type /sub/)"
+    zetopt reset
+    zetopt parse -v --verbose +v
+    assertEquals $ZETOPT_TYPE_SHORT "$(zetopt type verbose ^)"
+    assertEquals $ZETOPT_TYPE_LONG "$(zetopt type verbose -2)"
+    assertEquals $ZETOPT_TYPE_PLUS "$(zetopt type verbose $)"
+}
+
+
+# load shunit2 functions
+. "$SHUNIT2_BIN"
