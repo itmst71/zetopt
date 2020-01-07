@@ -1,3 +1,10 @@
 language: bash
+
+addons:
+  apt:
+    packages:
+      - zsh
+
 install: true
+
 script: make test
