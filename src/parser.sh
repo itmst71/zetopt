@@ -23,6 +23,11 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
+    if _zetopt::utils::is_true "${_ZETOPT_DEF_ERROR-}"; then
+        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
+        return 1
+    fi
+
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:::"$'\n'
     fi

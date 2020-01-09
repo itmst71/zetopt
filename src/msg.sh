@@ -26,6 +26,12 @@ _zetopt::msg::user_error()
     \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
+_zetopt::msg::def_error()
+{
+    _ZETOPT_DEF_ERROR=true
+    _zetopt::msg::script_error "$@"
+}
+
 _zetopt::msg::script_error()
 {
     if ! _zetopt::utils::is_true "$ZETOPT_CFG_DEBUG"; then

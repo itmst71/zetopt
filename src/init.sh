@@ -3,6 +3,7 @@
 #------------------------------------------------------------
 _zetopt::init::init()
 {
+    _ZETOPT_DEF_ERROR=false
     _ZETOPT_DEFINED=
     _ZETOPT_OPTHELPS=()
     _ZETOPT_HELPS_IDX=()
