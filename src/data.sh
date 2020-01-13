@@ -137,7 +137,7 @@ _zetopt::data::validx()
         for input_idx in "$@"
         do
             if [[ ! $input_idx =~ ^(@|([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$input_idx"
+                _zetopt::msg::debug "Bad Key:" "$input_idx"
                 return 1
             fi
 
@@ -202,7 +202,7 @@ _zetopt::data::validx()
                 [[ $list_start_idx == $list_end_idx ]] \
                 && local translated_idx=$list_start_idx \
                 || local translated_idx=$list_start_idx~$list_end_idx
-                _zetopt::msg::script_error "Session Index Out of Range ($ZETOPT_IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
+                _zetopt::msg::debug "Session Index Out of Range ($ZETOPT_IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -239,7 +239,7 @@ _zetopt::data::validx()
                 fi
 
                 if [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                    _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
+                    _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
                     return 1
                 fi
 
@@ -288,7 +288,7 @@ _zetopt::data::validx()
                     [[ $val_start_idx == $val_end_idx ]] \
                     && local translated_idx=$val_start_idx \
                     || local translated_idx=$val_start_idx~$val_end_idx
-                    _zetopt::msg::script_error "Value Index Out of Range ($ZETOPT_IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
+                    _zetopt::msg::debug "Value Index Out of Range ($ZETOPT_IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
@@ -363,7 +363,7 @@ _zetopt::data::argvalue()
                 __array_mode=true;
                 shift;
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::script_error "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
                 __arrname=$1
@@ -377,7 +377,7 @@ _zetopt::data::argvalue()
     if [[ $__array_mode == true ]]; then
         # check the user defined array name before eval to avoid overwriting local variables
         if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::script_error "Invalid Array Name:" "$__arrname"
+            _zetopt::msg::debug "Invalid Array Name:" "$__arrname"
             return 1
         fi
         \eval "$__arrname=()"
@@ -444,7 +444,7 @@ _zetopt::data::arglength()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx:@")
@@ -477,7 +477,7 @@ _zetopt::data::status()
         for idx in "$@"
         do
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -507,7 +507,7 @@ _zetopt::data::type()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")

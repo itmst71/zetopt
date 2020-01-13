@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-07 13:00)
+# Version     : 1.2.0a (2020-01-13 21:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-07 13:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-13 21:00)"
 
 
 #------------------------------------------------------------
@@ -201,7 +201,7 @@ zetopt()
         parsed)
             _zetopt::data::parsed "${@-}";;
         *)
-            _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
+            _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
             return 1;;
     esac
 }
@@ -871,13 +871,13 @@ _zetopt::def::paramlen()
 _zetopt::def::default()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} || -z ${1-} ]]; then
-        _zetopt::msg::script_error "Syntax Error"
+        _zetopt::msg::debug "Syntax Error"
         return 1
     fi
 
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
-        _zetopt::msg::script_error "No Such Indentifier:" "${1-}"
+        _zetopt::msg::debug "No Such Indentifier:" "${1-}"
         return 1
     fi
     shift
@@ -887,13 +887,13 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        _zetopt::msg::script_error "No Parameter Defined"
+        _zetopt::msg::debug "No Parameter Defined"
         return 1
     fi
 
     defaults_idx_arr=(${params[@]#*=})
     if [[ "${defaults_idx_arr[*]}" =~ ^[0\ ]$ ]]; then
-        _zetopt::msg::script_error "Default Value Not Set"
+        _zetopt::msg::debug "Default Value Not Set"
         return 1
     fi
 
@@ -903,7 +903,7 @@ _zetopt::def::default()
     for key in "${@-}"
     do
         if [[ ! $key =~ ^(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
-            _zetopt::msg::script_error "Bad Key:" "$key"
+            _zetopt::msg::debug "Bad Key:" "$key"
             return 1
         fi
 
@@ -939,7 +939,7 @@ _zetopt::def::default()
                 idx+=1
                 continue
             elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
+                _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
                 return 1
             fi
 
@@ -979,7 +979,7 @@ _zetopt::def::default()
             [[ $start_idx == $end_idx ]] \
             && local translated_idx=$start_idx \
             || local translated_idx=$start_idx~$end_idx
-            _zetopt::msg::script_error "Index Out of Range ($ZETOPT_IDX_OFFSET~$last_idx):" "Translate \"$key\" -> $translated_idx"
+            _zetopt::msg::debug "Index Out of Range ($ZETOPT_IDX_OFFSET~$last_idx):" "Translate \"$key\" -> $translated_idx"
             return 1
         fi
 
@@ -988,7 +988,7 @@ _zetopt::def::default()
         do
             default_idx=${defaults_idx_arr[idx]}
             if [[ $default_idx -eq 0 ]]; then
-                _zetopt::msg::script_error "Default Value Not Set"
+                _zetopt::msg::debug "Default Value Not Set"
                 return 1
             fi
             output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")
@@ -1027,7 +1027,7 @@ _zetopt::parser::init()
 _zetopt::parser::parse()
 {
     if _zetopt::utils::is_true "${_ZETOPT_DEF_ERROR-}"; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
+        _zetopt::msg::debug "Invalid Definition Data:" "Fix definition error before parse"
         return 1
     fi
 
@@ -1049,7 +1049,7 @@ _zetopt::parser::parse()
     local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
+        _zetopt::msg::debug "Invalid Definition Data:" "Root Namespace Not Found"
         return 1
     fi
 
@@ -1464,7 +1464,7 @@ _zetopt::parser::validate()
 
     declare -i validator_idx="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
     if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
-        _zetopt::msg::script_error "Internal Error:" "Validator Broken"
+        _zetopt::msg::debug "Internal Error:" "Validator Broken"
         return 1
     fi
     local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
@@ -1759,7 +1759,7 @@ _zetopt::data::validx()
         for input_idx in "$@"
         do
             if [[ ! $input_idx =~ ^(@|([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$input_idx"
+                _zetopt::msg::debug "Bad Key:" "$input_idx"
                 return 1
             fi
 
@@ -1824,7 +1824,7 @@ _zetopt::data::validx()
                 [[ $list_start_idx == $list_end_idx ]] \
                 && local translated_idx=$list_start_idx \
                 || local translated_idx=$list_start_idx~$list_end_idx
-                _zetopt::msg::script_error "Session Index Out of Range ($ZETOPT_IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
+                _zetopt::msg::debug "Session Index Out of Range ($ZETOPT_IDX_OFFSET~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -1861,7 +1861,7 @@ _zetopt::data::validx()
                 fi
 
                 if [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                    _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
+                    _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
                     return 1
                 fi
 
@@ -1910,7 +1910,7 @@ _zetopt::data::validx()
                     [[ $val_start_idx == $val_end_idx ]] \
                     && local translated_idx=$val_start_idx \
                     || local translated_idx=$val_start_idx~$val_end_idx
-                    _zetopt::msg::script_error "Value Index Out of Range ($ZETOPT_IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
+                    _zetopt::msg::debug "Value Index Out of Range ($ZETOPT_IDX_OFFSET~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
@@ -1985,7 +1985,7 @@ _zetopt::data::argvalue()
                 __array_mode=true;
                 shift;
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::script_error "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
                 __arrname=$1
@@ -1999,7 +1999,7 @@ _zetopt::data::argvalue()
     if [[ $__array_mode == true ]]; then
         # check the user defined array name before eval to avoid overwriting local variables
         if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::script_error "Invalid Array Name:" "$__arrname"
+            _zetopt::msg::debug "Invalid Array Name:" "$__arrname"
             return 1
         fi
         \eval "$__arrname=()"
@@ -2066,7 +2066,7 @@ _zetopt::data::arglength()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx:@")
@@ -2099,7 +2099,7 @@ _zetopt::data::status()
         for idx in "$@"
         do
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -2129,7 +2129,7 @@ _zetopt::data::type()
         for idx in "$@"
         do 
             if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::script_error "Bad Key:" "$idx"
+                _zetopt::msg::debug "Bad Key:" "$idx"
                 return 1
             fi
             idxarr+=("$idx")
@@ -2188,10 +2188,10 @@ _zetopt::msg::user_error()
 _zetopt::msg::def_error()
 {
     _ZETOPT_DEF_ERROR=true
-    _zetopt::msg::script_error "$@"
+    _zetopt::msg::debug "$@"
 }
 
-_zetopt::msg::script_error()
+_zetopt::msg::debug()
 {
     if ! _zetopt::utils::is_true "$ZETOPT_CFG_DEBUG"; then
         return 0
@@ -2342,7 +2342,7 @@ _zetopt::utils::stack_trace()
 _zetopt::utils::repeat()
 {
     if [[ $# -ne 2 || ! $1 =~ ^[1-9][0-9]*$ ]]; then
-        _zetopt::msg::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
+        _zetopt::msg::debug "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
         return 1
     fi
     local IFS=$' '
@@ -2376,12 +2376,12 @@ _zetopt::utils::seq()
     fi
     
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
+        _zetopt::msg::debug "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
         return 1
     fi
 
     if [[ ! $start =~ ^([a-zA-Z]|-?[0-9]+)$ ]] || [[ ! $end =~ ^([a-zA-Z]|-?[0-9]+)$ ]]; then
-        _zetopt::msg::script_error "Accepts:" "^([a-zA-Z]|-?[0-9]+)$"
+        _zetopt::msg::debug "Accepts:" "^([a-zA-Z]|-?[0-9]+)$"
         return 1
     fi
 
@@ -2423,7 +2423,7 @@ _zetopt::utils::is_true()
     done
 
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "Usage:" "_zetopt::utils::is_true [-t|--true <TRUE_STRING>] [-f|--false <FALSE_STRING>] <VALUE_TO_CHECK>"
+        _zetopt::msg::debug "Usage:" "_zetopt::utils::is_true [-t|--true <TRUE_STRING>] [-f|--false <FALSE_STRING>] <VALUE_TO_CHECK>"
         return 1
     fi
 
@@ -2503,7 +2503,7 @@ _zetopt::utils::fold()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--lang <LANG>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
+        _zetopt::msg::debug "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--lang <LANG>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
         return 1
     fi
 
@@ -2686,18 +2686,18 @@ _zetopt::help::rename()
         _zetopt::help::init
     fi
     if [[ $# -ne 2 || -z ${1-} || -z ${2-} ]]; then
-        _zetopt::msg::script_error "Usage:" "zetopt def-help --rename <OLD_TITLE> <NEW_TITLE>"
+        _zetopt::msg::debug "Usage:" "zetopt def-help --rename <OLD_TITLE> <NEW_TITLE>"
         return 1
     fi
     local oldtitle="$1"
     local newtitle="$2"
     local idx=$(_zetopt::help::search "$oldtitle")
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
-        _zetopt::msg::script_error "No Such Help Title: $oldtitle"
+        _zetopt::msg::debug "No Such Help Title: $oldtitle"
         return 1
     fi
     if [[ $(_zetopt::help::search "$newtitle") -ne $ZETOPT_IDX_NOT_FOUND ]]; then
-        _zetopt::msg::script_error "Already Exists: $newtitle"
+        _zetopt::msg::debug "Already Exists: $newtitle"
         return 1
     fi
     local refidx=$(($idx + $ZETOPT_IDX_OFFSET))
@@ -2744,7 +2744,7 @@ _zetopt::help::show()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::script_error "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
+        _zetopt::msg::debug "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
         return 1
     fi
     IFS=$' '

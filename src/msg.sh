@@ -29,10 +29,10 @@ _zetopt::msg::user_error()
 _zetopt::msg::def_error()
 {
     _ZETOPT_DEF_ERROR=true
-    _zetopt::msg::script_error "$@"
+    _zetopt::msg::debug "$@"
 }
 
-_zetopt::msg::script_error()
+_zetopt::msg::debug()
 {
     if ! _zetopt::utils::is_true "$ZETOPT_CFG_DEBUG"; then
         return 0

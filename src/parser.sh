@@ -24,7 +24,7 @@ _zetopt::parser::init()
 _zetopt::parser::parse()
 {
     if _zetopt::utils::is_true "${_ZETOPT_DEF_ERROR-}"; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
+        _zetopt::msg::debug "Invalid Definition Data:" "Fix definition error before parse"
         return 1
     fi
 
@@ -46,7 +46,7 @@ _zetopt::parser::parse()
     local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
+        _zetopt::msg::debug "Invalid Definition Data:" "Root Namespace Not Found"
         return 1
     fi
 
@@ -461,7 +461,7 @@ _zetopt::parser::validate()
 
     declare -i validator_idx="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
     if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
-        _zetopt::msg::script_error "Internal Error:" "Validator Broken"
+        _zetopt::msg::debug "Internal Error:" "Validator Broken"
         return 1
     fi
     local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"

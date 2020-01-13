@@ -610,13 +610,13 @@ _zetopt::def::paramlen()
 _zetopt::def::default()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} || -z ${1-} ]]; then
-        _zetopt::msg::script_error "Syntax Error"
+        _zetopt::msg::debug "Syntax Error"
         return 1
     fi
 
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
-        _zetopt::msg::script_error "No Such Indentifier:" "${1-}"
+        _zetopt::msg::debug "No Such Indentifier:" "${1-}"
         return 1
     fi
     shift
@@ -626,13 +626,13 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        _zetopt::msg::script_error "No Parameter Defined"
+        _zetopt::msg::debug "No Parameter Defined"
         return 1
     fi
 
     defaults_idx_arr=(${params[@]#*=})
     if [[ "${defaults_idx_arr[*]}" =~ ^[0\ ]$ ]]; then
-        _zetopt::msg::script_error "Default Value Not Set"
+        _zetopt::msg::debug "Default Value Not Set"
         return 1
     fi
 
@@ -642,7 +642,7 @@ _zetopt::def::default()
     for key in "${@-}"
     do
         if [[ ! $key =~ ^(@|(([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$ZETOPT_IDX_OFFSET]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
-            _zetopt::msg::script_error "Bad Key:" "$key"
+            _zetopt::msg::debug "Bad Key:" "$key"
             return 1
         fi
 
@@ -678,7 +678,7 @@ _zetopt::def::default()
                 idx+=1
                 continue
             elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
+                _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
                 return 1
             fi
 
@@ -718,7 +718,7 @@ _zetopt::def::default()
             [[ $start_idx == $end_idx ]] \
             && local translated_idx=$start_idx \
             || local translated_idx=$start_idx~$end_idx
-            _zetopt::msg::script_error "Index Out of Range ($ZETOPT_IDX_OFFSET~$last_idx):" "Translate \"$key\" -> $translated_idx"
+            _zetopt::msg::debug "Index Out of Range ($ZETOPT_IDX_OFFSET~$last_idx):" "Translate \"$key\" -> $translated_idx"
             return 1
         fi
 
@@ -727,7 +727,7 @@ _zetopt::def::default()
         do
             default_idx=${defaults_idx_arr[idx]}
             if [[ $default_idx -eq 0 ]]; then
-                _zetopt::msg::script_error "Default Value Not Set"
+                _zetopt::msg::debug "Default Value Not Set"
                 return 1
             fi
             output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")

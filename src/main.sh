@@ -165,7 +165,7 @@ zetopt()
         parsed)
             _zetopt::data::parsed "${@-}";;
         *)
-            _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
+            _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
             return 1;;
     esac
 }
