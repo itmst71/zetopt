@@ -8,7 +8,7 @@ if [[ -n ${ZSH_VERSION-} ]]; then
     setopt SH_WORD_SPLIT
     #setopt KSH_ARRAYS
 fi
-. "$(cd -- "$(dirname -- "${BASH_SOURCE:-${(%):-%N}}")"; cd ..; pwd)/zetopt.sh"
+. "$ZETOPT_DIST_FILE"
 oneTimeSetUp() { :; }
 suite() { :; }
 
