@@ -69,6 +69,7 @@ readonly ZETOPT_IDX_NOT_FOUND=-1
 zetopt()
 {
     declare -r _PATH=$PATH
+    declare -r LF=$'\n'
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
     local _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"

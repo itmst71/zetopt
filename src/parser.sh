@@ -29,7 +29,7 @@ _zetopt::parser::parse()
     fi
 
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:::"$'\n'
+        _ZETOPT_DEFINED="/:::$LF"
     fi
     _zetopt::parser::init
     _zetopt::data::init
@@ -272,7 +272,7 @@ _zetopt::parser::parse()
 _zetopt::parser::setsub()
 {
     local id=${1-}
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
@@ -305,7 +305,7 @@ _zetopt::parser::setopt()
         return 1
     fi
 
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
@@ -598,7 +598,7 @@ _zetopt::parser::assign_args()
     fi
 
     # update parsed data
-    if [[ ! $'\n'$_ZETOPT_PARSED =~ (.*$'\n')((${id}):([^:]*):([^:]*):([^:]*):([^:]*))($'\n'.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"

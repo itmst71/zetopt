@@ -46,7 +46,7 @@ _zetopt::msg::script_error()
     local col="${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}"
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local before=2 after=2
-    local IFS=$'\n' stack
+    local IFS=$LF stack
     stack=($(_zetopt::utils::stack_trace))
     local caller_info="${stack[$((${#stack[@]} -1 + $ZETOPT_IDX_OFFSET))]}"
     [[ $caller_info =~ \(([0-9]+)\).?$ ]] \

@@ -27,8 +27,8 @@ _zetopt::help::search()
         [[ -n ${ZSH_VERSION-} ]] \
         && \setopt localoptions NOCASEMATCH \
         || \shopt -s nocasematch
-        local IFS=$'\n'
-        [[ $'\n'"${_ZETOPT_HELPS_IDX[*]}"$'\n' =~ $'\n'([0-9]+):$title$'\n' ]] \
+        local IFS=$LF
+        [[ "$LF${_ZETOPT_HELPS_IDX[*]}$LF" =~ $LF([0-9]+):$title$LF ]] \
         && \printf -- "%s" ${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]} \
         || \printf -- "%s" $ZETOPT_IDX_NOT_FOUND
     )"
@@ -139,7 +139,7 @@ _zetopt::help::show()
     if [[ -z "${titles[@]-}" ]]; then
         titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
     fi
-    IFS=$'\n'
+    IFS=$LF
     
     for title in "${titles[@]}"
     do
@@ -199,7 +199,7 @@ _zetopt::help::indent()
 _zetopt::help::synopsis()
 {
     local title="${1-}"
-    local IFS=$'\n' app="$ZETOPT_CALLER_NAME"
+    local IFS=$LF app="$ZETOPT_CALLER_NAME"
     local ns cmd has_arg has_arg_req has_opt has_sub line args bodyarr
     declare -i idx loop cmdcol
     local ignore_subcmd_undef=$(_zetopt::utils::is_true -t true -f false "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")
@@ -310,7 +310,7 @@ _zetopt::help::decorate()
 
 _zetopt::help::synopsis_options()
 {
-    local IFS=$'\n' ns="${1-}" line
+    local IFS=$LF ns="${1-}" line
     for line in $(_zetopt::def::options "$ns")
     do
         \printf -- "[%s] " "$(_zetopt::help::format --synopsis "$line")"
@@ -324,7 +324,7 @@ _zetopt::help::fmtcmdopt()
     local id tmp desc optarg cmd helpidx cmdhelpidx arghelpidx optlen subcmd_title
     local nslist ns prev_ns=/
     local incremented=false did_output=false
-    local IFS=$'\n' indent
+    local IFS=$LF indent
     declare -i cols max_cols indent_cnt 
 
     local sub_title_deco= sub_deco=
@@ -454,7 +454,7 @@ _zetopt::help::format()
     short=${2-}
     long=${3-}
     args=${4-}
-    IFS=$'\n'
+    IFS=$LF
     
     if [[ $id =~ /$ ]]; then
         default_argname=ARG_
@@ -500,7 +500,7 @@ _zetopt::help::format()
         if [[ $arg =~ ([.]{3,3}[0-9]*)= ]]; then
             optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}]"
         fi
-        IFS=$'\n'
+        IFS=$LF
     fi
     \printf -- "%b" "$optargs"
 }

@@ -14,7 +14,7 @@ build: zetopt.sh
 
 zetopt.sh: src/*.sh
 	@echo Build zetopt.sh;\
-	rm zetopt.sh &&\
+	: > zetopt.sh &&\
 	for name in $(ZETOPT_SRC_NAMES);\
 	do\
 		cat -- src/$$name.sh >> zetopt.sh;\

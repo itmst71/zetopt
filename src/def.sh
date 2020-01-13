@@ -10,7 +10,7 @@
 _zetopt::def::define()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED=$'/::::0 0\n'
+        _ZETOPT_DEFINED="/::::0 0$LF"
         _ZETOPT_OPTHELPS=("")
         _ZETOPT_DEFAULTS=("")
     fi
@@ -119,7 +119,7 @@ _zetopt::def::define()
         # command has two help indices for itself and its argument
         helpidx="0 0"
 
-        if [[ $_ZETOPT_DEFINED =~ (^|.*$'\n')((${id}:[^$'\n']+:)([0-9]+)\ ([0-9]+)$'\n')(.*) ]]; then
+        if [[ $_ZETOPT_DEFINED =~ (^|.*$LF)(($id:[^$LF]+:)([0-9]+)\ ([0-9]+)$LF)(.*) ]]; then
             local head_lines="${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}"
             local tmp_line="${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]}"
             local tmp_line_nohelp="${BASH_REMATCH[$((3 + $ZETOPT_IDX_OFFSET))]}"
@@ -131,15 +131,15 @@ _zetopt::def::define()
             if [[ $tmp_line == "${id}::::0 0" ]]; then
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
-            elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$'\n'$ ]]; then
+            elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$LF$ ]]; then
                 _zetopt::msg::def_error "Already Defined:" "$id"
                 return 1
 
             # help only definition: rewrite help reference number part of existing definition
-            elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$'\n'$ ]]; then
+            elif [[ $help_only == true && $tmp_line =~ :0\ ([0-9]+)$LF$ ]]; then
                 _ZETOPT_OPTHELPS+=("$helpdef")
                 helpidx=$((${#_ZETOPT_OPTHELPS[@]} - 1 + $ZETOPT_IDX_OFFSET))
-                _ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg"$'\n'"$tail_lines"
+                _ZETOPT_DEFINED="$head_lines$tmp_line_nohelp$helpidx $helpidx_cmdarg$LF$tail_lines"
                 return 0
 
             # remove help only definition and continue parsing
@@ -149,7 +149,7 @@ _zetopt::def::define()
         fi
     fi
     
-    if [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]; then
+    if [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]; then
         _zetopt::msg::def_error "Duplicate Identifier:" "$id"
         return 1
     fi
@@ -180,7 +180,7 @@ _zetopt::def::define()
                 fi
                 
                 # subcommand scope option
-                if [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
                     _zetopt::msg::def_error "Already Defined:" "-$1"
                     return 1
                 fi
@@ -199,7 +199,7 @@ _zetopt::def::define()
                 fi
 
                 # subcommand scope option
-                if [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
                     _zetopt::msg::def_error "Already Defined:" "--$1"
                     return 1
                 fi
@@ -264,7 +264,7 @@ _zetopt::def::define()
             param_validator_idx=0
             if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
                 param_validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-                if [[ ! $'\n'${_ZETOPT_VALIDATOR_KEYS-} =~ $'\n'$param_validator_name:([0-9]+)$'\n' ]]; then
+                if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
                     _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
                     return 1
                 fi
@@ -297,7 +297,7 @@ _zetopt::def::define()
         fi
     fi
 
-    _ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$helpidx"$'\n'
+    _ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$helpidx$LF"
 
     # defines parent subcommands automatically
     IFS=$' '
@@ -305,8 +305,8 @@ _zetopt::def::define()
     for ns in ${namespace//\// }
     do
         curr_ns="${curr_ns%*/}/$ns/"
-        [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'$curr_ns: ]] && return 0
-        _ZETOPT_DEFINED+="$curr_ns::::0 0"$'\n'
+        [[ $LF$_ZETOPT_DEFINED =~ $LF$curr_ns: ]] && return 0
+        _ZETOPT_DEFINED+="$curr_ns::::0 0$LF"
     done
 }
 
@@ -376,7 +376,7 @@ _zetopt::def::def_validator()
             return 1
         fi
     fi
-    if [[ $'\n'$_ZETOPT_VALIDATOR_KEYS =~ $'\n'$name: ]]; then
+    if [[ $LF$_ZETOPT_VALIDATOR_KEYS =~ $LF$name: ]]; then
         _zetopt::msg::def_error "Duplicate Validator Name:" "$name"
         return 1
     fi
@@ -392,7 +392,7 @@ _zetopt::def::def_validator()
     fi
     _ZETOPT_VALIDATOR_DATA+=("$name:$type:$flags:$msg_idx:$validator")
     validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $ZETOPT_IDX_OFFSET))
-    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$'\n'
+    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
 }
 
 
@@ -402,7 +402,7 @@ _zetopt::def::def_validator()
 _zetopt::def::defined()
 {
     if [[ -z ${_ZETOPT_DEFINED-} ]]; then
-        _ZETOPT_DEFINED="/:::"$'\n'
+        _ZETOPT_DEFINED="/:::$LF"
     fi
     if [[ -z ${1-} ]]; then
         \printf -- "%s" "$_ZETOPT_DEFINED"
@@ -421,7 +421,7 @@ _zetopt::def::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $'\n'$_ZETOPT_DEFINED$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
+    if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
@@ -446,7 +446,7 @@ _zetopt::def::exists()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id=/$id
-    [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${id}[+]?: ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]
 }
 
 # Check if the current namespace has subcommands
@@ -459,7 +459,7 @@ _zetopt::def::has_subcmd()
         return 1
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
-    [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${ns}[a-zA-Z0-9_-]+/ ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_-]+/ ]]
 }
 
 # Check if the current namespace has options
@@ -473,7 +473,7 @@ _zetopt::def::has_options()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
-    [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${ns}[a-zA-Z0-9_]+[+]?: ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+[+]?: ]]
 }
 
 # Check if the current namespace has arguments
@@ -487,7 +487,7 @@ _zetopt::def::has_arguments()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
-    [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'${ns}:::-?[@%] ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}:::-?[@%] ]]
 }
 
 
@@ -525,7 +525,7 @@ _zetopt::def::opt2id()
         && regex="(${ns}[a-zA-Z0-9_]+)${global}:$opt:" \
         || regex="(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:$opt:"
         
-        if [[ $'\n'$_ZETOPT_DEFINED =~ $'\n'$regex ]]; then
+        if [[ $LF$_ZETOPT_DEFINED =~ $LF$regex ]]; then
             \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}"
             return 0
         fi

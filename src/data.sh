@@ -8,12 +8,12 @@
 _zetopt::data::init()
 {
     _ZETOPT_PARSED=
-    local IFS=$'\n' line=
+    local IFS=$LF line=
     for line in ${_ZETOPT_DEFINED//+/} # remove global signs
     do
         IFS=:
         set -- $line
-        _ZETOPT_PARSED+="$1::::0"$'\n'
+        _ZETOPT_PARSED+="$1::::0$LF"
     done
     _ZETOPT_OPTVALS=()
     ZETOPT_ARGS=()
@@ -41,7 +41,7 @@ _zetopt::data::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $'\n'${_ZETOPT_PARSED-}$'\n' =~ .*$'\n'((${id}):([^:]*):([^:]*):([^:]*):([^:]*))$'\n'.* ]]; then
+    if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
@@ -66,7 +66,7 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id: && ! $'\n'${_ZETOPT_PARSED-} =~ $'\n'$id:[^:]*:[^:]*:[^:]*:0 ]]
+    [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
 # Check if the option is set and its status is OK
@@ -82,7 +82,7 @@ _zetopt::data::isvalid()
     if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id:[^:]*:[^:]*:[^:]*:0 ]]; then
+    if [[ $LF$_ZETOPT_PARSED =~ $LF$id:[^:]*:[^:]*:[^:]*:0 ]]; then
         return 1
     fi
 
@@ -312,7 +312,7 @@ _zetopt::data::hasvalue()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ $'\n'$_ZETOPT_PARSED =~ $'\n'$id: && $'\n'$_ZETOPT_PARSED =~ $'\n'$id::[^:]*:[^:]*:[^:]* ]]; then
+    if [[ $LF$_ZETOPT_PARSED =~ $LF$id: && $LF$_ZETOPT_PARSED =~ $LF$id::[^:]*:[^:]*:[^:]* ]]; then
         return 1
     fi
     local len=$(_zetopt::data::arglength "$@")
