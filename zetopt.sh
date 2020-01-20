@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-21 02:00)
+# Version     : 1.2.0a (2020-01-21 06:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-21 02:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-21 06:00)"
 
 
 #------------------------------------------------------------
@@ -1051,7 +1051,7 @@ _zetopt::parser::parse()
     _zetopt::parser::init
     _zetopt::data::init
     
-    local optname= optarg= idx= optsign= added_cnt=0 args
+    local optname= optnamelen= optarg= idx= optsign= added_cnt=0 args
     local namespace=/ ns= check_subcmd=true error_subcmd_name=
     
     # internal global variables
@@ -1135,32 +1135,24 @@ _zetopt::parser::parse()
 
         # short option(s)
         elif [[ $1 =~ ^- ]]; then
-            if [[ $1 =~ = ]]; then
-                optarg="${1#*=}"
-                optname="${1%%=*}"
-                optname="${optname##*-}"
-                if [[ -z $optname ]]; then
-                    ZETOPT_OPTERR_INVALID+=("$1")
-                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
-                    shift
-                    check_subcmd=false
-                    continue
-                fi
-                added_cnt=1
-            else
-                optname="${1#*-}"
-            fi
+            optname="${1#*-}"
+            optnamelen=${#optname}
             shift
 
-            for ((idx=0; idx<$((${#optname} - 1)); idx++))
+            for ((idx=0; idx<$optnamelen; idx++))
             do
-                _zetopt::parser::setopt $namespace - ${optname:$idx:1} ||:
+                
+                if [[ $((idx + 1)) -lt $optnamelen ]]; then
+                    local _consumed_args_count=$_CONSUMED_ARGS_COUNT
+                    _zetopt::parser::setopt $namespace - ${optname:$idx:1} "${optname:$((idx+1)):$(($optnamelen - $idx - 1))}" "$@" ||:
+                    if [[ $_consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
+                        added_cnt=1
+                        break
+                    fi
+                else
+                    _zetopt::parser::setopt $namespace - ${optname:$idx:1} "$@" ||:
+                fi
             done
-            if [[ $added_cnt -eq 0 ]]; then
-                _zetopt::parser::setopt $namespace - ${optname:$idx:1} "$@" ||:
-            else
-                _zetopt::parser::setopt $namespace - ${optname:$idx:1} "$optarg" "$@" ||:
-            fi
             check_subcmd=false
 
         # short option(s) with + optsign
@@ -1172,33 +1164,24 @@ _zetopt::parser::parse()
                 check_subcmd=false
                 continue
             fi
-
-            if [[ $1 =~ = ]]; then
-                optarg="${1#*=}"
-                optname="${1%%=*}"
-                optname="${optname##*+}"
-                if [[ -z $optname ]]; then
-                    ZETOPT_OPTERR_INVALID+=("$1")
-                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
-                    shift
-                    check_subcmd=false
-                    continue
-                fi
-                added_cnt=1
-            else
-                optname="${1#*+}"
-            fi
+            optname="${1#*+}"
+            optnamelen=${#optname}
             shift
 
-            for ((idx=0; idx<$((${#optname} - 1)); idx++))
+            for ((idx=0; idx<$optnamelen; idx++))
             do
-                _zetopt::parser::setopt $namespace + ${optname:$idx:1} ||:
+                
+                if [[ $((idx + 1)) -lt $optnamelen ]]; then
+                    local _consumed_args_count=$_CONSUMED_ARGS_COUNT
+                    _zetopt::parser::setopt $namespace + ${optname:$idx:1} "${optname:$((idx+1)):$(($optnamelen - $idx - 1))}" "$@" ||:
+                    if [[ $_consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
+                        added_cnt=1
+                        break
+                    fi
+                else
+                    _zetopt::parser::setopt $namespace + ${optname:$idx:1} "$@" ||:
+                fi
             done
-            if [[ $added_cnt -eq 0 ]]; then
-                _zetopt::parser::setopt $namespace + ${optname:$idx:1} "$@" ||:
-            else
-                _zetopt::parser::setopt $namespace + ${optname:$idx:1} "$optarg" "$@" ||:
-            fi
             check_subcmd=false
 
         # positional argument or subcommand

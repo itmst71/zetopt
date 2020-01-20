@@ -265,20 +265,37 @@ test_parse_Multiple() {
     assertTrue "[parse] Multiple: parse -v --version -h --help" $?
 }
 
-test_parse_Clustered() {
+test_parse_Concatenated_Arguments() {
+    zetopt def val:v @ %      "#Help Message"
+    zetopt parse -vFOO BAR    "#Help Message"
+    assertTrue $?
+    local v="$(zetopt value val)"
+    assertEquals "[parse] Concatenated Arguments: parse -vFOO BAR" "FOO BAR" "$v"
+}
+
+test_parse_Concatenated_Options_with_Concatnated_Arguments() {
+    zetopt def val:v @ %      "#Help Message"
+    zetopt def foo:f          "#Help Message"
+    zetopt parse -fvFOO BAR
+    assertTrue $?
+    local v="$(zetopt value val)"
+    assertEquals "[parse] Concatenated Options with Concatnated Arguments: parse -fvFOO BAR" "FOO BAR" "$v"
+}
+
+test_parse_Concatenated() {
     zetopt def ver:v:version  "#Help Message"
     zetopt def help:h:help    "#Help Message"
     zetopt def opt:o          "#Help Message"
     zetopt parse -vho
-    assertTrue "[parse] Clustered: parse -vho" $?
+    assertTrue "[parse] Concatenated: parse -vho" $?
 }
 
-test_parse_Clustered_with_last_arguments() {
+test_parse_Concatenated_with_last_arguments() {
     zetopt def ver:v:version  "#Help Message"
     zetopt def help:h:help    "#Help Message"
     zetopt def opt:o @ %      "#Help Message"
     zetopt parse -vho FOO BAR
-    assertTrue "[parse] Clustered with last arguments: parse -vho FOO BAR" $?
+    assertTrue "[parse] Concatenated with last arguments: parse -vho FOO BAR" $?
 }
 
 test_parse_Shortened_long() {
