@@ -518,17 +518,31 @@ _zetopt::def::opt2id()
         return 1
     fi
 
-    local regex= global="[+]?"
+    local regex= global="[+]?" tmpid=
     while :
     do
-        [[ ${#opt} -eq 1 ]] \
-        && regex="(${ns}[a-zA-Z0-9_]+)${global}:$opt:" \
-        || regex="(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:$opt:"
+        # short
+        if [[ ${#opt} -eq 1 ]]; then
+            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:$opt: ]]; then
+                \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}"
+                return 0
+            fi
         
-        if [[ $LF$_ZETOPT_DEFINED =~ $LF$regex ]]; then
-            \printf -- "%s" "${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}"
-            return 0
+        # long
+        else
+            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
+                tmpid=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
+                
+                # reject ambiguous name
+                if [[ $LF${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
+                    return 1
+                fi
+                \printf -- "%s" "$tmpid"
+                return 0
+            fi
         fi
+
+
         if [[ $ns == / ]]; then
             return 1
         fi

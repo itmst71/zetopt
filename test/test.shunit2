@@ -281,6 +281,12 @@ test_parse_Clustered_with_last_arguments() {
     assertTrue "[parse] Clustered with last arguments: parse -vho FOO BAR" $?
 }
 
+test_parse_Shortened_long() {
+    zetopt def ver:version  "#Help Message"
+    zetopt parse --ver
+    assertTrue "[parse] Shortened Long: parse --ver" $?
+}
+
 test_parse_Sub_Command() {
     zetopt def /remote/add/ @NAME @URL  "#Help Message"
     zetopt parse remote add -- FOO http://example.com/ 
@@ -300,6 +306,13 @@ test_parse_ERR_Undefined_Option() {
     zetopt def ver:v:version  "#Help Message"
     zetopt parse "-h"
     assertFalse "[parse][ERR] Undefined Option" $?
+}
+
+test_parse_ERR_Ambiguously_shortened_long() {
+    zetopt def ver1:version   "#Help Message"
+    zetopt def ver2:ver-sion  "#Help Message"
+    zetopt parse --ver
+    assertFalse "[parse][ERR] Shortened Long with Ambiguous Use: parse --ver " $?
 }
 
 #------------------------------------------------
