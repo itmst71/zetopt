@@ -464,6 +464,21 @@ test_def_validator_with_func_flag() {
     assertFalse $?
 }
 
+test_def_validator_chain() {
+    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt def-validator MAX5 '^.{1,5}$'
+    zetopt def alph:A @TEXT~ALPH,MAX5
+    zetopt def char:C "@TEXT[=~ALPH,MAX5]"
+    zetopt parse -A "ALPHA"
+    assertTrue $?
+    zetopt parse -C "ALPHA"
+    assertTrue $?
+    zetopt parse -A "ALPHABET"
+    assertFalse $?
+    zetopt parse -C "ALPHABET"
+    assertFalse $?
+}
+
 #------------------------------------------------
 # validator Error
 #------------------------------------------------

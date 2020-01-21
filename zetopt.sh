@@ -479,14 +479,15 @@ _zetopt::def::define()
     local param_def=
     if [[ $has_param == true ]]; then
         local param_optional=false param params default_is_set=false
-        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx param_validator_idx
+        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx
+        local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_name=
         params=()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~][a-zA-Z_][a-zA-Z0-9_]*)|([\[]=[~][a-zA-Z_][a-zA-Z0-9_]*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*)|([\[]=[~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::def_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -495,9 +496,9 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}
             param_name=${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}
             param_validator=${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}
-            param_varlen=${BASH_REMATCH[$((7 + ZETOPT_IDX_OFFSET))]}
-            param_varlen_max=${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}
-            param_default=${BASH_REMATCH[$((9 + ZETOPT_IDX_OFFSET))]}
+            param_varlen=${BASH_REMATCH[$((9 + ZETOPT_IDX_OFFSET))]}
+            param_varlen_max=${BASH_REMATCH[$((10 + ZETOPT_IDX_OFFSET))]}
+            param_default=${BASH_REMATCH[$((11 + ZETOPT_IDX_OFFSET))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -522,14 +523,23 @@ _zetopt::def::define()
                 param_names+=" $param_name "
             fi
 
-            param_validator_idx=0
-            if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
-                param_validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-                if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
-                    _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
-                    return 1
-                fi
-                param_validator_idx=${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+            param_validator_idxs=0
+            if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*) ]]; then
+                param_validator_separator=
+                param_validator_idxs=
+                IFS=,
+                \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+                while [[ $# -ne 0 ]]
+                do
+                    param_validator_name=$1
+                    if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
+                        _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
+                        return 1
+                    fi
+                    param_validator_idxs="$param_validator_idxs$param_validator_separator${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+                    param_validator_separator=,
+                    shift 1
+                done
             fi
 
             # save default value
@@ -541,7 +551,7 @@ _zetopt::def::define()
                 _zetopt::msg::def_error "Non-default Argument Following Default Argument:" "$param_name"
                 return 1
             fi
-            params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idx$param_varlen=$param_default_idx")
+            params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
         done
         IFS=$' '
@@ -793,7 +803,7 @@ _zetopt::def::opt2id()
         else
             if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
                 tmpid=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
-                
+
                 # reject ambiguous name
                 if [[ $LF${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
                     return 1
@@ -1455,56 +1465,62 @@ _zetopt::parser::validate()
     local param_def="${1-}" arg="${2-}"
 
     # no validator
-    if [[ ! $param_def =~ [~]([1-9][0-9]*) ]]; then
+    if [[ ! $param_def =~ [~]([1-9][0-9]*(,[1-9][0-9]*)*) ]]; then
         return 0
     fi
+    local IFS=,
+    \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+    while [[ $# -ne 0 ]]
+    do
+        declare -i validator_idx=$1
+        shift 1
 
-    declare -i validator_idx="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-    if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
-        _zetopt::msg::debug "Internal Error:" "Validator Broken"
-        return 1
-    fi
-    local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-    local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
-    local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
-    declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
-    local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
-
-    local result=$(
-        # set ignore case option temporally
-        if [[ $validator_flags =~ i ]]; then
-            [[ -n ${ZSH_VERSION-} ]] \
-            && \setopt localoptions NOCASEMATCH \
-            || \shopt -s nocasematch
+        if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
+            _zetopt::msg::debug "Internal Error:" "Validator Broken"
+            return 1
         fi
+        local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+        local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
+        local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
+        declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
+        local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
 
-        # r: regexp
-        if [[ $validator_type == r ]]; then
-            if [[ ! $validator_flags =~ n ]]; then
-                [[ $arg =~ $validator ]] && echo true || echo false
-            else
-                [[ $arg =~ $validator ]] && echo false || echo true
+        local result=$(
+            # set ignore case option temporally
+            if [[ $validator_flags =~ i ]]; then
+                [[ -n ${ZSH_VERSION-} ]] \
+                && \setopt localoptions NOCASEMATCH \
+                || \shopt -s nocasematch
             fi
-        # f: function
-        else
-            local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
-            local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
-            if [[ ! $validator_flags =~ n ]]; then
-                "$validator" "$arg" && echo true || echo false
-            else
-                "$validator" "$arg" && echo false || echo true
-            fi
-            PATH=$_path LC_ALL=$_lc_all LANG=$_lang
-        fi
-    )
 
-    if [[ $result == false ]]; then
-        if [[ $validator_msgidx -ne 0 ]]; then
-            local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
-            _zetopt::msg::user_error Error "Validator \"$validator_name\" Failed: $arg:" "$errmsg"
+            # r: regexp
+            if [[ $validator_type == r ]]; then
+                if [[ ! $validator_flags =~ n ]]; then
+                    [[ $arg =~ $validator ]] && echo true || echo false
+                else
+                    [[ $arg =~ $validator ]] && echo false || echo true
+                fi
+            # f: function
+            else
+                local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
+                local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
+                if [[ ! $validator_flags =~ n ]]; then
+                    "$validator" "$arg" && echo true || echo false
+                else
+                    "$validator" "$arg" && echo false || echo true
+                fi
+                PATH=$_path LC_ALL=$_lc_all LANG=$_lang
+            fi
+        )
+
+        if [[ $result == false ]]; then
+            if [[ $validator_msgidx -ne 0 ]]; then
+                local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
+                _zetopt::msg::user_error Error "$arg:" "$errmsg"
+            fi
+            return 1
         fi
-        return 1
-    fi
+    done
     return 0
 }
 

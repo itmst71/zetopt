@@ -218,14 +218,15 @@ _zetopt::def::define()
     local param_def=
     if [[ $has_param == true ]]; then
         local param_optional=false param params default_is_set=false
-        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx param_validator_idx
+        declare -i param_idx=$ZETOPT_IDX_OFFSET param_default_idx
+        local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_name=
         params=()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~][a-zA-Z_][a-zA-Z0-9_]*)|([\[]=[~][a-zA-Z_][a-zA-Z0-9_]*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*)|([\[]=[~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::def_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -234,9 +235,9 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}
             param_name=${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}
             param_validator=${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}
-            param_varlen=${BASH_REMATCH[$((7 + ZETOPT_IDX_OFFSET))]}
-            param_varlen_max=${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}
-            param_default=${BASH_REMATCH[$((9 + ZETOPT_IDX_OFFSET))]}
+            param_varlen=${BASH_REMATCH[$((9 + ZETOPT_IDX_OFFSET))]}
+            param_varlen_max=${BASH_REMATCH[$((10 + ZETOPT_IDX_OFFSET))]}
+            param_default=${BASH_REMATCH[$((11 + ZETOPT_IDX_OFFSET))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -261,14 +262,23 @@ _zetopt::def::define()
                 param_names+=" $param_name "
             fi
 
-            param_validator_idx=0
-            if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
-                param_validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-                if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
-                    _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
-                    return 1
-                fi
-                param_validator_idx=${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+            param_validator_idxs=0
+            if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*) ]]; then
+                param_validator_separator=
+                param_validator_idxs=
+                IFS=,
+                \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+                while [[ $# -ne 0 ]]
+                do
+                    param_validator_name=$1
+                    if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
+                        _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
+                        return 1
+                    fi
+                    param_validator_idxs="$param_validator_idxs$param_validator_separator${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+                    param_validator_separator=,
+                    shift 1
+                done
             fi
 
             # save default value
@@ -280,7 +290,7 @@ _zetopt::def::define()
                 _zetopt::msg::def_error "Non-default Argument Following Default Argument:" "$param_name"
                 return 1
             fi
-            params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idx$param_varlen=$param_default_idx")
+            params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
         done
         IFS=$' '
@@ -532,7 +542,7 @@ _zetopt::def::opt2id()
         else
             if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
                 tmpid=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]}
-                
+
                 # reject ambiguous name
                 if [[ $LF${BASH_REMATCH[$((2 + $ZETOPT_IDX_OFFSET))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
                     return 1

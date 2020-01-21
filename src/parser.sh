@@ -438,56 +438,62 @@ _zetopt::parser::validate()
     local param_def="${1-}" arg="${2-}"
 
     # no validator
-    if [[ ! $param_def =~ [~]([1-9][0-9]*) ]]; then
+    if [[ ! $param_def =~ [~]([1-9][0-9]*(,[1-9][0-9]*)*) ]]; then
         return 0
     fi
+    local IFS=,
+    \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+    while [[ $# -ne 0 ]]
+    do
+        declare -i validator_idx=$1
+        shift 1
 
-    declare -i validator_idx="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-    if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
-        _zetopt::msg::debug "Internal Error:" "Validator Broken"
-        return 1
-    fi
-    local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-    local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
-    local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
-    declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
-    local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
-
-    local result=$(
-        # set ignore case option temporally
-        if [[ $validator_flags =~ i ]]; then
-            [[ -n ${ZSH_VERSION-} ]] \
-            && \setopt localoptions NOCASEMATCH \
-            || \shopt -s nocasematch
+        if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
+            _zetopt::msg::debug "Internal Error:" "Validator Broken"
+            return 1
         fi
+        local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
+        local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
+        local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
+        declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
+        local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
 
-        # r: regexp
-        if [[ $validator_type == r ]]; then
-            if [[ ! $validator_flags =~ n ]]; then
-                [[ $arg =~ $validator ]] && echo true || echo false
-            else
-                [[ $arg =~ $validator ]] && echo false || echo true
+        local result=$(
+            # set ignore case option temporally
+            if [[ $validator_flags =~ i ]]; then
+                [[ -n ${ZSH_VERSION-} ]] \
+                && \setopt localoptions NOCASEMATCH \
+                || \shopt -s nocasematch
             fi
-        # f: function
-        else
-            local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
-            local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
-            if [[ ! $validator_flags =~ n ]]; then
-                "$validator" "$arg" && echo true || echo false
-            else
-                "$validator" "$arg" && echo false || echo true
-            fi
-            PATH=$_path LC_ALL=$_lc_all LANG=$_lang
-        fi
-    )
 
-    if [[ $result == false ]]; then
-        if [[ $validator_msgidx -ne 0 ]]; then
-            local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
-            _zetopt::msg::user_error Error "Validator \"$validator_name\" Failed: $arg:" "$errmsg"
+            # r: regexp
+            if [[ $validator_type == r ]]; then
+                if [[ ! $validator_flags =~ n ]]; then
+                    [[ $arg =~ $validator ]] && echo true || echo false
+                else
+                    [[ $arg =~ $validator ]] && echo false || echo true
+                fi
+            # f: function
+            else
+                local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
+                local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
+                if [[ ! $validator_flags =~ n ]]; then
+                    "$validator" "$arg" && echo true || echo false
+                else
+                    "$validator" "$arg" && echo false || echo true
+                fi
+                PATH=$_path LC_ALL=$_lc_all LANG=$_lang
+            fi
+        )
+
+        if [[ $result == false ]]; then
+            if [[ $validator_msgidx -ne 0 ]]; then
+                local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
+                _zetopt::msg::user_error Error "$arg:" "$errmsg"
+            fi
+            return 1
         fi
-        return 1
-    fi
+    done
     return 0
 }
 
