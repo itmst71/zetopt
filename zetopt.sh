@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-21 06:00)
+# Version     : 1.2.0a (2020-01-21 13:50)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-21 06:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-21 13:50)"
 
 
 #------------------------------------------------------------
@@ -1468,8 +1468,11 @@ _zetopt::parser::validate()
     if [[ ! $param_def =~ [~]([1-9][0-9]*(,[1-9][0-9]*)*) ]]; then
         return 0
     fi
+
     local IFS=,
     \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+    IFS=$' \t\n'
+    
     while [[ $# -ne 0 ]]
     do
         declare -i validator_idx=$1
@@ -1593,12 +1596,12 @@ _zetopt::parser::assign_args()
         for ((; ref_idx<def_loops; ref_idx++))
         do
             # missing required
-            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+[~][0-9]+([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
+            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+[~][0-9]+(,[0-9]+)*([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
             fi
-            default_idx=${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}
+            default_idx=${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}
 
             # missing optional : has no default value
             if [[ $default_idx -eq 0 ]]; then
