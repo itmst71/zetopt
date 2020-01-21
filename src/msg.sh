@@ -38,7 +38,7 @@ _zetopt::msg::debug()
         return 0
     fi
     local text="${1-}" value="${2-}"
-    local src_lineno=${BASH_LINENO-${funcfiletrace[$((0 + $ZETOPT_IDX_OFFSET))]##*:}}
+    local src_lineno=${BASH_LINENO-${funcfiletrace[$((0 + $INIT_IDX))]##*:}}
     local appname="${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}"
     local filename="${ZETOPT_SOURCE_FILE_PATH##*/}"
     local title="Script Error"
@@ -48,9 +48,9 @@ _zetopt::msg::debug()
     local before=2 after=2
     local IFS=$LF stack
     stack=($(_zetopt::utils::stack_trace))
-    local caller_info="${stack[$((${#stack[@]} -1 + $ZETOPT_IDX_OFFSET))]}"
+    local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
     [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
-    && local caller_lineno=${BASH_REMATCH[$((1 + $ZETOPT_IDX_OFFSET))]} \
+    && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
     || local caller_lineno=0
     {
         \printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"

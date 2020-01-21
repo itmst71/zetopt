@@ -11,7 +11,7 @@ _zetopt::utils::funcname()
     if [[ -n ${BASH_VERSION-} ]]; then
         \printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
     elif [[ -n ${ZSH_VERSION-} ]]; then
-        \printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $ZETOPT_IDX_OFFSET))]}"
+        \printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $INIT_IDX))]}"
     fi
 }
 

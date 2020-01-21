@@ -260,12 +260,12 @@ _zetopt::parser::setsub()
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
 
-    local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
+    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
     local offset=2
 
     local IFS=:
-    \set -- ${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
+    \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
     local cnt=$(($5 + 1))
     _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
@@ -291,15 +291,15 @@ _zetopt::parser::setopt()
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
-    local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
+    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
     local IFS=:
-    \set -- ${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}
+    \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
     local id="$1" refs_str="$2" types="$3" stat="$4" cnt="$5"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
     local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
-    declare -i optarg_idx=$((${#_ZETOPT_OPTVALS[@]} + $ZETOPT_IDX_OFFSET))
+    declare -i optarg_idx=$((${#_ZETOPT_OPTVALS[@]} + $INIT_IDX))
     ref_arr=()
 
     # options requiring NO argument
@@ -314,8 +314,8 @@ _zetopt::parser::setopt()
         IFS=$' '
         \set -- $paramdef_str
         local arg def def_arr varlen_mode=false no_avail_args=false
-        declare -i def_len=$(($# + ZETOPT_IDX_OFFSET)) def_idx=$ZETOPT_IDX_OFFSET
-        declare -i arg_cnt=0 arg_max arg_idx=$ZETOPT_IDX_OFFSET arg_len=$((${#args[@]} + $ZETOPT_IDX_OFFSET))
+        declare -i def_len=$(($# + INIT_IDX)) def_idx=$INIT_IDX
+        declare -i arg_cnt=0 arg_max arg_idx=$INIT_IDX arg_len=$((${#args[@]} + $INIT_IDX))
         def_arr=($@)
 
         while [[ $def_idx -lt $def_len ]]
@@ -391,7 +391,7 @@ _zetopt::parser::setopt()
 
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
-                        arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}]}
+                        arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + INIT_IDX))]}]}
                         _ZETOPT_OPTVALS+=("$arg")
                         ref_arr+=($optarg_idx)
                         optarg_idx+=1
@@ -443,9 +443,9 @@ _zetopt::parser::validate()
     fi
 
     local IFS=,
-    \set -- ${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}
+    \set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
     IFS=$' \t\n'
-    
+
     while [[ $# -ne 0 ]]
     do
         declare -i validator_idx=$1
@@ -455,11 +455,11 @@ _zetopt::parser::validate()
             _zetopt::msg::debug "Internal Error:" "Validator Broken"
             return 1
         fi
-        local validator_name="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]}"
-        local validator_type="${BASH_REMATCH[$((2 + ZETOPT_IDX_OFFSET))]}"
-        local validator_flags="${BASH_REMATCH[$((3 + ZETOPT_IDX_OFFSET))]}"
-        declare -i validator_msgidx="${BASH_REMATCH[$((4 + ZETOPT_IDX_OFFSET))]}"
-        local validator="${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}"
+        local validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"
+        local validator_type="${BASH_REMATCH[$((2 + INIT_IDX))]}"
+        local validator_flags="${BASH_REMATCH[$((3 + INIT_IDX))]}"
+        declare -i validator_msgidx="${BASH_REMATCH[$((4 + INIT_IDX))]}"
+        local validator="${BASH_REMATCH[$((5 + INIT_IDX))]}"
 
         local result=$(
             # set ignore case option temporally
@@ -522,12 +522,12 @@ _zetopt::parser::assign_args()
 
     # enough
     if [[ $arg_len -ge $def_max_len ]]; then
-        ref_arr=($(\eval "\echo {$ZETOPT_IDX_OFFSET..$((def_max_len - 1 + ZETOPT_IDX_OFFSET))}"))
+        ref_arr=($(\eval "\echo {$INIT_IDX..$((def_max_len - 1 + INIT_IDX))}"))
 
         # validate
         if [[ $has_validator == true ]]; then
-            maxloop=$def_len+$ZETOPT_IDX_OFFSET
-            for ((idx=ZETOPT_IDX_OFFSET; idx<maxloop; idx++))
+            maxloop=$def_len+$INIT_IDX
+            for ((idx=INIT_IDX; idx<maxloop; idx++))
             do
                 if ! _zetopt::parser::validate "${def_arr[idx]}" "${ZETOPT_ARGS[ref_arr[idx]]}"; then
                     rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
@@ -538,7 +538,7 @@ _zetopt::parser::assign_args()
 
         # too match arguments
         if [[ $arg_len -gt $def_max_len ]]; then
-            if [[ ${def_arr[$((def_len - 1 + ZETOPT_IDX_OFFSET))]} =~ [.]{3,3}[1-9][0-9]*=[0-9]+$ ]]; then
+            if [[ ${def_arr[$((def_len - 1 + INIT_IDX))]} =~ [.]{3,3}[1-9][0-9]*=[0-9]+$ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
             fi
@@ -546,16 +546,16 @@ _zetopt::parser::assign_args()
 
     # not enough
     else
-        declare -i ref_idx=$ZETOPT_IDX_OFFSET
+        declare -i ref_idx=$INIT_IDX
         if [[ $arg_len -ne 0 ]]; then
-            ref_idx=$arg_len-1+$ZETOPT_IDX_OFFSET
-            ref_arr=($(\eval "\echo {$ZETOPT_IDX_OFFSET..$ref_idx}"))
+            ref_idx=$arg_len-1+$INIT_IDX
+            ref_arr=($(\eval "\echo {$INIT_IDX..$ref_idx}"))
             ref_idx+=1
 
             # validate
             if [[ $has_validator == true ]]; then
-                maxloop=$arg_len+$ZETOPT_IDX_OFFSET
-                for ((idx=ZETOPT_IDX_OFFSET; idx<maxloop; idx++))
+                maxloop=$arg_len+$INIT_IDX
+                for ((idx=INIT_IDX; idx<maxloop; idx++))
                 do
                     if ! _zetopt::parser::validate "${def_arr[idx]}" "${ZETOPT_ARGS[ref_arr[idx]]}"; then
                         rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
@@ -565,7 +565,7 @@ _zetopt::parser::assign_args()
             fi
         fi
 
-        declare -i def_loops=$def_len+$ZETOPT_IDX_OFFSET default_idx
+        declare -i def_loops=$def_len+$INIT_IDX default_idx
         for ((; ref_idx<def_loops; ref_idx++))
         do
             # missing required
@@ -574,7 +574,7 @@ _zetopt::parser::assign_args()
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
             fi
-            default_idx=${BASH_REMATCH[$((5 + ZETOPT_IDX_OFFSET))]}
+            default_idx=${BASH_REMATCH[$((5 + INIT_IDX))]}
 
             # missing optional : has no default value
             if [[ $default_idx -eq 0 ]]; then
@@ -593,15 +593,15 @@ _zetopt::parser::assign_args()
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
-    local head_lines="${BASH_REMATCH[$((1 + ZETOPT_IDX_OFFSET))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + ZETOPT_IDX_OFFSET))]}"
+    local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
+    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
     local offset=2
-    local line="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ALL))]}"
-    local id="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ID))]}"
-    #local arg="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_ARG))]}"
-    local type="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_TYPE))]}"
-    #local status="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_STATUS))]}"
-    local count="${BASH_REMATCH[$((offset + ZETOPT_IDX_OFFSET + ZETOPT_FIELD_DATA_COUNT))]}"
+    local line="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}"
+    local id="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ID))]}"
+    #local arg="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ARG))]}"
+    local type="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_TYPE))]}"
+    #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
+    local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]}"
     _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$rtn:$count$tail_lines"

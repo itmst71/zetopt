@@ -8,7 +8,7 @@ if [[ -n ${BASH_VERSION-} ]]; then
     readonly ZETOPT_CALLER_FILE_PATH="$0"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && \echo true || \echo false)"
-    readonly ZETOPT_IDX_OFFSET=0
+    readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
 elif [[ -n ${ZSH_VERSION-} ]]; then
     readonly ZETOPT_SOURCE_FILE_PATH="$0"
@@ -16,7 +16,7 @@ elif [[ -n ${ZSH_VERSION-} ]]; then
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
     readonly ZETOPT_OLDBASH=false
-    readonly ZETOPT_IDX_OFFSET=$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)
+    readonly ZETOPT_ARRAY_INITIAL_IDX=$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)
 else
     echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
     return 1
@@ -70,6 +70,7 @@ zetopt()
 {
     declare -r _PATH=$PATH
     declare -r LF=$'\n'
+    declare -r INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
     local PATH="/usr/bin:/bin"
     local IFS=$' \t\n'
     local _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
