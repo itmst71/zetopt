@@ -35,8 +35,9 @@ readonly ZETOPT_FIELD_DATA_ALL=0
 readonly ZETOPT_FIELD_DATA_ID=1
 readonly ZETOPT_FIELD_DATA_ARG=2
 readonly ZETOPT_FIELD_DATA_TYPE=3
-readonly ZETOPT_FIELD_DATA_STATUS=4
-readonly ZETOPT_FIELD_DATA_COUNT=5
+readonly ZETOPT_FIELD_DATA_AUXNAME=4
+readonly ZETOPT_FIELD_DATA_STATUS=5
+readonly ZETOPT_FIELD_DATA_COUNT=6
 
 # types
 readonly ZETOPT_TYPE_CMD=0
@@ -141,6 +142,8 @@ zetopt()
             _zetopt::data::isvalid "${@-}";;
         count | cnt)
             _zetopt::data::count "${@-}";;
+        auxname)
+            _zetopt::data::auxname "${@-}";;
         status | stat)
             _zetopt::data::status "${@-}";;
         setids)

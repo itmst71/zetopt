@@ -13,9 +13,10 @@ _zetopt::data::init()
     do
         IFS=:
         set -- $line
-        _ZETOPT_PARSED+="$1::::0$LF"
+        _ZETOPT_PARSED+="$1:::::0$LF"
     done
     _ZETOPT_OPTVALS=()
+    _ZETOPT_AUXNAMES=()
     ZETOPT_ARGS=()
 }
 
@@ -41,7 +42,7 @@ _zetopt::data::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
+    if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
@@ -50,6 +51,7 @@ _zetopt::data::field()
         $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ID))]}";;
         $ZETOPT_FIELD_DATA_ARG)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ARG))]}";;
         $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_TYPE))]}";;
+        $ZETOPT_FIELD_DATA_AUXNAME) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_AUXNAME))]}";;
         $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_STATUS))]}";;
         $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_COUNT))]}";;
         *) return 1;;
@@ -66,7 +68,7 @@ _zetopt::data::isset()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:0 ]]
+    [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
 # Check if the option is set and its status is OK
@@ -82,7 +84,7 @@ _zetopt::data::isvalid()
     if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    if [[ $LF$_ZETOPT_PARSED =~ $LF$id:[^:]*:[^:]*:[^:]*:0 ]]; then
+    if [[ $LF$_ZETOPT_PARSED =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]; then
         return 1
     fi
 
@@ -91,12 +93,11 @@ _zetopt::data::isvalid()
     if [[ -z $stat ]]; then
         return 1
     fi
-    # 0 $ZETOPT_STATUS_NORMAL, 1 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS, 2 $ZETOPT_STATUS_MISSING_OPTIONAL_ARGS
-    [[ ! $stat =~ [^012\ ] ]]
+    [[ ! $stat =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FILED_DATA_STATUS|$ZETOPT_FIELD_DATA_TYPE]} [TWO-DIMENSIONAL-KEYS]
+# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_AUXNAME|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
 # e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
@@ -105,7 +106,7 @@ _zetopt::data::validx()
         return 1
     fi
     case $2 in
-        $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_STATUS) :;;
+        $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_AUXNAME | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
     local field="$2"
@@ -312,7 +313,7 @@ _zetopt::data::hasvalue()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ $LF$_ZETOPT_PARSED =~ $LF$id: && $LF$_ZETOPT_PARSED =~ $LF$id::[^:]*:[^:]*:[^:]* ]]; then
+    if [[ $LF$_ZETOPT_PARSED =~ $LF$id: && $LF$_ZETOPT_PARSED =~ $LF$id::[^:]*:[^:]*:[^:]*:[^:]* ]]; then
         return 1
     fi
     local len=$(_zetopt::data::arglength "$@")
@@ -455,6 +456,57 @@ _zetopt::data::arglength()
     arr=($(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "${idxarr[@]}"))
     \echo ${#arr[@]}
 }
+
+# Print the auxiliary option name which is specified like -c:v:0
+# def.) _zetopt::data::auxname {ID} [ONE-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::auxname /foo 1
+# STDOUT: auxnames separated with $ZETOPT_CFG_VALUE_IFS
+_zetopt::data::auxname()
+{
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    if ! _zetopt::def::exists "$id"; then
+        return 1
+    fi
+    shift
+
+    local idxarr
+    idxarr=()
+    if [[ $# -eq 0 || -z ${@-} ]]; then
+        idxarr=($)
+    else
+        local idx=
+        for idx in "$@"
+        do
+            if [[ $idx =~ [^@$\^,0-9-] ]]; then
+                _zetopt::msg::debug "Bad Key:" "$idx"
+                return 1
+            fi
+            idxarr+=("$idx")
+        done
+    fi
+    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_AUXNAME "${idxarr[@]-@}")"
+    if [[ -z "$list_str" ]]; then
+        return 1
+    fi
+    declare -i idx= i=$INIT_IDX
+    local ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
+    local IFS=$' '
+    \set -- $list_str
+    local max=$(($# + INIT_IDX - 1))
+    for idx in "$@"
+    do
+        if [[ $i -eq $max ]]; then
+            ifs=
+        fi
+        if [[ $idx == -1 ]]; then
+            \printf -- "%s$ifs" ""
+        else
+            printf -- "%s$ifs" "${_ZETOPT_AUXNAMES[$idx]}"
+        fi
+        i+=1
+    done
+}
+
 
 # Print the parse status in integers
 # def.) _zetopt::data::status {ID} [ONE-DIMENSIONAL-KEYS]

@@ -38,7 +38,7 @@
 * [4. Config Variables](#4-config-variables)
     * [ZETOPT_CFG_VALUE_IFS](#zetopt_cfg_value_ifs)
     * [ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN](#zetopt_cfg_escape_double_hyphen)
-    * [ZETOPT_CFG_CLUSTERED_AS_LONG](#zetopt_cfg_clustered_as_long)
+    * [ZETOPT_CFG_SINGLE_PREFIX_LONG](#zetopt_cfg_single_prefix_long)
     * [ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR](#zetopt_cfg_ignore_subcmd_undeferr)
     * [ZETOPT_CFG_TYPE_PLUS](#zetopt_cfg_type_plus)
     * [ZETOPT_CFG_FLAGVAL_TRUE](#zetopt_cfg_flagval_true)
@@ -681,28 +681,28 @@ ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=true
 A -- B
 ```
 
-#### ZETOPT_CFG_CLUSTERED_AS_LONG
+#### ZETOPT_CFG_SINGLE_PREFIX_LONG
 Accept `-type`. Incompatible with clustered short options.  
 
 **Default**
 ```bash
-ZETOPT_CFG_CLUSTERED_AS_LONG=false
+ZETOPT_CFG_SINGLE_PREFIX_LONG=false
 ```
 
 **Example**
 ```bash
 zetopt def "opt:abcdefg"
 
-ZETOPT_CFG_CLUSTERED_AS_LONG=false
-echo "ZETOPT_CFG_CLUSTERED_AS_LONG=false"
+ZETOPT_CFG_SINGLE_PREFIX_LONG=false
+echo "ZETOPT_CFG_SINGLE_PREFIX_LONG=false"
 
 zetopt parse "$@"
 if zetopt isset opt; then
     echo "the option -abcdefg is set"
 fi
 
-ZETOPT_CFG_CLUSTERED_AS_LONG=true
-echo "ZETOPT_CFG_CLUSTERED_AS_LONG=true"
+ZETOPT_CFG_SINGLE_PREFIX_LONG=true
+echo "ZETOPT_CFG_SINGLE_PREFIX_LONG=true"
 zetopt reset
 
 zetopt parse "$@"
@@ -712,9 +712,9 @@ fi
 ```
 ```console
 $ cmd -abcdefg
-ZETOPT_CFG_CLUSTERED_AS_LONG=false
+ZETOPT_CFG_SINGLE_PREFIX_LONG=false
 zetopt: Warning: Undefined Option(s): -a -b -c -d -e -f -g
-ZETOPT_CFG_CLUSTERED_AS_LONG=true
+ZETOPT_CFG_SINGLE_PREFIX_LONG=true
 the option -abcdefg is set
 ```
 

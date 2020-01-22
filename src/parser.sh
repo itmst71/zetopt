@@ -34,13 +34,14 @@ _zetopt::parser::parse()
     _zetopt::parser::init
     _zetopt::data::init
     
-    local optname= optnamelen= optarg= idx= optsign= added_cnt=0 args
+    local optname= optnames_len= optarg= idx= opt_prefix= auxname= added_cnt=0 consumed_args_count= args
     local namespace=/ ns= check_subcmd=true error_subcmd_name=
     
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
-    local _ZETOPT_CFG_CLUSTERED_AS_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CLUSTERED_AS_LONG-}")"
+    local _ZETOPT_CFG_SINGLE_PREFIX_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_SINGLE_PREFIX_LONG-}")"
     local _ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
+    local _ZETOPT_CFG_AUXNAME="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_AUXNAME-}")"
     local _ZETOPT_CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
     local _ZETOPT_CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
     local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
@@ -55,6 +56,7 @@ _zetopt::parser::parse()
     do
         _CONSUMED_ARGS_COUNT=0
         
+        # Double Hyphen Only
         if [[ $1 == -- ]]; then
             if [[ $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
                 shift
@@ -65,11 +67,14 @@ _zetopt::parser::parse()
                 shift
             fi
             check_subcmd=false
+
+        # Single Prefix Only
         elif [[ $1 =~ ^[-+]$ ]]; then
             ZETOPT_ARGS+=("$1")
             shift
             check_subcmd=false
 
+        # Blank String
         elif [[ $1 == "" ]]; then
             if [[ $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
                 shift
@@ -78,98 +83,61 @@ _zetopt::parser::parse()
             ZETOPT_ARGS+=("$1")
             shift
             check_subcmd=false
-                
-        # long option or clustered short options with ZETOPT_CFG_CLUSTERED_AS_LONG enabled
-        elif [[ $1 =~ ^-- || ($_ZETOPT_CFG_CLUSTERED_AS_LONG == true && $1 =~ ^-[^-]. ) ]]; then
-            if [[ ! $1 =~ ^--?[a-zA-Z0-9_] ]]; then
-                ZETOPT_OPTERR_INVALID+=("$1")
-                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
-                shift
-                check_subcmd=false
-            fi
 
-            if [[ $1 =~ ^-[^-]. && $_ZETOPT_CFG_CLUSTERED_AS_LONG == true ]]; then
-                optsign=-
-            else
-                optsign=--
-            fi
-            
-            if [[ $1 =~ = ]]; then
-                optarg="${1#*=}"
-                optname="${1%%=*}"
-                optname="${optname#*${optsign}}"
-                if [[ -z $optname ]]; then
-                    ZETOPT_OPTERR_INVALID+=("$1")
-                    ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
-                    shift
-                    check_subcmd=false
-                    continue
-                fi
-
-                added_cnt=1
-                shift
-                _zetopt::parser::setopt $namespace $optsign $optname "$optarg" "$@" ||:
-            else
-                optname="${1#*${optsign}}"
-                shift
-                _zetopt::parser::setopt $namespace $optsign $optname "$@" ||:
-            fi
-            check_subcmd=false
-
-        # short option(s)
-        elif [[ $1 =~ ^- ]]; then
-            optname="${1#*-}"
-            optnamelen=${#optname}
-            shift
-
-            for ((idx=0; idx<$optnamelen; idx++))
-            do
-                
-                if [[ $((idx + 1)) -lt $optnamelen ]]; then
-                    local _consumed_args_count=$_CONSUMED_ARGS_COUNT
-                    _zetopt::parser::setopt $namespace - ${optname:$idx:1} "${optname:$((idx+1)):$(($optnamelen - $idx - 1))}" "$@" ||:
-                    if [[ $_consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
-                        added_cnt=1
-                        break
-                    fi
-                else
-                    _zetopt::parser::setopt $namespace - ${optname:$idx:1} "$@" ||:
-                fi
-            done
-            check_subcmd=false
-
-        # short option(s) with + optsign
-        elif [[ $1 =~ ^[+] && $_ZETOPT_CFG_OPTTYPE_PLUS == true ]]; then
-            if [[ ! $1 =~ ^[+][a-zA-Z0-9_] ]]; then
+        # Long option
+        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($_ZETOPT_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
+            if [[ ! $1 =~ ^([-+]{1,2})([a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)((:[a-zA-Z0-9_]+)*)(=(.*$))?$ ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
                 shift
                 check_subcmd=false
                 continue
             fi
-            optname="${1#*+}"
-            optnamelen=${#optname}
+            opt_prefix=${BASH_REMATCH[$((1 + INIT_IDX))]}
+            optname=${BASH_REMATCH[$((2 + INIT_IDX))]}
+            auxname=${BASH_REMATCH[$((4 + INIT_IDX))]/:/}
+            optarg=${BASH_REMATCH[$((7 + INIT_IDX))]}
             shift
+            if [[ -n $optarg ]]; then
+                added_cnt=1
+                _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$optarg" "$@" ||:
+            else
+                _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$@" ||:
+            fi
+            check_subcmd=false
 
-            for ((idx=0; idx<$optnamelen; idx++))
+        # short option(s)
+        elif [[ $1 =~ ^([+-])([^+-].*)$ ]]; then
+            opt_prefix=${BASH_REMATCH[$((1 + INIT_IDX))]}
+            optnames=${BASH_REMATCH[$((2 + INIT_IDX))]}
+            optnames_len=${#optnames}
+            shift
+            
+            consumed_args_count=$_CONSUMED_ARGS_COUNT
+            for ((idx=0; idx<$optnames_len; idx++))
             do
-                
-                if [[ $((idx + 1)) -lt $optnamelen ]]; then
-                    local _consumed_args_count=$_CONSUMED_ARGS_COUNT
-                    _zetopt::parser::setopt $namespace + ${optname:$idx:1} "${optname:$((idx+1)):$(($optnamelen - $idx - 1))}" "$@" ||:
-                    if [[ $_consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
-                        added_cnt=1
+                optname=${optnames:$idx:1}
+                if [[ $((idx + 1)) -lt $optnames_len ]]; then
+                    if [[ ${optnames:$((idx+1)):1} == : ]]; then
+                        auxname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
+                        _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$@" ||:
                         break
+                    else
+                        _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
+                        if [[ $consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
+                            added_cnt=1
+                            break
+                        fi
                     fi
                 else
-                    _zetopt::parser::setopt $namespace + ${optname:$idx:1} "$@" ||:
+                    _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@" ||:
                 fi
             done
             check_subcmd=false
 
-        # positional argument or subcommand
+        # Positional Arguments or Subcommand
         else
-            # subcommand
+            # Subcommand
             if [[ $check_subcmd == true ]] && _zetopt::def::has_subcmd "$namespace"; then
                 ns="${namespace%/*}/$1/"
                 if ! _zetopt::def::exists "$ns"; then
@@ -185,7 +153,7 @@ _zetopt::parser::parse()
                     break
                 fi
 
-                # change namespace
+                # Change namespace
                 if _zetopt::parser::setsub $ns; then
                     namespace=$ns
                     ZETOPT_LAST_COMMAND=$ns
@@ -194,7 +162,7 @@ _zetopt::parser::parse()
                 continue
             fi
 
-            # a regular positional argument
+            # Positional Arguments
             ZETOPT_ARGS+=("$1")
             shift
         fi
@@ -255,19 +223,20 @@ _zetopt::parser::parse()
 _zetopt::parser::setsub()
 {
     local id=${1-}
-    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
 
     local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
+    local tail_lines="${BASH_REMATCH[$((9 + INIT_IDX))]}"
     local offset=2
 
     local IFS=:
     \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
-    local cnt=$(($5 + 1))
-    _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
+    local cnt=$(($6 + 1))
+    local auxidx=-1
+    _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$auxidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
 # Set option data. 
@@ -277,25 +246,25 @@ _zetopt::parser::setsub()
 # STDOUT: NONE
 _zetopt::parser::setopt()
 {
-    local namespace="${1-}" optsign="${2-}" opt="${3-}" args
-    shift 3
+    local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" auxname="${4-}" args
+    shift 4
     args=("$@")
 
     local id="$(_zetopt::def::opt2id "$namespace" "$opt")"
     if [[ -z $id ]]; then
-        ZETOPT_OPTERR_UNDEFINED+=("$optsign$opt")
+        ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_OPTION))
         return 1
     fi
 
-    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
+    local tail_lines="${BASH_REMATCH[$((9 + INIT_IDX))]}"
     local IFS=:
     \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
-    local id="$1" refs_str="$2" types="$3" stat="$4" cnt="$5"
+    local id="$1" refs_str="$2" types="$3" aux_idxes="$4" stat="$5" cnt="$6"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
     local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
@@ -304,7 +273,7 @@ _zetopt::parser::setopt()
 
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
-        [[ $optsign =~ ^--?$ ]] \
+        [[ $opt_prefix =~ ^--?$ ]] \
         && _ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}") \
         || _ZETOPT_OPTVALS+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
         ref_arr=($optarg_idx)
@@ -381,7 +350,7 @@ _zetopt::parser::setopt()
             if [[ $def =~ @ ]]; then
                 curr_stat=$ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
-                ZETOPT_OPTERR_MISSING_REQUIRED+=("$optsign$opt")
+                ZETOPT_OPTERR_MISSING_REQUIRED+=("$opt_prefix$opt")
             
             # optional
             else
@@ -402,7 +371,7 @@ _zetopt::parser::setopt()
                     else
                         curr_stat=$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
                         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
-                        ZETOPT_OPTERR_MISSING_OPTIONAL+=("$optsign$opt")
+                        ZETOPT_OPTERR_MISSING_OPTIONAL+=("$opt_prefix$opt")
                         break
                     fi
                 done
@@ -411,25 +380,33 @@ _zetopt::parser::setopt()
     fi
 
     local type=$ZETOPT_TYPE_CMD
-    case $optsign in
+    case $opt_prefix in
         -)  type=$ZETOPT_TYPE_SHORT;;
         --) type=$ZETOPT_TYPE_LONG;;
         +)  type=$ZETOPT_TYPE_PLUS;;
     esac
+
+    local auxidx=-1
+    if [[ -n $auxname ]]; then
+        _ZETOPT_AUXNAMES+=("$auxname")
+        auxidx=$((${#_ZETOPT_AUXNAMES[@]} - 1 + $INIT_IDX))
+    fi
 
     IFS=$' '
     if [[ $cnt -eq 0 ]]; then
         stat="$curr_stat"
         refs_str="${ref_arr[*]-}"
         types="$type"
+        aux_idxes="$auxidx"
     else
         stat="$stat $curr_stat"
         refs_str="$refs_str,${ref_arr[*]-}"
         types+=" $type"
+        aux_idxes+=" $auxidx"
     fi
     : $((cnt++))
 
-    _ZETOPT_PARSED="$head_lines$id:$refs_str:$types:$stat:$cnt$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$types:$aux_idxes:$stat:$cnt$tail_lines"
     [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
@@ -590,20 +567,21 @@ _zetopt::parser::assign_args()
     fi
 
     # update parsed data
-    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
+    if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
     local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
-    local tail_lines="${BASH_REMATCH[$((8 + INIT_IDX))]}"
+    local tail_lines="${BASH_REMATCH[$((9 + INIT_IDX))]}"
     local offset=2
     local line="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}"
     local id="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ID))]}"
     #local arg="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ARG))]}"
     local type="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_TYPE))]}"
+    local auxname="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_AUXNAME))]}"
     #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]}"
-    _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$rtn:$count$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$auxname:$rtn:$count$tail_lines"
     return $rtn
 }
