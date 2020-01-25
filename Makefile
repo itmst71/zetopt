@@ -1,6 +1,6 @@
 ZETOPT_DIST_FILE	:= zetopt.sh
 ZETOPT_SRC_DIR		:= ./src
-ZETOPT_SRC_NAMES	:= info main init def parser data msg utils help man
+ZETOPT_SRC_NAMES	:= info init main def parser data msg utils help man
 ZETOPT_TEST_DIR		:= ./test
 SHUNIT2_URL			:= https://github.com/kward/shunit2
 SHUNIT2_DIR			:= ./.ignore/shunit2
