@@ -241,7 +241,7 @@ _zetopt::parser::setsub()
 
 # Set option data. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::setopt {NAMESPACE} {OPTSIGN} {OPTNAME} {ARGUMENTS}
+# def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {ARGUMENTS}
 # e.g.) _zetopt::parser::setopt /sub/cmd - version "$@"
 # STDOUT: NONE
 _zetopt::parser::setopt()
@@ -249,9 +249,9 @@ _zetopt::parser::setopt()
     local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" auxname="${4-}" args
     shift 4
     args=("$@")
-
-    local id="$(_zetopt::def::opt2id "$namespace" "$opt")"
-    if [[ -z $id ]]; then
+    local is_short=$( [[ ${#opt_prefix} -eq 1 && $_ZETOPT_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
+    local id="$(_zetopt::def::opt2id "$namespace" "$opt" "$is_short" || echo ERROR:$?)"
+    if [[ $id =~ ^ERROR:[0-9]+$ ]]; then
         ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_OPTION))
         return 1

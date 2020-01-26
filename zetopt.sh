@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-22 15:30)
+# Version     : 1.2.0a (2020-01-26 13:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-22 15:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-26 13:00)"
 
 
 #------------------------------------------------------------
@@ -782,13 +782,14 @@ _zetopt::def::namespaces()
 
 # Print the identifier by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
-# def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME}
+# def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME} {IS_SHORT}
 # e.g.) _zetopt::def::opt2id /remote/add/ version
 # STDOUT: an identifier
+# RETURN: 0:No Error, 1:Not Found, 2:Ambiguous Name
 _zetopt::def::opt2id()
 {
-    local ns="${1-}" opt="${2-}"
-    if [[ -z $ns || -z $opt ]]; then
+    local ns="${1-}" opt="${2-}" is_short=${3-}
+    if [[ -z $ns || -z $opt || -z $is_short ]]; then
         return 1
     fi
 
@@ -796,7 +797,7 @@ _zetopt::def::opt2id()
     while :
     do
         # short
-        if [[ ${#opt} -eq 1 ]]; then
+        if [[ $is_short == true ]]; then
             if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:$opt: ]]; then
                 \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
                 return 0
@@ -809,7 +810,7 @@ _zetopt::def::opt2id()
 
                 # reject ambiguous name
                 if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
-                    return 1
+                    return 2
                 fi
                 \printf -- "%s" "$tmpid"
                 return 0
@@ -1271,7 +1272,7 @@ _zetopt::parser::setsub()
 
 # Set option data. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::setopt {NAMESPACE} {OPTSIGN} {OPTNAME} {ARGUMENTS}
+# def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {ARGUMENTS}
 # e.g.) _zetopt::parser::setopt /sub/cmd - version "$@"
 # STDOUT: NONE
 _zetopt::parser::setopt()
@@ -1279,9 +1280,9 @@ _zetopt::parser::setopt()
     local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" auxname="${4-}" args
     shift 4
     args=("$@")
-
-    local id="$(_zetopt::def::opt2id "$namespace" "$opt")"
-    if [[ -z $id ]]; then
+    local is_short=$( [[ ${#opt_prefix} -eq 1 && $_ZETOPT_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
+    local id="$(_zetopt::def::opt2id "$namespace" "$opt" "$is_short" || echo ERROR:$?)"
+    if [[ $id =~ ^ERROR:[0-9]+$ ]]; then
         ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_OPTION))
         return 1
