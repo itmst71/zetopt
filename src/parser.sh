@@ -44,6 +44,7 @@ _zetopt::parser::parse()
     local _CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
     local _CFG_PSEUDO_OPTION="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_PSEUDO_OPTION-}")"
     local _CFG_CONCATENATED_OPTARG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CONCATENATED_OPTARG-}")"
+    local _CFG_ABBREVIATED_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ABBREVIATED_LONG-}")"
     local _CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
     local _CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
     local _CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"

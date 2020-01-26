@@ -541,18 +541,24 @@ _zetopt::def::opt2id()
         
         # long
         else
-            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
-                tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
+            if [[ $_CFG_ABBREVIATED_LONG == true ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
+                    tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
 
-                # reject ambiguous name
-                if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
-                    return 2
+                    # reject ambiguous name
+                    if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
+                        return 2
+                    fi
+                    \printf -- "%s" "$tmpid"
+                    return 0
                 fi
-                \printf -- "%s" "$tmpid"
-                return 0
+            else
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}: ]]; then
+                    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+                    return 0
+                fi
             fi
         fi
-
 
         if [[ $ns == / ]]; then
             return 1

@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-26 13:00)
+# Version     : 1.2.0a (2020-01-27 08:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-26 13:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-27 08:00)"
 
 
 #------------------------------------------------------------
@@ -133,6 +133,7 @@ _zetopt::init::init_config()
     ZETOPT_CFG_SINGLE_PREFIX_LONG=false
     ZETOPT_CFG_PSEUDO_OPTION=false
     ZETOPT_CFG_CONCATENATED_OPTARG=true
+    ZETOPT_CFG_ABBREVIATED_LONG=true
     ZETOPT_CFG_IGNORE_BLANK_STRING=false
     ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
     ZETOPT_CFG_OPTTYPE_PLUS=false
@@ -806,18 +807,24 @@ _zetopt::def::opt2id()
         
         # long
         else
-            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
-                tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
+            if [[ $_CFG_ABBREVIATED_LONG == true ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
+                    tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
 
-                # reject ambiguous name
-                if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
-                    return 2
+                    # reject ambiguous name
+                    if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*: ]]; then
+                        return 2
+                    fi
+                    \printf -- "%s" "$tmpid"
+                    return 0
                 fi
-                \printf -- "%s" "$tmpid"
-                return 0
+            else
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}: ]]; then
+                    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+                    return 0
+                fi
             fi
         fi
-
 
         if [[ $ns == / ]]; then
             return 1
@@ -1076,6 +1083,7 @@ _zetopt::parser::parse()
     local _CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
     local _CFG_PSEUDO_OPTION="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_PSEUDO_OPTION-}")"
     local _CFG_CONCATENATED_OPTARG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CONCATENATED_OPTARG-}")"
+    local _CFG_ABBREVIATED_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ABBREVIATED_LONG-}")"
     local _CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
     local _CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
     local _CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
