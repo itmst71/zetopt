@@ -34,7 +34,7 @@ _zetopt::parser::parse()
     _zetopt::parser::init
     _zetopt::data::init
     
-    local optname= optnames_len= optarg= idx= opt_prefix= auxname= added_cnt=0 consumed_args_count= args
+    local optname= optnames_len= optarg= idx= opt_prefix= pseudoname= added_cnt=0 consumed_args_count= args
     local namespace=/ ns= check_subcmd=true error_subcmd_name=
     
     # internal global variables
@@ -95,14 +95,14 @@ _zetopt::parser::parse()
             fi
             opt_prefix=${BASH_REMATCH[$((1 + INIT_IDX))]}
             optname=${BASH_REMATCH[$((2 + INIT_IDX))]}
-            auxname=${BASH_REMATCH[$((4 + INIT_IDX))]/:/}
+            pseudoname=${BASH_REMATCH[$((4 + INIT_IDX))]/:/}
             optarg=${BASH_REMATCH[$((7 + INIT_IDX))]}
             shift
             if [[ -n $optarg ]]; then
                 added_cnt=1
-                _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$optarg" "$@" ||:
+                _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$optarg" "$@" ||:
             else
-                _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$@" ||:
+                _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
             fi
             check_subcmd=false
 
@@ -119,8 +119,8 @@ _zetopt::parser::parse()
                 optname=${optnames:$idx:1}
                 if [[ $((idx + 1)) -lt $optnames_len ]]; then
                     if [[ ${optnames:$((idx+1)):1} == : ]]; then
-                        auxname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
-                        _zetopt::parser::setopt $namespace $opt_prefix $optname "$auxname" "$@" ||:
+                        pseudoname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
+                        _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
                         break
                     else
                         _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
@@ -235,8 +235,8 @@ _zetopt::parser::setsub()
     local IFS=:
     \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
     local cnt=$(($6 + 1))
-    local auxidx=-1
-    _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$auxidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
+    local pseudoidx=-1
+    _ZETOPT_PARSED=$head_lines$1:$2:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
 # Set option data. 
@@ -246,7 +246,7 @@ _zetopt::parser::setsub()
 # STDOUT: NONE
 _zetopt::parser::setopt()
 {
-    local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" auxname="${4-}" args
+    local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" pseudoname="${4-}" args
     shift 4
     args=("$@")
     local is_short=$( [[ ${#opt_prefix} -eq 1 && $_ZETOPT_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
@@ -264,7 +264,7 @@ _zetopt::parser::setopt()
     local tail_lines="${BASH_REMATCH[$((9 + INIT_IDX))]}"
     local IFS=:
     \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
-    local id="$1" refs_str="$2" types="$3" aux_idxes="$4" stat="$5" cnt="$6"
+    local id="$1" refs_str="$2" types="$3" pseudo_idexs="$4" stat="$5" cnt="$6"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
     local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
@@ -386,10 +386,10 @@ _zetopt::parser::setopt()
         +)  type=$ZETOPT_TYPE_PLUS;;
     esac
 
-    local auxidx=-1
-    if [[ -n $auxname ]]; then
-        _ZETOPT_AUXNAMES+=("$auxname")
-        auxidx=$((${#_ZETOPT_AUXNAMES[@]} - 1 + $INIT_IDX))
+    local pseudoidx=-1
+    if [[ -n $pseudoname ]]; then
+        _ZETOPT_PSEUDOS+=("$pseudoname")
+        pseudoidx=$((${#_ZETOPT_PSEUDOS[@]} - 1 + $INIT_IDX))
     fi
 
     IFS=$' '
@@ -397,16 +397,16 @@ _zetopt::parser::setopt()
         stat="$curr_stat"
         refs_str="${ref_arr[*]-}"
         types="$type"
-        aux_idxes="$auxidx"
+        pseudo_idexs="$pseudoidx"
     else
         stat="$stat $curr_stat"
         refs_str="$refs_str,${ref_arr[*]-}"
         types+=" $type"
-        aux_idxes+=" $auxidx"
+        pseudo_idexs+=" $pseudoidx"
     fi
     : $((cnt++))
 
-    _ZETOPT_PARSED="$head_lines$id:$refs_str:$types:$aux_idxes:$stat:$cnt$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$types:$pseudo_idexs:$stat:$cnt$tail_lines"
     [[ $curr_stat -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
@@ -577,11 +577,11 @@ _zetopt::parser::assign_args()
     local id="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ID))]}"
     #local arg="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ARG))]}"
     local type="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_TYPE))]}"
-    local auxname="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_AUXNAME))]}"
+    local pseudoname="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_PSEUDO))]}"
     #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]}"
-    _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$auxname:$rtn:$count$tail_lines"
+    _ZETOPT_PARSED="$head_lines$id:$refs_str:$type:$pseudoname:$rtn:$count$tail_lines"
     return $rtn
 }

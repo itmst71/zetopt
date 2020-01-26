@@ -542,13 +542,13 @@ test_default_defval_pickup() {
 }
 
 #------------------------------------------------
-# auxname
+# pseudo
 #------------------------------------------------
-test_auxname() {
+test_pseudo() {
     zetopt def foo:f,foo @FOO
     zetopt parse -f:bar:boo FOO -f:100:A_B_C
-    local auxnames=$(zetopt auxname foo @)
-    assertEquals "bar:boo 100:A_B_C" "$auxnames"
+    local pseudo_name=$(zetopt pseudo foo @)
+    assertEquals "bar:boo 100:A_B_C" "$pseudo_name"
 }
 
 #------------------------------------------------

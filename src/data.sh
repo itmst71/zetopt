@@ -16,7 +16,7 @@ _zetopt::data::init()
         _ZETOPT_PARSED+="$1:::::0$LF"
     done
     _ZETOPT_OPTVALS=()
-    _ZETOPT_AUXNAMES=()
+    _ZETOPT_PSEUDOS=()
     ZETOPT_ARGS=()
 }
 
@@ -51,7 +51,7 @@ _zetopt::data::field()
         $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ID))]}";;
         $ZETOPT_FIELD_DATA_ARG)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ARG))]}";;
         $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_TYPE))]}";;
-        $ZETOPT_FIELD_DATA_AUXNAME) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_AUXNAME))]}";;
+        $ZETOPT_FIELD_DATA_PSEUDO) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_PSEUDO))]}";;
         $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_STATUS))]}";;
         $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_COUNT))]}";;
         *) return 1;;
@@ -97,7 +97,7 @@ _zetopt::data::isvalid()
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_AUXNAME|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
+# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
 # e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::validx()
@@ -106,7 +106,7 @@ _zetopt::data::validx()
         return 1
     fi
     case $2 in
-        $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_AUXNAME | $ZETOPT_FIELD_DATA_STATUS) :;;
+        $ZETOPT_FIELD_DATA_ARG | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS) :;;
         *) return 1;;
     esac
     local field="$2"
@@ -457,11 +457,11 @@ _zetopt::data::arglength()
     \echo ${#arr[@]}
 }
 
-# Print the auxiliary option name which is specified like -c:v:0
-# def.) _zetopt::data::auxname {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::auxname /foo 1
-# STDOUT: auxnames separated with $ZETOPT_CFG_VALUE_IFS
-_zetopt::data::auxname()
+# Print the pseudo option name which is specified like -c:v:0
+# def.) _zetopt::data::pseudo {ID} [ONE-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::pseudo /foo 1
+# STDOUT: pseudo option names separated with $ZETOPT_CFG_VALUE_IFS
+_zetopt::data::pseudo()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
@@ -484,7 +484,7 @@ _zetopt::data::auxname()
             idxarr+=("$idx")
         done
     fi
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_AUXNAME "${idxarr[@]-@}")"
+    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_PSEUDO "${idxarr[@]-@}")"
     if [[ -z "$list_str" ]]; then
         return 1
     fi
@@ -501,7 +501,7 @@ _zetopt::data::auxname()
         if [[ $idx == -1 ]]; then
             \printf -- "%s$ifs" ""
         else
-            printf -- "%s$ifs" "${_ZETOPT_AUXNAMES[$idx]}"
+            printf -- "%s$ifs" "${_ZETOPT_PSEUDOS[$idx]}"
         fi
         i+=1
     done

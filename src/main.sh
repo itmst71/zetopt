@@ -78,8 +78,8 @@ zetopt()
             _zetopt::data::isvalid "${@-}";;
         count | cnt)
             _zetopt::data::count "${@-}";;
-        auxname)
-            _zetopt::data::auxname "${@-}";;
+        pseudo)
+            _zetopt::data::pseudo "${@-}";;
         status | stat)
             _zetopt::data::status "${@-}";;
         setids)
