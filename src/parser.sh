@@ -34,17 +34,19 @@ _zetopt::parser::parse()
     _zetopt::parser::init
     _zetopt::data::init
     
-    local optname= optnames_len= optarg= idx= opt_prefix= pseudoname= added_cnt=0 consumed_args_count= args
+    local optname= optnames_len= optarg= idx= opt_prefix= pseudoname=
+    local additional_args_count=0 consumed_args_count= args
     local namespace=/ ns= check_subcmd=true error_subcmd_name=
     
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
-    local _ZETOPT_CFG_SINGLE_PREFIX_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_SINGLE_PREFIX_LONG-}")"
-    local _ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
-    local _ZETOPT_CFG_AUXNAME="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_AUXNAME-}")"
-    local _ZETOPT_CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
-    local _ZETOPT_CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
-    local _ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
+    local _CFG_SINGLE_PREFIX_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_SINGLE_PREFIX_LONG-}")"
+    local _CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
+    local _CFG_PSEUDO_OPTION="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_PSEUDO_OPTION-}")"
+    local _CFG_CONCATENATED_OPTARG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CONCATENATED_OPTARG-}")"
+    local _CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
+    local _CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
+    local _CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
         _zetopt::msg::debug "Invalid Definition Data:" "Root Namespace Not Found"
@@ -58,7 +60,7 @@ _zetopt::parser::parse()
         
         # Double Hyphen Only
         if [[ $1 == -- ]]; then
-            if [[ $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
+            if [[ $_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
                 shift
                 ZETOPT_ARGS+=("$@")
                 break
@@ -76,7 +78,7 @@ _zetopt::parser::parse()
 
         # Blank String
         elif [[ $1 == "" ]]; then
-            if [[ $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
+            if [[ $_CFG_IGNORE_BLANK_STRING == true ]]; then
                 shift
                 continue
             fi
@@ -85,7 +87,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # Long option
-        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($_ZETOPT_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
+        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
             if [[ ! $1 =~ ^([-+]{1,2})([a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)((:[a-zA-Z0-9_]+)*)(=(.*$))?$ ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -99,7 +101,7 @@ _zetopt::parser::parse()
             optarg=${BASH_REMATCH[$((7 + INIT_IDX))]}
             shift
             if [[ -n $optarg ]]; then
-                added_cnt=1
+                additional_args_count=1
                 _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$optarg" "$@" ||:
             else
                 _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
@@ -118,15 +120,19 @@ _zetopt::parser::parse()
             do
                 optname=${optnames:$idx:1}
                 if [[ $((idx + 1)) -lt $optnames_len ]]; then
-                    if [[ ${optnames:$((idx+1)):1} == : ]]; then
+                    if [[ $_CFG_PSEUDO_OPTION == true && ${optnames:$((idx+1)):1} == : ]]; then
                         pseudoname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
                         _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
                         break
                     else
-                        _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
-                        if [[ $consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
-                            added_cnt=1
-                            break
+                        if [[ $_CFG_CONCATENATED_OPTARG == true ]]; then
+                            _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
+                            if [[ $consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
+                                additional_args_count=1
+                                break
+                            fi
+                        else
+                            _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@"||:
                         fi
                     fi
                 else
@@ -142,7 +148,7 @@ _zetopt::parser::parse()
                 ns="${namespace%/*}/$1/"
                 if ! _zetopt::def::exists "$ns"; then
                     check_subcmd=false
-                    if [[ $_ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
+                    if [[ $_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
                         ZETOPT_ARGS+=("$1")
                         shift
                         continue
@@ -168,8 +174,8 @@ _zetopt::parser::parse()
         fi
 
         # shift
-        if [[ $(($_CONSUMED_ARGS_COUNT - $added_cnt)) -gt 0 ]]; then
-            shift $(($_CONSUMED_ARGS_COUNT - $added_cnt))
+        if [[ $(($_CONSUMED_ARGS_COUNT - $additional_args_count)) -gt 0 ]]; then
+            shift $(($_CONSUMED_ARGS_COUNT - $additional_args_count))
         fi
     done
 
@@ -241,7 +247,7 @@ _zetopt::parser::setsub()
 
 # Set option data. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {ARGUMENTS}
+# def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {PSEUDO} [ARGUMENTS]
 # e.g.) _zetopt::parser::setopt /sub/cmd - version "$@"
 # STDOUT: NONE
 _zetopt::parser::setopt()
@@ -249,7 +255,7 @@ _zetopt::parser::setopt()
     local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" pseudoname="${4-}" args
     shift 4
     args=("$@")
-    local is_short=$( [[ ${#opt_prefix} -eq 1 && $_ZETOPT_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
+    local is_short=$( [[ ${#opt_prefix} -eq 1 && $_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
     local id="$(_zetopt::def::opt2id "$namespace" "$opt" "$is_short" || echo ERROR:$?)"
     if [[ $id =~ ^ERROR:[0-9]+$ ]]; then
         ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
@@ -284,7 +290,7 @@ _zetopt::parser::setopt()
         \set -- $paramdef_str
         local arg def def_arr varlen_mode=false no_avail_args=false
         declare -i def_len=$(($# + INIT_IDX)) def_idx=$INIT_IDX
-        declare -i arg_cnt=0 arg_max arg_idx=$INIT_IDX arg_len=$((${#args[@]} + $INIT_IDX))
+        declare -i arg_cnt=0 arg_def_max arg_idx=$INIT_IDX arg_max_idx=$((${#args[@]} + $INIT_IDX))
         def_arr=($@)
 
         while [[ $def_idx -lt $def_len ]]
@@ -292,9 +298,9 @@ _zetopt::parser::setopt()
             def=${def_arr[$def_idx]}
 
             # there are available args 
-            if [[ $arg_idx -lt $arg_len ]]; then
+            if [[ $arg_idx -lt $arg_max_idx ]]; then
                 arg="${args[$arg_idx]}"
-                if [[ $arg == "" && $_ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
+                if [[ $arg == "" && $_CFG_IGNORE_BLANK_STRING == true ]]; then
                     arg_idx+=1
                     continue
                 fi
@@ -305,8 +311,8 @@ _zetopt::parser::setopt()
                     || $arg == ""
                     || ($arg =~ ^-[^-] && $def =~ ^-[^-])
                     || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
-                    || ($arg =~ ^[+] && $def =~ ^--? && $_ZETOPT_CFG_OPTTYPE_PLUS == true)
-                    || ($arg == "--" && $_ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
+                    || ($arg =~ ^[+] && $def =~ ^--? && $_CFG_OPTTYPE_PLUS == true)
+                    || ($arg == "--" && $_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
                 ]]; then
                     # validate
                     if ! _zetopt::parser::validate "$def" "$arg"; then
@@ -323,10 +329,10 @@ _zetopt::parser::setopt()
 
                     if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
                         varlen_mode=true
-                        arg_max=$(_zetopt::def::paramlen $id max)
+                        arg_def_max=$(_zetopt::def::paramlen $id max)
                     fi
 
-                    if [[ $varlen_mode == true && $arg_cnt -ge $arg_max ]]; then
+                    if [[ $varlen_mode == true && $arg_cnt -ge $arg_def_max ]]; then
                         break
                     fi
 

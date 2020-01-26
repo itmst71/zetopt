@@ -545,10 +545,13 @@ test_default_defval_pickup() {
 # pseudo
 #------------------------------------------------
 test_pseudo() {
+    ZETOPT_CFG_PSEUDO_OPTION=true
     zetopt def foo:f,foo @FOO
-    zetopt parse -f:bar:boo FOO -f:100:A_B_C
+    zetopt parse -f:bar:boo FOO -f:100:A_B_C BAR
     local pseudo_name=$(zetopt pseudo foo @)
     assertEquals "bar:boo 100:A_B_C" "$pseudo_name"
+    local val=$(zetopt val foo @:@)
+    assertEquals "FOO BAR" "$val"
 }
 
 #------------------------------------------------
