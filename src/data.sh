@@ -77,7 +77,7 @@ _zetopt::data::isset()
 # STDOUT: NONE
 _zetopt::data::isvalid()
 {
-    if [[ -z ${_ZETOPT_PARSED:-} || $# -eq 0 || -z ${1-} ]]; then
+    if [[ -z ${_ZETOPT_PARSED:-} || -z ${1-} ]]; then
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
@@ -89,7 +89,7 @@ _zetopt::data::isvalid()
     fi
 
     shift
-    local stat="$(_zetopt::data::status "$id" "${@-}")"
+    local stat="$(_zetopt::data::status "$id" "$@")"
     if [[ -z $stat ]]; then
         return 1
     fi
@@ -438,7 +438,7 @@ _zetopt::data::arglength()
 
     local idxarr
     idxarr=()
-    if [[ $# -eq 0 || -z ${@-} ]]; then
+    if [[ -z $@ ]]; then
         idxarr=($:@)
     else
         local idx=
@@ -471,7 +471,7 @@ _zetopt::data::pseudo()
 
     local idxarr
     idxarr=()
-    if [[ $# -eq 0 || -z ${@-} ]]; then
+    if [[ -z $@ ]]; then
         idxarr=($)
     else
         local idx=
@@ -522,7 +522,7 @@ _zetopt::data::status()
 
     local idxarr
     idxarr=()
-    if [[ $# -eq 0 || -z ${@-} ]]; then
+    if [[ -z $@ ]]; then
         idxarr=($)
     else
         local idx=
@@ -552,7 +552,7 @@ _zetopt::data::type()
 
     local idxarr
     idxarr=()
-    if [[ $# -eq 0 || -z ${@-} ]]; then
+    if [[ -z $@ ]]; then
         idxarr=($)
     else
         local idx=

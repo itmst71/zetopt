@@ -60,50 +60,47 @@ zetopt()
             _zetopt::data::init
             ;;
         define | def)
-            _zetopt::def::define "${@-}";;
+            _zetopt::def::define "$@";;
         def-validator | define-validator)
-            _zetopt::def::def_validator "${@-}";;
+            _zetopt::def::def_validator "$@";;
         parse)
-            # for supporting blank string argument
-            [[ $# -eq 0 ]] \
-            && _zetopt::parser::parse \
-            || _zetopt::parser::parse "${@-}";;
+            _zetopt::parser::parse "$@";;
         define-help | def-help)
-            _zetopt::help::define "${@-}";;
+            _zetopt::help::define "$@";;
         show-help)
-            _zetopt::help::show "${@-}";;
+            _zetopt::help::show "$@";;
         isset)
-            _zetopt::data::isset "${@-}";;
+            _zetopt::data::isset "$@";;
         isvalid | isok)
-            _zetopt::data::isvalid "${@-}";;
+            _zetopt::data::isvalid "$@";;
         count | cnt)
-            _zetopt::data::count "${@-}";;
+            _zetopt::data::count "$@";;
         pseudo)
-            _zetopt::data::pseudo "${@-}";;
+            _zetopt::data::pseudo "$@";;
         status | stat)
-            _zetopt::data::status "${@-}";;
+            _zetopt::data::status "$@";;
         setids)
             _zetopt::data::setids;;
         index | idx)
-            _zetopt::data::argidx "${@-}";;
+            _zetopt::data::argidx "$@";;
         type)
-            _zetopt::data::type "${@-}";;
+            _zetopt::data::type "$@";;
         paramidx | pidx)
-            _zetopt::def::paramidx "${@-}";;
+            _zetopt::def::paramidx "$@";;
         paramlen | plen)
-            _zetopt::def::paramlen "${@-}";;
+            _zetopt::def::paramlen "$@";;
         hasval)
-            _zetopt::data::hasvalue "${@-}";;
+            _zetopt::data::hasvalue "$@";;
         value | val)
-            _zetopt::data::argvalue "${@-}";;
+            _zetopt::data::argvalue "$@";;
         length | len)
-            _zetopt::data::arglength "${@-}";;
+            _zetopt::data::arglength "$@";;
         default)
-            _zetopt::def::default "${@-}";;
+            _zetopt::def::default "$@";;
         defined)
-            _zetopt::def::defined "${@-}";;
+            _zetopt::def::defined "$@";;
         parsed)
-            _zetopt::data::parsed "${@-}";;
+            _zetopt::data::parsed "$@";;
         *)
             _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
             return 1;;

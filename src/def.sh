@@ -15,7 +15,7 @@ _zetopt::def::define()
         _ZETOPT_DEFAULTS=("")
     fi
 
-    if [[ -z ${@-} ]]; then
+    if [[ -z $@ ]]; then
         _zetopt::msg::def_error "No Definition Given"
         return 1
     fi
@@ -670,7 +670,7 @@ _zetopt::def::default()
     [[ $# -eq 0 ]] && set -- @
     local key
     declare -i last_idx="$((${#params[@]} - 1 + $INIT_IDX))"
-    for key in "${@-}"
+    for key in "$@"
     do
         if [[ ! $key =~ ^(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
             _zetopt::msg::debug "Bad Key:" "$key"

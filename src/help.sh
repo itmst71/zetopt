@@ -127,7 +127,7 @@ _zetopt::help::show()
                     error=true; break
                 fi
                 shift 2;;
-            --) shift; titles+=("${@-}"); break;;
+            --) shift; titles+=("$@"); break;;
             *)  titles+=("$1"); shift;;
         esac
     done
