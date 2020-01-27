@@ -408,8 +408,8 @@ _zetopt::parser::setopt()
     else
         stat="$stat $curr_stat"
         refs_str="$refs_str,${ref_arr[*]-}"
-        types+=" $type"
-        pseudo_idexs+=" $pseudoidx"
+        types="$types $type"
+        pseudo_idexs="$pseudo_idexs $pseudoidx"
     fi
     : $((cnt++))
 

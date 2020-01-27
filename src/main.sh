@@ -73,28 +73,28 @@ zetopt()
             _zetopt::data::isset "$@";;
         isvalid | isok)
             _zetopt::data::isvalid "$@";;
-        count | cnt)
-            _zetopt::data::count "$@";;
-        pseudo)
-            _zetopt::data::pseudo "$@";;
-        status | stat)
-            _zetopt::data::status "$@";;
         setids)
             _zetopt::data::setids;;
-        index | idx)
-            _zetopt::data::argidx "$@";;
+        value | val | argv)
+            _zetopt::data::print $ZETOPT_FIELD_DATA_ARG "$@";;
         type)
-            _zetopt::data::type "$@";;
+            _zetopt::data::print $ZETOPT_FIELD_DATA_TYPE "$@";;
+        pseudo)
+            _zetopt::data::print $ZETOPT_FIELD_DATA_PSEUDO "$@";;
+        status)
+            _zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$@";;
+        count)
+            _zetopt::data::count "$@";;
+        index)
+            _zetopt::data::argidx "$@";;
+        hasval)
+            _zetopt::data::hasvalue "$@";;
+        length | len | argc)
+            _zetopt::data::argc "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
-        hasval)
-            _zetopt::data::hasvalue "$@";;
-        value | val)
-            _zetopt::data::argvalue "$@";;
-        length | len)
-            _zetopt::data::arglength "$@";;
         default)
             _zetopt::def::default "$@";;
         defined)

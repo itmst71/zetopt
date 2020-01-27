@@ -89,18 +89,18 @@ _zetopt::data::isvalid()
     fi
 
     shift
-    local stat="$(_zetopt::data::status "$id" "$@")"
-    if [[ -z $stat ]]; then
+    local status_list="$(_zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$id" "$@")"
+    if [[ -z $status_list ]]; then
         return 1
     fi
-    [[ ! $stat =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
+    [[ ! $status_list =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::validx {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::validx /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
+# def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::pickup /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
-_zetopt::data::validx()
+_zetopt::data::pickup()
 {
     if [[ -z ${_ZETOPT_PARSED:-} || $# -lt 2 || -z ${1-} ]]; then
         return 1
@@ -316,7 +316,7 @@ _zetopt::data::hasvalue()
     if [[ $LF$_ZETOPT_PARSED =~ $LF$id: && $LF$_ZETOPT_PARSED =~ $LF$id::[^:]*:[^:]*:[^:]*:[^:]* ]]; then
         return 1
     fi
-    local len=$(_zetopt::data::arglength "$@")
+    local len=$(_zetopt::data::argc "$@")
     if [[ -z $len ]]; then
         return 1
     fi
@@ -335,7 +335,7 @@ _zetopt::data::argidx()
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     shift
     
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "$@")"
+    local list_str="$(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARG "$@")"
     if [[ -z "$list_str" ]]; then
         return 1
     fi
@@ -343,92 +343,12 @@ _zetopt::data::argidx()
     \echo $list_str
 }
 
-# Print the values of the option/subcommand argument
-# def.) _zetopt::data::argvalue <ID> [<TWO-DIMENSIONAL-KEYS>] [-a,--array <ARRAY_NAME>]
-# e.g.) _zetopt::data::argvalue /foo 0:@ 1:@ --array myarr
-# STDOUT: strings separated with $ZETOPT_CFG_VALUE_IFS
-_zetopt::data::argvalue()
-{
-    if [[ $# -eq 0 ]]; then
-        return 1
-    fi
-
-    local __array_mode=false __arrname=
-    local __args
-    __args=()
-
-    while [[ $# -ne 0 ]]
-    do
-        case "$1" in
-            --array|-a)
-                __array_mode=true;
-                shift;
-                if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
-                    return 1
-                fi
-                __arrname=$1
-                shift
-                ;;
-            --) shift; __args+=("$@"); break;;
-            *)  __args+=("$1"); shift;;
-        esac
-    done
-
-    if [[ $__array_mode == true ]]; then
-        # check the user defined array name before eval to avoid overwriting local variables
-        if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Array Name:" "$__arrname"
-            return 1
-        fi
-        \eval "$__arrname=()"
-    fi
-
-    local IFS=' '
-    if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
-        return 1
-    fi
-    local __id="${__args[$((0 + $INIT_IDX))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
-    __args=(${__args[@]:1})
-    
-    local __list_str="$(_zetopt::data::validx "$__id" $ZETOPT_FIELD_DATA_ARG "${__args[@]-@}")"
-    if [[ -z "$__list_str" ]]; then
-        return 1
-    fi
-    
-    # for subcommands
-    __args=()
-    if [[ $__id =~ ^/(.*/)?$ ]]; then
-        __args=("${ZETOPT_ARGS[@]}")
-
-    # for options
-    else
-        __args=("${_ZETOPT_OPTVALS[@]}")
-    fi
-
-    declare -i __idx= __i=$INIT_IDX
-    local __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
-    \set -- $__list_str
-    local __max=$(($# + INIT_IDX - 1))
-    for __idx in "$@"
-    do
-        if [[ $__array_mode == true ]]; then
-            \eval $__arrname'[$__i]=${__args[$__idx]}'
-        else
-            if [[ $__i -eq $__max ]]; then
-                __ifs=
-            fi
-            \printf -- "%s$__ifs" "${__args[$__idx]}"
-        fi
-        __i+=1
-    done
-}
 
 # Print the actual length of arguments of the option/subcommand
-# def.) _zetopt::data::arglength {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::arglength /foo 1
+# def.) _zetopt::data::argc {ID} [ONE-DIMENSIONAL-KEYS]
+# e.g.) _zetopt::data::argc /foo 1
 # STDOUT: an integer
-_zetopt::data::arglength()
+_zetopt::data::argc()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
@@ -453,122 +373,131 @@ _zetopt::data::arglength()
     fi
     local IFS=$' '
     local arr
-    arr=($(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_ARG "${idxarr[@]}"))
+    arr=($(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARG "${idxarr[@]}"))
     \echo ${#arr[@]}
 }
 
-# Print the pseudo option name which is specified like -c:v:0
-# def.) _zetopt::data::pseudo {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::pseudo /foo 1
-# STDOUT: pseudo option names separated with $ZETOPT_CFG_VALUE_IFS
-_zetopt::data::pseudo()
-{
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::exists "$id"; then
-        return 1
-    fi
-    shift
 
-    local idxarr
-    idxarr=()
-    if [[ -z $@ ]]; then
-        idxarr=($)
-    else
-        local idx=
-        for idx in "$@"
-        do
-            if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::debug "Bad Key:" "$idx"
-                return 1
-            fi
-            idxarr+=("$idx")
-        done
-    fi
-    local list_str="$(_zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_PSEUDO "${idxarr[@]-@}")"
-    if [[ -z "$list_str" ]]; then
+# Print field data with keys
+# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [ONE/TWO-DIMENSIONAL-KEYS] [-a,--array <ARRAY_NAME>] [-I,--IFS <IFS_VALUE>]
+# e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARG @:@ --array myarr
+# STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
+_zetopt::data::print()
+{
+    if [[ $# -eq 0 ]]; then
         return 1
     fi
-    declare -i idx= i=$INIT_IDX
-    local ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
-    local IFS=$' '
-    \set -- $list_str
-    local max=$(($# + INIT_IDX - 1))
-    for idx in "$@"
+    local __field=$1
+    shift
+    local __array_mode=false __arrname=
+    local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
+    __args=()
+
+    while [[ $# -ne 0 ]]
     do
-        if [[ $i -eq $max ]]; then
-            ifs=
-        fi
-        if [[ $idx == -1 ]]; then
-            \printf -- "%s$ifs" ""
-        else
-            printf -- "%s$ifs" "${_ZETOPT_PSEUDOS[$idx]}"
-        fi
-        i+=1
+        case "$1" in
+            --array|-a)
+                __array_mode=true;
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    return 1
+                fi
+                __arrname=$1
+                shift
+                ;;
+            -I|--IFS)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-i, --ifs <IFS_VALUE>"
+                    return 1
+                fi
+                __ifs=$1
+                shift
+                ;;
+            --) shift; __args+=("$@"); break;;
+            *)  __args+=("$1"); shift;;
+        esac
     done
-}
 
+    if [[ $__array_mode == true ]]; then
+        # check the user defined array name before eval to avoid overwriting local variables
+        if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
+            _zetopt::msg::debug "Invalid Array Name:" "$__arrname"
+            return 1
+        fi
+        \eval "$__arrname=()"
+    fi
 
-# Print the parse status in integers
-# def.) _zetopt::data::status {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::status /foo 1
-# STDOUT: integers separated with spaces
-_zetopt::data::status()
-{
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::exists "$id"; then
+    local __refidx_mode=$([[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARG$ZETOPT_FIELD_DATA_PSEUDO]$ ]] && echo true || echo false)
+    local IFS=' '
+    if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
         return 1
     fi
-    shift
+    local __id="${__args[$((0 + $INIT_IDX))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
+    local __keys=${__args[@]:1}
+    if [[ -z $__keys ]]; then
+        [[ $__refidx_mode == true ]] \
+        && __keys=@ \
+        || __keys=$
+    fi
+    
+    local __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
+    if [[ -z "$__list_str" ]]; then
+        return 1
+    fi
+    
+    declare -i __idx= __i=$INIT_IDX
+    \set -- $__list_str
+    local __max=$(($# + INIT_IDX - 1))
 
-    local idxarr
-    idxarr=()
-    if [[ -z $@ ]]; then
-        idxarr=($)
-    else
-        local idx=
-        for idx in "$@"
+    if [[ $__refidx_mode == true ]]; then
+        # for subcommands
+        __args=()
+        case $__field in
+            $ZETOPT_FIELD_DATA_ARG)
+                if [[ $__id =~ ^/(.*/)?$ ]]; then
+                    __args=("${ZETOPT_ARGS[@]}")
+
+                # for options
+                else
+                    __args=("${_ZETOPT_OPTVALS[@]}")
+                fi
+                ;;
+            $ZETOPT_FIELD_DATA_PSEUDO)
+                __args=("${_ZETOPT_PSEUDOS[@]}")
+                ;;
+        esac
+
+        for __idx in "$@"
         do
-            if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::debug "Bad Key:" "$idx"
-                return 1
+            if [[ $__array_mode == true ]]; then
+                \eval $__arrname'[$__i]=${__args[$__idx]}'
+            else
+                if [[ $__i -eq $__max ]]; then
+                    __ifs=
+                fi
+                \printf -- "%s$__ifs" "${__args[$__idx]}"
             fi
-            idxarr+=("$idx")
+            __i+=1
         done
-    fi
-    _zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_STATUS "${idxarr[@]}"
-}
-
-# Print the type of option in ZETOPT_TYPE_*
-# def.) _zetopt::data::type {ID} [ONE-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::type /foo 0
-# STDOUT: integers separated with spaces
-_zetopt::data::type()
-{
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if ! _zetopt::def::exists "$id"; then
-        return 1
-    fi
-    shift
-
-    local idxarr
-    idxarr=()
-    if [[ -z $@ ]]; then
-        idxarr=($)
     else
-        local idx=
-        for idx in "$@"
-        do 
-            if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::debug "Bad Key:" "$idx"
-                return 1
+        for __idx in "$@"
+        do
+            if [[ $__array_mode == true ]]; then
+                \eval $__arrname'[$__i]=$__idx'
+            else
+                if [[ $__i -eq $__max ]]; then
+                    __ifs=
+                fi
+                \printf -- "%s$__ifs" "$__idx"
             fi
-            idxarr+=("$idx")
+            __i+=1
         done
     fi
-    _zetopt::data::validx "$id" $ZETOPT_FIELD_DATA_TYPE "${idxarr[@]}"
 }
 
-# Print the number of times the option was set
+# Print the number of times the target used
 # def.) _zetopt::data::count {ID}
 # e.g.) _zetopt::data::count /foo
 # STDOUT: an integer

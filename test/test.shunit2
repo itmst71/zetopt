@@ -9,13 +9,14 @@ if [[ -n ${ZSH_VERSION-} ]]; then
     #setopt KSH_ARRAYS
 fi
 . "$ZETOPT_DIST_FILE"
+type zetopt >/dev/null 2>&1 || return 1
 oneTimeSetUp() { :; }
 suite() { :; }
 
 __index__=1
-__index_width__=$(($(grep -cE '^test_.*\{' "${BASH_SOURCE:-${(%):-%N}}")))
 setUp() {
-    printf "%2s: " $((__index__++))
+    __index__=$((__index__ + 1))
+    printf "%2s: " $__index__
     zetopt init
     ZETOPT_CFG_DEBUG=false
     ZETOPT_CFG_ERRMSG=false
@@ -581,6 +582,7 @@ test_status_multi() {
     zetopt def val:v @FOO @BAR %BAZ...3
     zetopt parse -f -ff -f -v foo bar baz -v foo bar
     assertEquals "0 0 0 0" "$(zetopt status flag @)"
+    assertEquals "0::0::0::0" "$(zetopt status --IFS :: -- flag @)"
     assertEquals "0 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val @)"
 }
 
