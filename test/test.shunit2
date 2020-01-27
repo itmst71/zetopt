@@ -602,26 +602,32 @@ test_status_notset() {
 }
 
 #------------------------------------------------
-# length
+# argc
 #------------------------------------------------
-test_length() {
+test_argc() {
     zetopt def val:v @FOO @BAR %BAZ
     zetopt parse -v FOO BAR
-    assertEquals 2 "$(zetopt length val)"
+    assertEquals 2 "$(zetopt argc val)"
 }
 
-test_length_variable() {
+test_argc_multi() {
+    zetopt def val:v %FOO %BAR %BAZ
+    zetopt parse -v FOO BAR -v foo bar baz -v -v fo br
+    assertEquals "2 3 0 2" "$(zetopt argc val ^ -3 -2 $)"
+}
+
+test_argc_variable() {
     zetopt def val1:v @FOO @BAR %BAZ...3
     zetopt def val2:V %FOO...
     zetopt parse -v FOO BAR BAZ1 BAZ2 -V {a..z}
-    assertEquals 4 "$(zetopt length val1)"
-    assertEquals 26 "$(zetopt length val2)"
+    assertEquals 4 "$(zetopt argc val1)"
+    assertEquals 26 "$(zetopt argc val2)"
 }
 
-test_length_notset() {
+test_argc_notset() {
     zetopt def val1:v @FOO @BAR %BAZ...3
     zetopt parse
-    assertEquals 0 "$(zetopt length val1)"
+    assertEquals 0 "$(zetopt argc val1)"
 }
 
 #------------------------------------------------

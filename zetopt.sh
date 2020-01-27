@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-27 08:00)
+# Version     : 1.2.0a (2020-01-28 02:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-27 08:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-28 02:00)"
 
 
 #------------------------------------------------------------
@@ -1704,7 +1704,7 @@ _zetopt::data::isset()
 }
 
 # Check if the option is set and its status is OK
-# def.) _zetopt::data::isvalid {ID} [ONE-DIMENSIONAL-KEYS]
+# def.) _zetopt::data::isvalid {ID} [1D-KEY...]
 # e.g.) _zetopt::data::isvalid /foo @
 # STDOUT: NONE
 _zetopt::data::isvalid()
@@ -1729,7 +1729,7 @@ _zetopt::data::isvalid()
 }
 
 # Print option arguments/status index list
-# def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [TWO-DIMENSIONAL-KEYS]
+# def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [1D/2D-KEY...]
 # e.g.) _zetopt::data::pickup /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
 _zetopt::data::pickup()
@@ -1936,7 +1936,7 @@ _zetopt::data::pickup()
 }
 
 # Check if it has value
-# def.) _zetopt::data:hasvalue {ID} [ONE-DIMENSIONAL-KEYS]
+# def.) _zetopt::data:hasvalue {ID} [1D-KEY...]
 # e.g.) _zetopt::data::hasvalue /foo 0
 # STDOUT: NONE
 _zetopt::data::hasvalue()
@@ -1956,8 +1956,8 @@ _zetopt::data::hasvalue()
 }
 
 # Print option arguments index list to refer $_ZETOPT_OPTVALS
-# def.) _zetopt::data::argidx {ID} [TWO-DIMENSIONAL-KEYS]
-# e.g.) _zetopt::data::argidx /foo $ZETOPT_FILED_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz
+# def.) _zetopt::data::argidx {ID} {1D/2D-KEY...]
+# e.g.) _zetopt::data::argidx /foo 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz
 # STDOUT: integers separated with spaces
 _zetopt::data::argidx()
 {
@@ -1977,41 +1977,37 @@ _zetopt::data::argidx()
 
 
 # Print the actual length of arguments of the option/subcommand
-# def.) _zetopt::data::argc {ID} [ONE-DIMENSIONAL-KEYS]
+# Key does not accept @ and range(,)
+# def.) _zetopt::data::argc {ID} [1D-KEY...]
 # e.g.) _zetopt::data::argc /foo 1
 # STDOUT: an integer
 _zetopt::data::argc()
 {
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="${1-}" && [[ ! $id =~ ^/ ]] && id="/$id"
+    shift
     if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    shift
 
-    local idxarr
-    idxarr=()
-    if [[ -z $@ ]]; then
-        idxarr=($:@)
-    else
-        local idx=
-        for idx in "$@"
-        do 
-            if [[ $idx =~ [^@$\^,0-9-] ]]; then
-                _zetopt::msg::debug "Bad Key:" "$idx"
-                return 1
-            fi
-            idxarr+=("$idx:@")
-        done
-    fi
-    local IFS=$' '
-    local arr
-    arr=($(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARG "${idxarr[@]}"))
-    \echo ${#arr[@]}
+    local IFS=$' ' tmp out
+    tmp=() out=()
+    [[ $# -ne 0 ]] && keys=$@ || keys=$
+
+    for key in $keys
+    do
+        if [[ ! $key =~ ^([$\^]|$INIT_IDX|-?[1-9][0-9]*)$ ]]; then
+            _zetopt::msg::debug "Bad Key:" "$key"
+            return 1
+        fi
+        tmp=($(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARG "$key:@"))
+        out+=(${#tmp[@]})
+    done
+    \echo "${out[@]}"
 }
 
 
 # Print field data with keys
-# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [ONE/TWO-DIMENSIONAL-KEYS] [-a,--array <ARRAY_NAME>] [-I,--IFS <IFS_VALUE>]
+# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME>] [-I,--IFS <IFS_VALUE>]
 # e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARG @:@ --array myarr
 # STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
 _zetopt::data::print()
@@ -2021,7 +2017,7 @@ _zetopt::data::print()
     fi
     local __field=$1
     shift
-    local __array_mode=false __arrname=
+    local __array_mode=false __arrname= __newline=
     local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
     __args=()
 
@@ -2047,6 +2043,7 @@ _zetopt::data::print()
                 __ifs=$1
                 shift
                 ;;
+            -n) __newline=$LF; shift;;
             --) shift; __args+=("$@"); break;;
             *)  __args+=("$1"); shift;;
         esac
@@ -2101,15 +2098,16 @@ _zetopt::data::print()
                 ;;
         esac
 
+        local __nl=
         for __idx in "$@"
         do
             if [[ $__array_mode == true ]]; then
                 \eval $__arrname'[$__i]=${__args[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs=
+                    __ifs= __nl=$__newline
                 fi
-                \printf -- "%s$__ifs" "${__args[$__idx]}"
+                \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
             fi
             __i+=1
         done
@@ -2120,9 +2118,9 @@ _zetopt::data::print()
                 \eval $__arrname'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs=
+                    __ifs= __nl=$__newline
                 fi
-                \printf -- "%s$__ifs" "$__idx"
+                \printf -- "%s$__ifs$__nl" "$__idx"
             fi
             __i+=1
         done
