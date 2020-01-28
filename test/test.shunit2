@@ -647,6 +647,24 @@ test_type() {
     assertEquals $ZETOPT_TYPE_PLUS "$(zetopt type verbose $)"
 }
 
+#------------------------------------------------
+# hasarg
+#------------------------------------------------
+test_hasarg() {
+    zetopt def foo:f %FOO %BAR %BAZ
+    zetopt parse -f foo
+    zetopt hasarg foo
+    assertTrue $?
+    zetopt parse -f
+    zetopt hasarg foo
+    assertFalse $?
+    zetopt parse -f -f foo -f foo bar
+    zetopt hasarg foo ^
+    assertFalse $?
+    zetopt hasarg foo @
+    assertTrue $?
+}
+
 
 # load shunit2 functions
 . "$SHUNIT2_BIN"

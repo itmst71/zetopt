@@ -304,25 +304,17 @@ _zetopt::data::pickup()
     \printf -- "%s\n" "${output_list[*]}"
 }
 
-# Check if it has value
-# def.) _zetopt::data:hasvalue {ID} [1D-KEY...]
-# e.g.) _zetopt::data::hasvalue /foo 0
+
+# Check if the target has arg
+# def.) _zetopt::data:hasarg {ID} [1D-KEY...]
+# e.g.) _zetopt::data::hasarg /foo 0
 # STDOUT: NONE
-_zetopt::data::hasvalue()
+_zetopt::data::hasarg()
 {
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ $LF$_ZETOPT_PARSED =~ $LF$id: && $LF$_ZETOPT_PARSED =~ $LF$id::[^:]*:[^:]*:[^:]*:[^:]*:[^:]* ]]; then
-        return 1
-    fi
-    local len=$(_zetopt::data::argc "$@")
-    if [[ -z $len ]]; then
-        return 1
-    fi
-    [[ $len -ne 0 ]]
+    local argc_str="$(_zetopt::data::print $ZETOPT_FIELD_DATA_ARGC "$@")"
+    [[ -n "$argc_str" && ! "$argc_str" =~ ^[0\ ]+$ ]]
 }
+
 
 # Print option arguments index list to refer $_ZETOPT_OPTVALS
 # def.) _zetopt::data::argidx {ID} {1D/2D-KEY...]
@@ -342,36 +334,6 @@ _zetopt::data::argidx()
     fi
     local IFS=$' '
     \echo $list_str
-}
-
-
-# Print the actual length of arguments of the option/subcommand
-# Key does not accept @ and range(,)
-# def.) _zetopt::data::argc {ID} [1D-KEY...]
-# e.g.) _zetopt::data::argc /foo 1
-# STDOUT: integers separated with spaces
-_zetopt::data::argc()
-{
-    local id="${1-}" && [[ ! $id =~ ^/ ]] && id="/$id"
-    shift
-    if ! _zetopt::def::exists "$id"; then
-        return 1
-    fi
-
-    local IFS=$' ' tmp out
-    tmp=() out=()
-    [[ $# -ne 0 ]] && keys=$@ || keys=$
-
-    for key in $keys
-    do
-        if [[ ! $key =~ ^([$\^]|$INIT_IDX|-?[1-9][0-9]*)$ ]]; then
-            _zetopt::msg::debug "Bad Key:" "$key"
-            return 1
-        fi
-        tmp=($(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARGV "$key:@"))
-        out+=(${#tmp[@]})
-    done
-    \echo "${out[@]}"
 }
 
 

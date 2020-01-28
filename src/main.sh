@@ -99,8 +99,8 @@ zetopt()
             _zetopt::data::count "$@";;
         index)
             _zetopt::data::argidx "$@";;
-        hasval)
-            _zetopt::data::hasvalue "$@";;
+        hasarg | hasval)
+            _zetopt::data::hasarg "$@";;
         isvalid | isok)
             _zetopt::data::isvalid "$@";;
         parsed)
