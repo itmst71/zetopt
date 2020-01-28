@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-28 19:00)
+# Version     : 1.2.0a (2020-01-29 06:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-28 19:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-29 06:00)"
 
 
 #------------------------------------------------------------
@@ -39,7 +39,7 @@ readonly ZETOPT_VERSION="1.2.0a (2020-01-28 19:00)"
 #------------------------------------------------------------
 # Global Constant Variables
 # bash
-if [ -n "${BASH_VERSION-}" ]; then
+if [[ -n ${BASH_VERSION-} ]]; then
     readonly ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
     readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
     readonly ZETOPT_CALLER_FILE_PATH="$0"
@@ -47,7 +47,7 @@ if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && \echo true || \echo false)"
     readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
-elif [ -n "${ZSH_VERSION-}" ]; then
+elif [[ -n ${ZSH_VERSION-} ]]; then
     readonly ZETOPT_SOURCE_FILE_PATH="$0"
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
@@ -1652,7 +1652,7 @@ _zetopt::parser::assign_args()
     #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
-    local refs_str="${ref_arr[*]}"
+    local refs_str="${ref_arr[*]-}"
     local argcs=${#ref_arr[@]}
     _ZETOPT_PARSED="$head_lines$id:$refs_str:$argcs:$type:$pseudoname:$rtn:$count$tail_lines"
     return $rtn

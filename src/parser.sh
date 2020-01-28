@@ -600,7 +600,7 @@ _zetopt::parser::assign_args()
     #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
     IFS=' '
-    local refs_str="${ref_arr[*]}"
+    local refs_str="${ref_arr[*]-}"
     local argcs=${#ref_arr[@]}
     _ZETOPT_PARSED="$head_lines$id:$refs_str:$argcs:$type:$pseudoname:$rtn:$count$tail_lines"
     return $rtn
