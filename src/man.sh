@@ -11,11 +11,14 @@ VERSION
     $ZETOPT_VERSION
 USAGE
     zetopt {SUB-COMMAND} {ARGS}
+OPTIONS
+    -v, --version, -h, --help
 SUB-COMMANDS
-    version help init reset define defined
-    parse data get isset count status index
+    def def-validator paramidx paramlen default defined
+    parse isset setids argv argc type pseudo status count
+    hasarg isvalid parsed def-help show-help
 
-Type \`zetopt help\` to show more help 
+Type \`zetopt -h\` to show more help 
 __EOHELP__
         return 0
     fi
@@ -42,27 +45,39 @@ SUB-COMMANDS
     
     define, def
 
-    parse
-
-    isset
-
-    isvalid
-
-    hasval
-
-    value, val
-
-    length, len
-    
-    index, idx
+    def-validator, define-validator
 
     paramidx, pidx
 
     paramlen, plen
 
-    status, stat
+    parse
 
-    count, cnt
+    isset
+
+    setids
+
+    argv, value, val
+
+    argc, length, len
     
+    type
+
+    pseudo
+    
+    status
+
+    count
+
+    hasarg, hasval
+
+    isvalid, isok
+    
+    parsed
+
+    def-help, define-help
+
+    show-help
+
 __EOHELP__
 }

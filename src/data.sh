@@ -316,27 +316,6 @@ _zetopt::data::hasarg()
 }
 
 
-# Print option arguments index list to refer $_ZETOPT_OPTVALS
-# def.) _zetopt::data::argidx {ID} {1D/2D-KEY...]
-# e.g.) _zetopt::data::argidx /foo 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz
-# STDOUT: integers separated with spaces
-_zetopt::data::argidx()
-{
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    shift
-    
-    local list_str="$(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARGV "$@")"
-    if [[ -z "$list_str" ]]; then
-        return 1
-    fi
-    local IFS=$' '
-    \echo $list_str
-}
-
-
 # Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]

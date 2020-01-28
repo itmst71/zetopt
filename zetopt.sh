@@ -39,7 +39,7 @@ readonly ZETOPT_VERSION="1.2.0a (2020-01-28 19:00)"
 #------------------------------------------------------------
 # Global Constant Variables
 # bash
-if [[ -n ${BASH_VERSION-} ]]; then
+if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
     readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
     readonly ZETOPT_CALLER_FILE_PATH="$0"
@@ -47,7 +47,7 @@ if [[ -n ${BASH_VERSION-} ]]; then
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && \echo true || \echo false)"
     readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
-elif [[ -n ${ZSH_VERSION-} ]]; then
+elif [ -n "${ZSH_VERSION-}" ]; then
     readonly ZETOPT_SOURCE_FILE_PATH="$0"
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
@@ -256,8 +256,6 @@ zetopt()
             _zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$@";;
         count)
             _zetopt::data::count "$@";;
-        index)
-            _zetopt::data::argidx "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)
@@ -266,7 +264,7 @@ zetopt()
             _zetopt::data::parsed "$@";;
 
         # help
-        define-help | def-help)
+        def-help | define-help)
             _zetopt::help::define "$@";;
         show-help)
             _zetopt::help::show "$@";;
@@ -1979,27 +1977,6 @@ _zetopt::data::hasarg()
 }
 
 
-# Print option arguments index list to refer $_ZETOPT_OPTVALS
-# def.) _zetopt::data::argidx {ID} {1D/2D-KEY...]
-# e.g.) _zetopt::data::argidx /foo 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz
-# STDOUT: integers separated with spaces
-_zetopt::data::argidx()
-{
-    if [[ -z ${1-} ]]; then
-        return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    shift
-    
-    local list_str="$(_zetopt::data::pickup "$id" $ZETOPT_FIELD_DATA_ARGV "$@")"
-    if [[ -z "$list_str" ]]; then
-        return 1
-    fi
-    local IFS=$' '
-    \echo $list_str
-}
-
-
 # Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]
@@ -3148,11 +3125,14 @@ VERSION
     $ZETOPT_VERSION
 USAGE
     zetopt {SUB-COMMAND} {ARGS}
+OPTIONS
+    -v, --version, -h, --help
 SUB-COMMANDS
-    version help init reset define defined
-    parse data get isset count status index
+    def def-validator paramidx paramlen default defined
+    parse isset setids argv argc type pseudo status count
+    hasarg isvalid parsed def-help show-help
 
-Type \`zetopt help\` to show more help 
+Type \`zetopt -h\` to show more help 
 __EOHELP__
         return 0
     fi
@@ -3179,28 +3159,40 @@ SUB-COMMANDS
     
     define, def
 
-    parse
-
-    isset
-
-    isvalid
-
-    hasval
-
-    value, val
-
-    length, len
-    
-    index, idx
+    def-validator, define-validator
 
     paramidx, pidx
 
     paramlen, plen
 
-    status, stat
+    parse
 
-    count, cnt
+    isset
+
+    setids
+
+    argv, value, val
+
+    argc, length, len
     
+    type
+
+    pseudo
+    
+    status
+
+    count
+
+    hasarg, hasval
+
+    isvalid, isok
+    
+    parsed
+
+    def-help, define-help
+
+    show-help
+
 __EOHELP__
 }
 

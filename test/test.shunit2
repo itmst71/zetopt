@@ -3,7 +3,7 @@
 # shUnit2
 # https://github.com/kward/shunit2
 
-if [[ -n ${ZSH_VERSION-} ]]; then
+if [ -n "${ZSH_VERSION-}" ]; then
     SHUNIT_PARENT=$0
     setopt SH_WORD_SPLIT
     #setopt KSH_ARRAYS

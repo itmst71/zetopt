@@ -97,8 +97,6 @@ zetopt()
             _zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$@";;
         count)
             _zetopt::data::count "$@";;
-        index)
-            _zetopt::data::argidx "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)
@@ -107,7 +105,7 @@ zetopt()
             _zetopt::data::parsed "$@";;
 
         # help
-        define-help | def-help)
+        def-help | define-help)
             _zetopt::help::define "$@";;
         show-help)
             _zetopt::help::show "$@";;
