@@ -389,37 +389,45 @@ test_isvalid_ERR_isvalid_opt() {
 }
 
 #------------------------------------------------
-# value
+# argv
 #------------------------------------------------
-test_value() {
+test_argv() {
     zetopt def val:v @FOO @BAR %BAZ...3
     zetopt parse -v foo bar baz1 baz2 baz3
-    local v="$(zetopt value val FOO BAR BAZ,$)"  
-    assertEquals "[value] @FOO @BAR %BAZ...3 --> FOO BAR BAZ,$" "foo bar baz1 baz2 baz3" "$v"
+    local v="$(zetopt argv val FOO BAR BAZ,$)"  
+    assertEquals "[argv] @FOO @BAR %BAZ...3 --> FOO BAR BAZ,$" "foo bar baz1 baz2 baz3" "$v"
 }
 
-test_value_array() {
+test_argv_array() {
     zetopt def val:v @FOO @BAR %BAZ %...3
     zetopt parse -v foo bar baz1 baz2 baz3 baz4
     local arr=
-    zetopt value -a arr val ^ BAR BAZ,-2
-    assertEquals '[value] -a arr val ^ BAR BAZ,-2' "foo bar baz1 baz2 baz3" "${arr[*]}"
+    zetopt argv -a arr val ^ BAR BAZ,-2
+    assertEquals '[argv] -a arr val ^ BAR BAZ,-2' "foo bar baz1 baz2 baz3" "${arr[*]}"
 }
 
-test_value_CFG_IFS() {
+test_argv_variable() {
+    zetopt def val:v @FOO @BAR %BAZ %...3
+    zetopt parse -v foo bar baz1 baz2 baz3 baz4
+    local var=
+    zetopt argv -v var val ^ BAR BAZ,-2
+    assertEquals '[argv] -a arr val ^ BAR BAZ,-2' "foo bar baz1 baz2 baz3" "$var"
+}
+
+test_argv_CFG_IFS() {
     zetopt def val:v @FOO @BAR %BAZ...3
     zetopt parse -v foo bar baz1 baz2 baz3
     ZETOPT_CFG_VALUE_IFS=:
-    local v="$(zetopt value val $,^)"  
-    assertEquals "[value] @FOO @BAR %BAZ...3 --> $,^" "baz3:baz2:baz1:bar:foo" "$v"
+    local v="$(zetopt argv val $,^)"  
+    assertEquals "[argv] @FOO @BAR %BAZ...3 --> $,^" "baz3:baz2:baz1:bar:foo" "$v"
 }
 
-test_value_array_newlines() {
+test_argv_array_newlines() {
     zetopt def val:v @FOO
     zetopt parse -v $'line1\nline2\nline3\n\nline5\n\n\n'
     local arr=
-    zetopt value -a arr val FOO
-    assertEquals "[value] -a arr val FOO" $'line1\nline2\nline3\n\nline5\n\n\n' "${arr[@]}"
+    zetopt argv -a arr val FOO
+    assertEquals "[argv] -a arr val FOO" $'line1\nline2\nline3\n\nline5\n\n\n' "${arr[@]}"
 }
 
 #------------------------------------------------
@@ -581,7 +589,7 @@ test_status_multi() {
     zetopt def val:v @FOO @BAR %BAZ...3
     zetopt parse -f -ff -f -v foo bar baz -v foo bar
     assertEquals "0 0 0 0" "$(zetopt status flag @)"
-    assertEquals "0::0::0::0" "$(zetopt status --IFS :: -- flag @)"
+    assertEquals "0::0::0::0" "$(zetopt status --ifs :: -- flag @)"
     assertEquals "0 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val @)"
 }
 

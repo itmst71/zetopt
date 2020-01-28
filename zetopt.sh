@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-28 17:30)
+# Version     : 1.2.0a (2020-01-28 19:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-28 17:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-28 19:00)"
 
 
 #------------------------------------------------------------
@@ -2000,10 +2000,11 @@ _zetopt::data::argidx()
 }
 
 
-# Print field data with keys
-# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME>] [-I,--IFS <IFS_VALUE>]
+# Print field data with keys.
+# -a/-v enables to store data in user specified array/variable.
+# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]
 # e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARGV @:@ --array myarr
-# STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
+# STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --ifs value
 _zetopt::data::print()
 {
     if [[ $# -eq 0 ]]; then
@@ -2011,7 +2012,7 @@ _zetopt::data::print()
     fi
     local __field=$1
     shift
-    local __array_mode=false __arrname= __newline=
+    local __out_mode=stdout __var_name= __newline=
     local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
     __args=()
 
@@ -2019,16 +2020,26 @@ _zetopt::data::print()
     do
         case "$1" in
             --array|-a)
-                __array_mode=true;
+                __out_mode=array
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
-                __arrname=$1
+                __var_name=$1
                 shift
                 ;;
-            -I|--IFS)
+            -v|--variable)
+                __out_mode=variable
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-v, --variable <VARIABLE_NAME>"
+                    return 1
+                fi
+                __var_name=$1
+                shift
+                ;;
+            -i|--ifs)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-i, --ifs <IFS_VALUE>"
@@ -2043,16 +2054,18 @@ _zetopt::data::print()
         esac
     done
 
-    if [[ $__array_mode == true ]]; then
+    if [[ $__out_mode =~ ^(array|variable)$ ]]; then
         # check the user defined array name before eval to avoid overwriting local variables
-        if [[ ! $__arrname =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__arrname =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Array Name:" "$__arrname"
+        if [[ ! $__var_name =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__var_name =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
+            _zetopt::msg::debug "Invalid Array Name:" "$__var_name"
             return 1
         fi
-        \eval "$__arrname=()"
+        case $__out_mode in
+            array) \eval "$__var_name=()";;
+            variable) \eval "$__var_name=";;
+        esac
     fi
 
-    local __refidx_mode=$([[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]] && echo true || echo false)
     local IFS=' '
     if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
         return 1
@@ -2060,7 +2073,7 @@ _zetopt::data::print()
     local __id="${__args[$((0 + $INIT_IDX))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
     local __keys=${__args[@]:1}
     if [[ -z $__keys ]]; then
-        [[ $__refidx_mode == true ]] \
+        [[ $__field == $ZETOPT_FIELD_DATA_ARGV ]] \
         && __keys=@ \
         || __keys=$
     fi
@@ -2074,11 +2087,12 @@ _zetopt::data::print()
     \set -- $__list_str
     local __max=$(($# + INIT_IDX - 1))
 
-    if [[ $__refidx_mode == true ]]; then
-        # for subcommands
+    # indexes to refer target data in array
+    if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
         __args=()
         case $__field in
             $ZETOPT_FIELD_DATA_ARGV)
+                # for subcommands
                 if [[ $__id =~ ^/(.*/)?$ ]]; then
                     __args=("${ZETOPT_ARGS[@]}")
 
@@ -2095,26 +2109,46 @@ _zetopt::data::print()
         local __nl=
         for __idx in "$@"
         do
-            if [[ $__array_mode == true ]]; then
-                \eval $__arrname'[$__i]=${__args[$__idx]}'
+            # store data in user specified array
+            if [[ $__out_mode == array ]]; then
+                \eval $__var_name'[$__i]=${__args[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
                     __ifs= __nl=$__newline
                 fi
-                \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
+                
+                # print to STDOUT
+                if [[ $__out_mode == stdout ]]; then
+                    \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
+
+                # store data in user specified variable
+                else
+                    \eval $__var_name'="$'$__var_name'${__args[$__idx]}$__ifs"'
+                fi
             fi
             __i+=1
         done
+
+    # target data itself
     else
         for __idx in "$@"
         do
-            if [[ $__array_mode == true ]]; then
-                \eval $__arrname'[$__i]=$__idx'
+            # store data in user specified array
+            if [[ $__out_mode == array ]]; then
+                \eval $__var_name'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
                     __ifs= __nl=$__newline
                 fi
-                \printf -- "%s$__ifs$__nl" "$__idx"
+                
+                # output to STDOUT
+                if [[ $__out_mode == stdout ]]; then
+                    \printf -- "%s$__ifs$__nl" "$__idx"
+                    
+                # store data in user specified variable
+                else
+                    \eval $__var_name'="$'$__var_name'$__idx$__ifs"'
+                fi
             fi
             __i+=1
         done
