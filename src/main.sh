@@ -48,35 +48,47 @@ zetopt()
     local subcmd="$1"
     shift
 
+    # sub-commands
     case "$subcmd" in
+        # options
         -v | --version)
             \echo $ZETOPT_APPNAME $ZETOPT_VERSION;;
         -h | --help)
             _zetopt::man::show;;
+
+        # init
         init)
             _zetopt::init::init;;
         reset)
-            _zetopt::parser::init
-            _zetopt::data::init
-            ;;
+            _zetopt::init::reset;;
+
+        # def
         define | def)
             _zetopt::def::define "$@";;
         def-validator | define-validator)
             _zetopt::def::def_validator "$@";;
+        paramidx | pidx)
+            _zetopt::def::paramidx "$@";;
+        paramlen | plen)
+            _zetopt::def::paramlen "$@";;
+        default)
+            _zetopt::def::default "$@";;
+        defined)
+            _zetopt::def::defined "$@";;
+
+        # parser
         parse)
             _zetopt::parser::parse "$@";;
-        define-help | def-help)
-            _zetopt::help::define "$@";;
-        show-help)
-            _zetopt::help::show "$@";;
+
+        # data
         isset)
             _zetopt::data::isset "$@";;
-        isvalid | isok)
-            _zetopt::data::isvalid "$@";;
         setids)
             _zetopt::data::setids;;
-        value | val | argv)
-            _zetopt::data::print $ZETOPT_FIELD_DATA_ARG "$@";;
+        argv | value | val)
+            _zetopt::data::print $ZETOPT_FIELD_DATA_ARGV "$@";;
+        argc | length | len)
+            _zetopt::data::print $ZETOPT_FIELD_DATA_ARGC "$@";;
         type)
             _zetopt::data::print $ZETOPT_FIELD_DATA_TYPE "$@";;
         pseudo)
@@ -89,18 +101,17 @@ zetopt()
             _zetopt::data::argidx "$@";;
         hasval)
             _zetopt::data::hasvalue "$@";;
-        length | len | argc)
-            _zetopt::data::argc "$@";;
-        paramidx | pidx)
-            _zetopt::def::paramidx "$@";;
-        paramlen | plen)
-            _zetopt::def::paramlen "$@";;
-        default)
-            _zetopt::def::default "$@";;
-        defined)
-            _zetopt::def::defined "$@";;
+        isvalid | isok)
+            _zetopt::data::isvalid "$@";;
         parsed)
             _zetopt::data::parsed "$@";;
+
+        # help
+        define-help | def-help)
+            _zetopt::help::define "$@";;
+        show-help)
+            _zetopt::help::show "$@";;
+
         *)
             _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
             return 1;;

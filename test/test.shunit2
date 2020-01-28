@@ -15,8 +15,7 @@ suite() { :; }
 
 __index__=1
 setUp() {
-    __index__=$((__index__ + 1))
-    printf "%2s: " $__index__
+    printf "%2s: " $((__index__++))
     zetopt init
     ZETOPT_CFG_DEBUG=false
     ZETOPT_CFG_ERRMSG=false
@@ -613,7 +612,8 @@ test_argc() {
 test_argc_multi() {
     zetopt def val:v %FOO %BAR %BAZ
     zetopt parse -v FOO BAR -v foo bar baz -v -v fo br
-    assertEquals "2 3 0 2" "$(zetopt argc val ^ -3 -2 $)"
+    assertEquals "2 3 0 2" "$(zetopt argc val @)"
+    assertEquals 2 "$(zetopt argc val)"
 }
 
 test_argc_variable() {
@@ -627,7 +627,8 @@ test_argc_variable() {
 test_argc_notset() {
     zetopt def val1:v @FOO @BAR %BAZ...3
     zetopt parse
-    assertEquals 0 "$(zetopt argc val1)"
+    zetopt argc val1
+    assertFalse $?
 }
 
 #------------------------------------------------

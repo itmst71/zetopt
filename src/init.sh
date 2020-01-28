@@ -34,11 +34,12 @@ readonly ZETOPT_FIELD_DEF_HELP=5
 # field numbers for parsed data
 readonly ZETOPT_FIELD_DATA_ALL=0
 readonly ZETOPT_FIELD_DATA_ID=1
-readonly ZETOPT_FIELD_DATA_ARG=2
-readonly ZETOPT_FIELD_DATA_TYPE=3
-readonly ZETOPT_FIELD_DATA_PSEUDO=4
-readonly ZETOPT_FIELD_DATA_STATUS=5
-readonly ZETOPT_FIELD_DATA_COUNT=6
+readonly ZETOPT_FIELD_DATA_ARGV=2
+readonly ZETOPT_FIELD_DATA_ARGC=3
+readonly ZETOPT_FIELD_DATA_TYPE=4
+readonly ZETOPT_FIELD_DATA_PSEUDO=5
+readonly ZETOPT_FIELD_DATA_STATUS=6
+readonly ZETOPT_FIELD_DATA_COUNT=7
 
 # types
 readonly ZETOPT_TYPE_CMD=0
@@ -87,6 +88,12 @@ _zetopt::init::init()
 
     ZETOPT_LAST_COMMAND=/
     _zetopt::init::init_config
+}
+
+_zetopt::init::reset()
+{
+    _zetopt::parser::init
+    _zetopt::data::init
 }
 
 # config
