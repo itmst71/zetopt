@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-29 06:00)
+# Version     : 1.2.0a (2020-01-29 16:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-29 06:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-29 16:30)"
 
 
 #------------------------------------------------------------
@@ -99,6 +99,27 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
 
+# default config variables
+readonly _ZETOPT_DFLTCFG_VALUE_IFS=" "
+readonly _ZETOPT_DFLTCFG_ESCAPE_DOUBLE_HYPHEN=false
+readonly _ZETOPT_DFLTCFG_SINGLE_PREFIX_LONG=false
+readonly _ZETOPT_DFLTCFG_PSEUDO_OPTION=false
+readonly _ZETOPT_DFLTCFG_CONCATENATED_OPTARG=true
+readonly _ZETOPT_DFLTCFG_ABBREVIATED_LONG=true
+readonly _ZETOPT_DFLTCFG_IGNORE_BLANK_STRING=false
+readonly _ZETOPT_DFLTCFG_IGNORE_SUBCMD_UNDEFERR=false
+readonly _ZETOPT_DFLTCFG_OPTTYPE_PLUS=false
+readonly _ZETOPT_DFLTCFG_FLAGVAL_TRUE=true
+readonly _ZETOPT_DFLTCFG_FLAGVAL_FALSE=false
+readonly _ZETOPT_DFLTCFG_ERRMSG=true
+readonly _ZETOPT_DFLTCFG_ERRMSG_APPNAME=$ZETOPT_CALLER_NAME
+readonly _ZETOPT_DFLTCFG_ERRMSG_COL_MODE=auto
+readonly _ZETOPT_DFLTCFG_ERRMSG_COL_DEFAULT="0;0;39"
+readonly _ZETOPT_DFLTCFG_ERRMSG_COL_ERROR="0;1;31"
+readonly _ZETOPT_DFLTCFG_ERRMSG_COL_WARNING="0;0;33"
+readonly _ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR="0;1;31"
+readonly _ZETOPT_DFLTCFG_DEBUG=true
+
 _zetopt::init::init()
 {
     _ZETOPT_DEF_ERROR=false
@@ -135,25 +156,25 @@ _zetopt::init::reset()
 # config
 _zetopt::init::init_config()
 {
-    ZETOPT_CFG_VALUE_IFS=" "
-    ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
-    ZETOPT_CFG_SINGLE_PREFIX_LONG=false
-    ZETOPT_CFG_PSEUDO_OPTION=false
-    ZETOPT_CFG_CONCATENATED_OPTARG=true
-    ZETOPT_CFG_ABBREVIATED_LONG=true
-    ZETOPT_CFG_IGNORE_BLANK_STRING=false
-    ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
-    ZETOPT_CFG_OPTTYPE_PLUS=false
-    ZETOPT_CFG_FLAGVAL_TRUE=true
-    ZETOPT_CFG_FLAGVAL_FALSE=false
-    ZETOPT_CFG_ERRMSG=true
-    ZETOPT_CFG_ERRMSG_APPNAME="$ZETOPT_CALLER_NAME"
-    ZETOPT_CFG_ERRMSG_COL_MODE=auto
-    ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
-    ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
-    ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
-    ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
-    ZETOPT_CFG_DEBUG=true
+    ZETOPT_CFG_VALUE_IFS=$_ZETOPT_DFLTCFG_VALUE_IFS
+    ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=$_ZETOPT_DFLTCFG_ESCAPE_DOUBLE_HYPHEN
+    ZETOPT_CFG_SINGLE_PREFIX_LONG=$_ZETOPT_DFLTCFG_SINGLE_PREFIX_LONG
+    ZETOPT_CFG_PSEUDO_OPTION=$_ZETOPT_DFLTCFG_PSEUDO_OPTION
+    ZETOPT_CFG_CONCATENATED_OPTARG=$_ZETOPT_DFLTCFG_CONCATENATED_OPTARG
+    ZETOPT_CFG_ABBREVIATED_LONG=$_ZETOPT_DFLTCFG_ABBREVIATED_LONG
+    ZETOPT_CFG_IGNORE_BLANK_STRING=$_ZETOPT_DFLTCFG_IGNORE_BLANK_STRING
+    ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=$_ZETOPT_DFLTCFG_IGNORE_SUBCMD_UNDEFERR
+    ZETOPT_CFG_OPTTYPE_PLUS=$_ZETOPT_DFLTCFG_OPTTYPE_PLUS
+    ZETOPT_CFG_FLAGVAL_TRUE=$_ZETOPT_DFLTCFG_FLAGVAL_TRUE
+    ZETOPT_CFG_FLAGVAL_FALSE=$_ZETOPT_DFLTCFG_FLAGVAL_FALSE
+    ZETOPT_CFG_ERRMSG=$_ZETOPT_DFLTCFG_ERRMSG
+    ZETOPT_CFG_ERRMSG_APPNAME=$_ZETOPT_DFLTCFG_ERRMSG_APPNAME
+    ZETOPT_CFG_ERRMSG_COL_MODE=$_ZETOPT_DFLTCFG_ERRMSG_COL_MODE
+    ZETOPT_CFG_ERRMSG_COL_DEFAULT=$_ZETOPT_DFLTCFG_ERRMSG_COL_DEFAULT
+    ZETOPT_CFG_ERRMSG_COL_ERROR=$_ZETOPT_DFLTCFG_ERRMSG_COL_ERROR
+    ZETOPT_CFG_ERRMSG_COL_WARNING=$_ZETOPT_DFLTCFG_ERRMSG_COL_WARNING
+    ZETOPT_CFG_ERRMSG_COL_SCRIPTERR=$_ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR
+    ZETOPT_CFG_DEBUG=$_ZETOPT_DFLTCFG_DEBUG
 }
 
 
@@ -820,7 +841,7 @@ _zetopt::def::opt2id()
         
         # long
         else
-            if [[ $_CFG_ABBREVIATED_LONG == true ]]; then
+            if [[ $ZETOPT_CFG_ABBREVIATED_LONG == true ]]; then
                 if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
                     tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
 
@@ -1075,7 +1096,7 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if _zetopt::utils::is_true "${_ZETOPT_DEF_ERROR-}"; then
+    if [[ $_ZETOPT_DEF_ERROR == true ]]; then
         _zetopt::msg::debug "Invalid Definition Data:" "Fix definition error before parse"
         return 1
     fi
@@ -1092,14 +1113,6 @@ _zetopt::parser::parse()
     
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
-    local _CFG_SINGLE_PREFIX_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_SINGLE_PREFIX_LONG-}")"
-    local _CFG_ESCAPE_DOUBLE_HYPHEN="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN-}")"
-    local _CFG_PSEUDO_OPTION="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_PSEUDO_OPTION-}")"
-    local _CFG_CONCATENATED_OPTARG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_CONCATENATED_OPTARG-}")"
-    local _CFG_ABBREVIATED_LONG="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_ABBREVIATED_LONG-}")"
-    local _CFG_IGNORE_BLANK_STRING="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_BLANK_STRING-}")"
-    local _CFG_OPTTYPE_PLUS="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_OPTTYPE_PLUS-}")"
-    local _CFG_IGNORE_SUBCMD_UNDEFERR="$(_zetopt::utils::is_true -t true "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")"
 
     if ! _zetopt::parser::setsub $namespace; then
         _zetopt::msg::debug "Invalid Definition Data:" "Root Namespace Not Found"
@@ -1113,7 +1126,7 @@ _zetopt::parser::parse()
         
         # Double Hyphen Only
         if [[ $1 == -- ]]; then
-            if [[ $_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
+            if [[ $ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN != true ]]; then
                 shift
                 ZETOPT_ARGS+=("$@")
                 break
@@ -1131,7 +1144,7 @@ _zetopt::parser::parse()
 
         # Blank String
         elif [[ $1 == "" ]]; then
-            if [[ $_CFG_IGNORE_BLANK_STRING == true ]]; then
+            if [[ $ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
                 shift
                 continue
             fi
@@ -1140,7 +1153,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # Long option
-        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
+        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
             if [[ ! $1 =~ ^([-+]{1,2})([a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)((:[a-zA-Z0-9_]+)*)(=(.*$))?$ ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -1173,12 +1186,12 @@ _zetopt::parser::parse()
             do
                 optname=${optnames:$idx:1}
                 if [[ $((idx + 1)) -lt $optnames_len ]]; then
-                    if [[ $_CFG_PSEUDO_OPTION == true && ${optnames:$((idx+1)):1} == : ]]; then
+                    if [[ $ZETOPT_CFG_PSEUDO_OPTION == true && ${optnames:$((idx+1)):1} == : ]]; then
                         pseudoname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
                         _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
                         break
                     else
-                        if [[ $_CFG_CONCATENATED_OPTARG == true ]]; then
+                        if [[ $ZETOPT_CFG_CONCATENATED_OPTARG == true ]]; then
                             _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
                             if [[ $consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
                                 additional_args_count=1
@@ -1201,7 +1214,7 @@ _zetopt::parser::parse()
                 ns="${namespace%/*}/$1/"
                 if ! _zetopt::def::exists "$ns"; then
                     check_subcmd=false
-                    if [[ $_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
+                    if [[ $ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
                         ZETOPT_ARGS+=("$1")
                         shift
                         continue
@@ -1236,7 +1249,7 @@ _zetopt::parser::parse()
     _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
-    if _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
+    if [[ $ZETOPT_CFG_ERRMSG == true ]]; then
         IFS=$' \t\n'
         local subcmdstr="${namespace//\// }" msg=
 
@@ -1308,7 +1321,7 @@ _zetopt::parser::setopt()
     local namespace="${1-}" opt_prefix="${2-}" opt="${3-}" pseudoname="${4-}" args
     shift 4
     args=("$@")
-    local is_short=$( [[ ${#opt_prefix} -eq 1 && $_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
+    local is_short=$( [[ ${#opt_prefix} -eq 1 && $ZETOPT_CFG_SINGLE_PREFIX_LONG != true ]] && echo true || echo false)
     local id="$(_zetopt::def::opt2id "$namespace" "$opt" "$is_short" || echo ERROR:$?)"
     if [[ $id =~ ^ERROR:[0-9]+$ ]]; then
         ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
@@ -1354,7 +1367,7 @@ _zetopt::parser::setopt()
             # there are available args 
             if [[ $arg_idx -lt $arg_max_idx ]]; then
                 arg="${args[$arg_idx]}"
-                if [[ $arg == "" && $_CFG_IGNORE_BLANK_STRING == true ]]; then
+                if [[ $arg == "" && $ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
                     arg_idx+=1
                     continue
                 fi
@@ -1365,8 +1378,8 @@ _zetopt::parser::setopt()
                     || $arg == ""
                     || ($arg =~ ^-[^-] && $def =~ ^-[^-])
                     || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
-                    || ($arg =~ ^[+] && $def =~ ^--? && $_CFG_OPTTYPE_PLUS == true)
-                    || ($arg == "--" && $_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
+                    || ($arg =~ ^[+] && $def =~ ^--? && $ZETOPT_CFG_OPTTYPE_PLUS == true)
+                    || ($arg == "--" && $ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
                 ]]; then
                     # validate
                     if ! _zetopt::parser::validate "$def" "$arg"; then
@@ -2083,7 +2096,7 @@ _zetopt::data::print()
                 ;;
         esac
 
-        local __nl=
+        local __newline=
         for __idx in "$@"
         do
             # store data in user specified array
@@ -2091,12 +2104,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=${__args[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
+                    __ifs= __newline=$__newline
                 fi
                 
                 # print to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
+                    \printf -- "%s$__ifs$__newline" "${__args[$__idx]}"
 
                 # store data in user specified variable
                 else
@@ -2115,12 +2128,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
+                    __ifs= __newline=$__newline
                 fi
                 
                 # output to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "$__idx"
+                    \printf -- "%s$__ifs$__newline" "$__idx"
                     
                 # store data in user specified variable
                 else
@@ -2156,7 +2169,7 @@ _zetopt::data::setids()
 #------------------------------------------------------------
 _zetopt::msg::user_error()
 {
-    if ! _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
+    if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
         return 0
     fi
 
@@ -2187,7 +2200,7 @@ _zetopt::msg::def_error()
 
 _zetopt::msg::debug()
 {
-    if ! _zetopt::utils::is_true "$ZETOPT_CFG_DEBUG"; then
+    if [[ $ZETOPT_CFG_DEBUG != true ]]; then
         return 0
     fi
     local text="${1-}" value="${2-}"
@@ -2384,59 +2397,6 @@ _zetopt::utils::seq()
     else
         \eval "echo {$start..$end}"
     fi
-}
-
-_zetopt::utils::is_true()
-{
-    local rtn_true= rtn_false= stdout=false
-    local error=false
-    local arg
-    while [[ $# -ne 0 ]]
-    do
-        case "$1" in
-            -t|--true)
-                shift
-                if [[ $# -eq 0 ]]; then
-                    error=true; break
-                fi
-                rtn_true=$1
-                stdout=true
-                shift;;
-            -f|--false)
-                shift
-                if [[ $# -eq 0 ]]; then
-                    error=true; break
-                fi
-                rtn_false=$1
-                stdout=true
-                shift;;
-            -*) error=true; break;;
-            --) shift; arg=$1; break;;
-            *)  arg=$1; shift;;
-        esac
-    done
-
-    if [[ $error == true ]]; then
-        _zetopt::msg::debug "Usage:" "_zetopt::utils::is_true [-t|--true <TRUE_STRING>] [-f|--false <FALSE_STRING>] <VALUE_TO_CHECK>"
-        return 1
-    fi
-
-    rtn=$(
-        [[ -n ${ZSH_VERSION-} ]] \
-        && \setopt localoptions NOCASEMATCH \
-        || \shopt -s nocasematch
-        [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] && echo 0 || echo 1
-    )
-
-    if [[ $stdout == true ]]; then
-        if [[ $rtn -eq 0 ]]; then
-            echo "$rtn_true"
-        else
-            echo "$rtn_false"
-        fi
-    fi
-    
-    return $rtn
 }
 
 _zetopt::utils::isLangCJK()
@@ -2808,7 +2768,6 @@ _zetopt::help::synopsis()
     local IFS=$LF app="$ZETOPT_CALLER_NAME"
     local ns cmd has_arg has_arg_req has_opt has_sub line args bodyarr
     declare -i idx loop cmdcol
-    local ignore_subcmd_undef=$(_zetopt::utils::is_true -t true -f false "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")
     local did_output=false
     local nslist
     nslist=($(_zetopt::def::namespaces))
@@ -2858,7 +2817,7 @@ _zetopt::help::synopsis()
         cmd=${cmd% }
         
         loop=1
-        if [[ $ignore_subcmd_undef == false && $has_arg == true && $has_sub == true ]]; then
+        if [[ $ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == false && $has_arg == true && $has_sub == true ]]; then
             if [[ $has_opt == false ]]; then
                 line="--$line"
             else

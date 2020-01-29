@@ -541,7 +541,7 @@ _zetopt::def::opt2id()
         
         # long
         else
-            if [[ $_CFG_ABBREVIATED_LONG == true ]]; then
+            if [[ $ZETOPT_CFG_ABBREVIATED_LONG == true ]]; then
                 if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
                     tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
 

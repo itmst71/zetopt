@@ -202,7 +202,6 @@ _zetopt::help::synopsis()
     local IFS=$LF app="$ZETOPT_CALLER_NAME"
     local ns cmd has_arg has_arg_req has_opt has_sub line args bodyarr
     declare -i idx loop cmdcol
-    local ignore_subcmd_undef=$(_zetopt::utils::is_true -t true -f false "${ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR-}")
     local did_output=false
     local nslist
     nslist=($(_zetopt::def::namespaces))
@@ -252,7 +251,7 @@ _zetopt::help::synopsis()
         cmd=${cmd% }
         
         loop=1
-        if [[ $ignore_subcmd_undef == false && $has_arg == true && $has_sub == true ]]; then
+        if [[ $ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == false && $has_arg == true && $has_sub == true ]]; then
             if [[ $has_opt == false ]]; then
                 line="--$line"
             else

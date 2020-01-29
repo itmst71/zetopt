@@ -422,7 +422,7 @@ _zetopt::data::print()
                 ;;
         esac
 
-        local __nl=
+        local __newline=
         for __idx in "$@"
         do
             # store data in user specified array
@@ -430,12 +430,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=${__args[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
+                    __ifs= __newline=$__newline
                 fi
                 
                 # print to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
+                    \printf -- "%s$__ifs$__newline" "${__args[$__idx]}"
 
                 # store data in user specified variable
                 else
@@ -454,12 +454,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
+                    __ifs= __newline=$__newline
                 fi
                 
                 # output to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "$__idx"
+                    \printf -- "%s$__ifs$__newline" "$__idx"
                     
                 # store data in user specified variable
                 else

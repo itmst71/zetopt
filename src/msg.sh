@@ -3,7 +3,7 @@
 #------------------------------------------------------------
 _zetopt::msg::user_error()
 {
-    if ! _zetopt::utils::is_true "${ZETOPT_CFG_ERRMSG-}"; then
+    if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
         return 0
     fi
 
@@ -34,7 +34,7 @@ _zetopt::msg::def_error()
 
 _zetopt::msg::debug()
 {
-    if ! _zetopt::utils::is_true "$ZETOPT_CFG_DEBUG"; then
+    if [[ $ZETOPT_CFG_DEBUG != true ]]; then
         return 0
     fi
     local text="${1-}" value="${2-}"

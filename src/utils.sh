@@ -96,59 +96,6 @@ _zetopt::utils::seq()
     fi
 }
 
-_zetopt::utils::is_true()
-{
-    local rtn_true= rtn_false= stdout=false
-    local error=false
-    local arg
-    while [[ $# -ne 0 ]]
-    do
-        case "$1" in
-            -t|--true)
-                shift
-                if [[ $# -eq 0 ]]; then
-                    error=true; break
-                fi
-                rtn_true=$1
-                stdout=true
-                shift;;
-            -f|--false)
-                shift
-                if [[ $# -eq 0 ]]; then
-                    error=true; break
-                fi
-                rtn_false=$1
-                stdout=true
-                shift;;
-            -*) error=true; break;;
-            --) shift; arg=$1; break;;
-            *)  arg=$1; shift;;
-        esac
-    done
-
-    if [[ $error == true ]]; then
-        _zetopt::msg::debug "Usage:" "_zetopt::utils::is_true [-t|--true <TRUE_STRING>] [-f|--false <FALSE_STRING>] <VALUE_TO_CHECK>"
-        return 1
-    fi
-
-    rtn=$(
-        [[ -n ${ZSH_VERSION-} ]] \
-        && \setopt localoptions NOCASEMATCH \
-        || \shopt -s nocasematch
-        [[ ${arg-} =~ ^(0|true|yes|y|enabled|enable|on)$ ]] && echo 0 || echo 1
-    )
-
-    if [[ $stdout == true ]]; then
-        if [[ $rtn -eq 0 ]]; then
-            echo "$rtn_true"
-        else
-            echo "$rtn_false"
-        fi
-    fi
-    
-    return $rtn
-}
-
 _zetopt::utils::isLangCJK()
 {
     return $(
