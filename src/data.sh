@@ -371,7 +371,7 @@ _zetopt::data::print()
     done
 
     if [[ $__out_mode =~ ^(array|variable)$ ]]; then
-        # check the user defined array name before eval to avoid overwriting local variables
+        # check the user defined variable name before eval to avoid overwriting local variables
         if [[ ! $__var_name =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__var_name =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
             _zetopt::msg::debug "Invalid Array Name:" "$__var_name"
             return 1
@@ -402,6 +402,7 @@ _zetopt::data::print()
     declare -i __idx= __i=$INIT_IDX
     \set -- $__list_str
     local __max=$(($# + INIT_IDX - 1))
+    local __nl=
 
     # indexes to refer target data in array
     if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
@@ -422,7 +423,6 @@ _zetopt::data::print()
                 ;;
         esac
 
-        local __newline=
         for __idx in "$@"
         do
             # store data in user specified array
@@ -430,12 +430,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=${__args[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __newline=$__newline
+                    __ifs= __nl=$__newline
                 fi
                 
                 # print to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__newline" "${__args[$__idx]}"
+                    \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
 
                 # store data in user specified variable
                 else
@@ -454,12 +454,12 @@ _zetopt::data::print()
                 \eval $__var_name'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
-                    __ifs= __newline=$__newline
+                    __ifs= __nl=$__newline
                 fi
-                
+
                 # output to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__newline" "$__idx"
+                    \printf -- "%s$__ifs$__nl" "$__idx"
                     
                 # store data in user specified variable
                 else
