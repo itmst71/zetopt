@@ -6,12 +6,12 @@
 zetopt()
 {
     declare -r _PATH=$PATH
+    declare -r _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
+    local PATH="/usr/bin:/bin"
+    local LC_ALL=C LANG=C
+    local IFS=$' \t\n'
     declare -r LF=$'\n'
     declare -r INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
-    local PATH="/usr/bin:/bin"
-    local IFS=$' \t\n'
-    local _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
-    local LC_ALL=C LANG=C
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
@@ -66,7 +66,7 @@ zetopt()
         define | def)
             _zetopt::def::define "$@";;
         def-validator | define-validator)
-            _zetopt::def::def_validator "$@";;
+            _zetopt::validator::def "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
