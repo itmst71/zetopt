@@ -43,6 +43,44 @@ _zetopt::utils::stack_trace()
     done
 }
 
+_zetopt::utils::viewfile()
+{
+    local lineno=1 before=2 after=2 filepath=
+
+    while [[ ! $# -eq 0 ]]
+    do
+        case $1 in
+            -L|--line) shift; lineno=${1-}; shift;;
+            -B|--before) shift; before=${1-}; shift;;
+            -A|--after) shift; after=${1-}; shift;;
+            --) shift; filepath=${1-}; shift;;
+            *) filepath=${1-}; shift;;
+        esac
+    done
+    if [[ ! -f $filepath ]]; then
+        return 1
+    fi
+    if [[ ! $lineno$before$after =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+    local lines="$(grep -c "" "$filepath")"
+    if [[ $lineno -le 0 || $lineno -gt $lines ]]; then
+        return 1
+    fi
+    if [[ $((lineno - before)) -le 0 ]]; then
+        before=$((lineno - 1))
+    fi
+    if [[ $((lineno + after)) -gt $lines ]]; then
+        after=$((lines - lineno))
+    fi
+    local lastline=$((lineno + after))
+    local digits=${#lastline}
+
+    \head -n $((lineno + after)) "$filepath" \
+        | \tail -n $((before + after + 1)) \
+        | \nl -n rz -w $digits -b a -v $((lineno - before))
+}
+
 _zetopt::utils::repeat()
 {
     if [[ $# -ne 2 || ! $1 =~ ^[1-9][0-9]*$ ]]; then

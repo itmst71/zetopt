@@ -2,7 +2,7 @@
 # _zetopt::def
 #------------------------------------------------------------
 
-# Define options. 
+# define(): Define options. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::def::define {DEFINITION-STRING}
 # e.g.) _zetopt::def::define "ver:v:version"
@@ -320,8 +320,9 @@ _zetopt::def::define()
     done
 }
 
-# Print the defined data. Print all if ID not given.
+# defined(): Print the defined data. Print all if ID not given.
 # def.) _zetopt::def::defined [ID]
+# e.g.) _zetopt::def::defined /foo
 # STDOUT: strings separated with $'\n'
 _zetopt::def::defined()
 {
@@ -335,7 +336,7 @@ _zetopt::def::defined()
     _zetopt::def::field "$1" $ZETOPT_FIELD_DEF_ALL
 }
 
-# Search and print the definition.
+# field(): Search and print the definition.
 # def.) _zetopt::def::field {ID} [FIELD-DEF-NUMBER-TO-PRINT]
 # e.g.) _zetopt::def::field /foo $ZETOPT_FIELD_DEF_ARG
 # STDOUT: string
@@ -360,7 +361,7 @@ _zetopt::def::field()
     esac
 }
 
-# Check if the ID exists
+# exists(): Check if the ID exists
 # def.) _zetopt::def::exists {ID}
 # e.g.) _zetopt::def::exists /foo
 # STDOUT: NONE
@@ -373,7 +374,7 @@ _zetopt::def::exists()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]
 }
 
-# Check if the current namespace has subcommands
+# has_subcmd(): Check if the current namespace has subcommands
 # def.) _zetopt::def::has_subcmd {NAMESPACE}
 # e.g.) _zetopt::def::has_subcmd /sub/
 # STDOUT: NONE
@@ -386,7 +387,7 @@ _zetopt::def::has_subcmd()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_-]+/ ]]
 }
 
-# Check if the current namespace has options
+# has_options(): Check if the current namespace has options
 # def.) _zetopt::def::has_options {NAMESPACE}
 # e.g.) _zetopt::def::has_options /sub/
 # STDOUT: NONE
@@ -400,7 +401,7 @@ _zetopt::def::has_options()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+[+]?: ]]
 }
 
-# Check if the current namespace has arguments
+# has_arguments(): Check if the current namespace has arguments
 # def.) _zetopt::def::has_arguments {NAMESPACE}
 # e.g.) _zetopt::def::has_arguments /sub/
 # STDOUT: NONE
@@ -414,7 +415,10 @@ _zetopt::def::has_arguments()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}:::-?[@%] ]]
 }
 
-
+# options(): Print option definition
+# def.) _zetopt::def::options
+# e.g.) _zetopt::def::options
+# STDOUT: option definition
 _zetopt::def::options()
 {
     if [[ -z ${1-} ]]; then
@@ -425,12 +429,16 @@ _zetopt::def::options()
     <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:"
 }
 
+# namespaces(): Print namespace definition
+# def.) _zetopt::def::namespaces
+# e.g.) _zetopt::def::namespaces
+# STDOUT: namespace definition
 _zetopt::def::namespaces()
 {
     <<< "$_ZETOPT_DEFINED" \grep -E '^/([^:]+/)?:' | \sed -e 's/:.*//'
 }
 
-# Print the identifier by searching with a namespace and a option name.
+# opt2id(): Print the identifier by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
 # def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME} {IS_SHORT}
 # e.g.) _zetopt::def::opt2id /remote/add/ version
@@ -484,7 +492,7 @@ _zetopt::def::opt2id()
     return 1
 }
 
-# Print the index of the specified parameter name
+# paramidx(): Print the index of the specified parameter name
 # def.) _zetopt::def::paramidx {ID} {PARAM-NAME}
 # e.g.) _zetopt::def::paramidx /foo name
 # STDOUT: an integer
@@ -508,7 +516,7 @@ _zetopt::def::paramidx()
     return 1
 }
 
-# Print the length of parameters
+# paramlen(): Print the length of parameters
 # def.) _zetopt::def::paramlen {ID} [all | required | @ | optional | % | max]
 # e.g.) _zetopt::def::paramlen /foo required
 # STDOUT: an integer
@@ -548,7 +556,7 @@ _zetopt::def::paramlen()
     \echo $out
 }
 
-# Print default values
+# default(): Print default values
 # def.) _zetopt::def::default {ID} [ONE-DIMENSIONAL-KEY]
 # e.g.) _zetopt::def::default /foo @ FOO $ FOO,$
 # STDOUT: default values separated with $ZETOPT_CFG_VALUE_IFS

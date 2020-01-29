@@ -1,9 +1,11 @@
 #------------------------------------------------------------
 # _zetopt::data
 #------------------------------------------------------------
-# Initialize variables concerned with the parsed data. 
+
+# init(): Initialize variables concerned with the parsed data. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::data::init
+# e.g.) _zetopt::data::init
 # STDOUT: NONE
 _zetopt::data::init()
 {
@@ -20,8 +22,9 @@ _zetopt::data::init()
     ZETOPT_ARGS=()
 }
 
-# Print the parsed data. Print all if ID not given
+# parsed(): Print the parsed data. Print all if ID not given
 # def.) _zetopt::data::parsed [ID]
+# e.g.) _zetopt::data::parsed foo
 # STDOUT: strings separated with $'\n'
 _zetopt::data::parsed()
 {
@@ -32,7 +35,7 @@ _zetopt::data::parsed()
     _zetopt::data::field "$1" $ZETOPT_FIELD_DATA_ALL
 }
 
-# Search and print the parsed data
+# field(): Search and print the parsed data
 # def.) _zetopt::data::field {ID} [FILED-DATA-NUMBER]
 # e.g.) _zetopt::data::field /foo $ZETOPT_FIELD_DATA_ARGV
 # STDOUT: string
@@ -59,7 +62,7 @@ _zetopt::data::field()
     esac
 }
 
-# Check if the option is set
+# isset(): Check if the option is set
 # def.) _zetopt::data::isset {ID}
 # e.g.) _zetopt::data::isset /foo
 # STDOUT: NONE
@@ -72,7 +75,7 @@ _zetopt::data::isset()
     [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
-# Check if the option is set and its status is OK
+# isvalid(): Check if the option is set and its status is OK
 # def.) _zetopt::data::isvalid {ID} [1D-KEY...]
 # e.g.) _zetopt::data::isvalid /foo @
 # STDOUT: NONE
@@ -97,7 +100,7 @@ _zetopt::data::isvalid()
     [[ ! $status_list =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
 }
 
-# Print option arguments/status index list
+# pickup(): Print option arguments/status index list
 # def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [1D/2D-KEY...]
 # e.g.) _zetopt::data::pickup /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
@@ -305,7 +308,7 @@ _zetopt::data::pickup()
 }
 
 
-# Check if the target has arg
+# hasarg(): Check if the target has arg
 # def.) _zetopt::data:hasarg {ID} [1D-KEY...]
 # e.g.) _zetopt::data::hasarg /foo 0
 # STDOUT: NONE
@@ -316,7 +319,7 @@ _zetopt::data::hasarg()
 }
 
 
-# Print field data with keys.
+# print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]
 # e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARGV @:@ --array myarr
@@ -471,7 +474,7 @@ _zetopt::data::print()
     fi
 }
 
-# Print the number of times the target used
+# count(): Print the number of times the target used
 # def.) _zetopt::data::count {ID}
 # e.g.) _zetopt::data::count /foo
 # STDOUT: an integer
@@ -480,7 +483,7 @@ _zetopt::data::count()
     _zetopt::data::field "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
-# Print the list of IDs set
+# setids(): Print the list of IDs set
 # def.) _zetopt::data::setids
 # e.g.) _zetopt::data::setids
 # STDOUT: string separated with \n

@@ -120,7 +120,7 @@ readonly _ZETOPT_DFLTCFG_ERRMSG_COL_WARNING="0;0;33"
 readonly _ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 readonly _ZETOPT_DFLTCFG_DEBUG=true
 
-# initialize all variables
+# init(): initialize all variables
 # def.) _zetopt::init::init
 # e.g.) _zetopt::init::init
 # STDOUT: NONE
@@ -151,7 +151,7 @@ _zetopt::init::init()
     _zetopt::init::init_config
 }
 
-# initialize config variables
+# init_config(): initialize config variables
 # def.) _zetopt::init::init_config
 # e.g.) _zetopt::init::init_config
 # STDOUT: NONE
@@ -178,7 +178,7 @@ _zetopt::init::init_config()
     ZETOPT_CFG_DEBUG=$_ZETOPT_DFLTCFG_DEBUG
 }
 
-# reset parse data only
+# reset(): reset parse data only
 # def.) _zetopt::init::reset
 # e.g.) _zetopt::init::reset
 # STDOUT: NONE
@@ -195,7 +195,9 @@ _zetopt::init::init
 #------------------------------------------------------------
 # Main
 #------------------------------------------------------------
-# zetopt {SUB-COMMAND} [ARGS]
+# zetopt(): Interface for shell script programmer
+# def.) zetopt {SUB-COMMAND} [ARGS]
+# e.g.) zetopt def ver:v,version
 # STDOUT: depending on each sub-commands
 zetopt()
 {
@@ -316,7 +318,7 @@ zetopt()
 # _zetopt::def
 #------------------------------------------------------------
 
-# Define options. 
+# define(): Define options. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::def::define {DEFINITION-STRING}
 # e.g.) _zetopt::def::define "ver:v:version"
@@ -634,8 +636,9 @@ _zetopt::def::define()
     done
 }
 
-# Print the defined data. Print all if ID not given.
+# defined(): Print the defined data. Print all if ID not given.
 # def.) _zetopt::def::defined [ID]
+# e.g.) _zetopt::def::defined /foo
 # STDOUT: strings separated with $'\n'
 _zetopt::def::defined()
 {
@@ -649,7 +652,7 @@ _zetopt::def::defined()
     _zetopt::def::field "$1" $ZETOPT_FIELD_DEF_ALL
 }
 
-# Search and print the definition.
+# field(): Search and print the definition.
 # def.) _zetopt::def::field {ID} [FIELD-DEF-NUMBER-TO-PRINT]
 # e.g.) _zetopt::def::field /foo $ZETOPT_FIELD_DEF_ARG
 # STDOUT: string
@@ -674,7 +677,7 @@ _zetopt::def::field()
     esac
 }
 
-# Check if the ID exists
+# exists(): Check if the ID exists
 # def.) _zetopt::def::exists {ID}
 # e.g.) _zetopt::def::exists /foo
 # STDOUT: NONE
@@ -687,7 +690,7 @@ _zetopt::def::exists()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]
 }
 
-# Check if the current namespace has subcommands
+# has_subcmd(): Check if the current namespace has subcommands
 # def.) _zetopt::def::has_subcmd {NAMESPACE}
 # e.g.) _zetopt::def::has_subcmd /sub/
 # STDOUT: NONE
@@ -700,7 +703,7 @@ _zetopt::def::has_subcmd()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_-]+/ ]]
 }
 
-# Check if the current namespace has options
+# has_options(): Check if the current namespace has options
 # def.) _zetopt::def::has_options {NAMESPACE}
 # e.g.) _zetopt::def::has_options /sub/
 # STDOUT: NONE
@@ -714,7 +717,7 @@ _zetopt::def::has_options()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+[+]?: ]]
 }
 
-# Check if the current namespace has arguments
+# has_arguments(): Check if the current namespace has arguments
 # def.) _zetopt::def::has_arguments {NAMESPACE}
 # e.g.) _zetopt::def::has_arguments /sub/
 # STDOUT: NONE
@@ -728,7 +731,10 @@ _zetopt::def::has_arguments()
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}:::-?[@%] ]]
 }
 
-
+# options(): Print option definition
+# def.) _zetopt::def::options
+# e.g.) _zetopt::def::options
+# STDOUT: option definition
 _zetopt::def::options()
 {
     if [[ -z ${1-} ]]; then
@@ -739,12 +745,16 @@ _zetopt::def::options()
     <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:"
 }
 
+# namespaces(): Print namespace definition
+# def.) _zetopt::def::namespaces
+# e.g.) _zetopt::def::namespaces
+# STDOUT: namespace definition
 _zetopt::def::namespaces()
 {
     <<< "$_ZETOPT_DEFINED" \grep -E '^/([^:]+/)?:' | \sed -e 's/:.*//'
 }
 
-# Print the identifier by searching with a namespace and a option name.
+# opt2id(): Print the identifier by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
 # def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME} {IS_SHORT}
 # e.g.) _zetopt::def::opt2id /remote/add/ version
@@ -798,7 +808,7 @@ _zetopt::def::opt2id()
     return 1
 }
 
-# Print the index of the specified parameter name
+# paramidx(): Print the index of the specified parameter name
 # def.) _zetopt::def::paramidx {ID} {PARAM-NAME}
 # e.g.) _zetopt::def::paramidx /foo name
 # STDOUT: an integer
@@ -822,7 +832,7 @@ _zetopt::def::paramidx()
     return 1
 }
 
-# Print the length of parameters
+# paramlen(): Print the length of parameters
 # def.) _zetopt::def::paramlen {ID} [all | required | @ | optional | % | max]
 # e.g.) _zetopt::def::paramlen /foo required
 # STDOUT: an integer
@@ -862,7 +872,7 @@ _zetopt::def::paramlen()
     \echo $out
 }
 
-# Print default values
+# default(): Print default values
 # def.) _zetopt::def::default {ID} [ONE-DIMENSIONAL-KEY]
 # e.g.) _zetopt::def::default /foo @ FOO $ FOO,$
 # STDOUT: default values separated with $ZETOPT_CFG_VALUE_IFS
@@ -1003,7 +1013,7 @@ _zetopt::def::default()
 # _zetopt::validator
 #------------------------------------------------------------
 
-# Define validator
+# def(): Define validator
 # ** Must be executed in the current shell **
 # def.) _zetopt::validator::def [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}
 # e.g.) _zetopt::validator::def is_number '^[1-9][0-9]*$' "#Input Number"
@@ -1093,7 +1103,11 @@ _zetopt::validator::def()
     _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
 }
 
-
+# validate(): Validate value
+# ** Must be executed in the current shell **
+# def.) _zetopt::validator::validate {ARG-DEFINITION} {VALUE-TO_VALIDATE}
+# e.g.) _zetopt::validator::validate @FOO~1 123
+# STDOUT: NONE
 _zetopt::validator::validate()
 {
     local param_def="${1-}" arg="${2-}"
@@ -1166,7 +1180,7 @@ _zetopt::validator::validate()
 # _zetopt::parser
 #------------------------------------------------------------
 
-# Initialize variables concerned with the parser. 
+# init(): Initialize variables concerned with the parser. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::init
 # STDOUT: NONE
@@ -1180,7 +1194,7 @@ _zetopt::parser::init()
     ZETOPT_LAST_COMMAND=/
 }
 
-# Parse arguments. 
+# parse(): Parse arguments. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::parse {ARGUMENTS}
 # e.g.) _zetopt::parser::parse "$@"
@@ -1378,7 +1392,7 @@ _zetopt::parser::parse()
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
-# Increment the set count of a sub-command. 
+# setsub(): Increment the set count of a sub-command. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::setsub {NAMESPACE}
 # e.g.) _zetopt::parser::setsub /sub/
@@ -1402,7 +1416,7 @@ _zetopt::parser::setsub()
     _ZETOPT_PARSED=$head_lines$1:$2:$3:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
-# Set option data. 
+# setopt(): Set option data. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {PSEUDO} [ARGUMENTS]
 # e.g.) _zetopt::parser::setopt /sub/cmd - version "$@"
@@ -1577,7 +1591,7 @@ _zetopt::parser::setopt()
 }
 
 
-# Assign indices to subcommand parameters. 
+# assign_args(): Assign indices to subcommand parameters. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::assign_args {NAMESPACE}
 # e.g.) _zetopt::parser::assign_args /sub/cmd/
@@ -1700,9 +1714,11 @@ _zetopt::parser::assign_args()
 #------------------------------------------------------------
 # _zetopt::data
 #------------------------------------------------------------
-# Initialize variables concerned with the parsed data. 
+
+# init(): Initialize variables concerned with the parsed data. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::data::init
+# e.g.) _zetopt::data::init
 # STDOUT: NONE
 _zetopt::data::init()
 {
@@ -1719,8 +1735,9 @@ _zetopt::data::init()
     ZETOPT_ARGS=()
 }
 
-# Print the parsed data. Print all if ID not given
+# parsed(): Print the parsed data. Print all if ID not given
 # def.) _zetopt::data::parsed [ID]
+# e.g.) _zetopt::data::parsed foo
 # STDOUT: strings separated with $'\n'
 _zetopt::data::parsed()
 {
@@ -1731,7 +1748,7 @@ _zetopt::data::parsed()
     _zetopt::data::field "$1" $ZETOPT_FIELD_DATA_ALL
 }
 
-# Search and print the parsed data
+# field(): Search and print the parsed data
 # def.) _zetopt::data::field {ID} [FILED-DATA-NUMBER]
 # e.g.) _zetopt::data::field /foo $ZETOPT_FIELD_DATA_ARGV
 # STDOUT: string
@@ -1758,7 +1775,7 @@ _zetopt::data::field()
     esac
 }
 
-# Check if the option is set
+# isset(): Check if the option is set
 # def.) _zetopt::data::isset {ID}
 # e.g.) _zetopt::data::isset /foo
 # STDOUT: NONE
@@ -1771,7 +1788,7 @@ _zetopt::data::isset()
     [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
 }
 
-# Check if the option is set and its status is OK
+# isvalid(): Check if the option is set and its status is OK
 # def.) _zetopt::data::isvalid {ID} [1D-KEY...]
 # e.g.) _zetopt::data::isvalid /foo @
 # STDOUT: NONE
@@ -1796,7 +1813,7 @@ _zetopt::data::isvalid()
     [[ ! $status_list =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
 }
 
-# Print option arguments/status index list
+# pickup(): Print option arguments/status index list
 # def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [1D/2D-KEY...]
 # e.g.) _zetopt::data::pickup /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
 # STDOUT: integers separated with spaces
@@ -2004,7 +2021,7 @@ _zetopt::data::pickup()
 }
 
 
-# Check if the target has arg
+# hasarg(): Check if the target has arg
 # def.) _zetopt::data:hasarg {ID} [1D-KEY...]
 # e.g.) _zetopt::data::hasarg /foo 0
 # STDOUT: NONE
@@ -2015,7 +2032,7 @@ _zetopt::data::hasarg()
 }
 
 
-# Print field data with keys.
+# print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]
 # e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARGV @:@ --array myarr
@@ -2170,7 +2187,7 @@ _zetopt::data::print()
     fi
 }
 
-# Print the number of times the target used
+# count(): Print the number of times the target used
 # def.) _zetopt::data::count {ID}
 # e.g.) _zetopt::data::count /foo
 # STDOUT: an integer
@@ -2179,7 +2196,7 @@ _zetopt::data::count()
     _zetopt::data::field "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
-# Print the list of IDs set
+# setids(): Print the list of IDs set
 # def.) _zetopt::data::setids
 # e.g.) _zetopt::data::setids
 # STDOUT: string separated with \n
@@ -2192,6 +2209,11 @@ _zetopt::data::setids()
 #------------------------------------------------------------
 # _zetopt::msg
 #------------------------------------------------------------
+
+# user_error(): Print error message for user
+# def.) _zetopt::msg::user_error {TITLE} {VALUE} [MESSAGE]
+# e.g.) _zetopt::msg::user_error ERROR foo "Invalid Data"
+# STDOUT: NONE
 _zetopt::msg::user_error()
 {
     if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
@@ -2217,12 +2239,20 @@ _zetopt::msg::user_error()
     \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
+# def_error(): Print definition-error message for script programmer
+# def.) _zetopt::msg::def_error {TITLE} {VALUE} [MESSAGE]
+# e.g.) _zetopt::msg::def_error ERROR foo "Invalid Data"
+# STDOUT: NONE
 _zetopt::msg::def_error()
 {
     _ZETOPT_DEF_ERROR=true
     _zetopt::msg::debug "$@"
 }
 
+# debug(): Print definition-error message for script programmer
+# def.) _zetopt::msg::debug {MESSAGE} {VALUE}
+# e.g.) _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
+# STDOUT: NONE
 _zetopt::msg::debug()
 {
     if [[ $ZETOPT_CFG_DEBUG != true ]]; then
@@ -2248,47 +2278,9 @@ _zetopt::msg::debug()
         \printf -- " %b %b\n" "$text" "$value"
         \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
         \printf -- " -> %b\n" ${stack[@]}
-        _zetopt::msg::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
+        _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
             | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
     } >&2
-}
-
-_zetopt::msg::viewfile()
-{
-    local lineno=1 before=2 after=2 filepath=
-
-    while [[ ! $# -eq 0 ]]
-    do
-        case $1 in
-            -L|--line) shift; lineno=${1-}; shift;;
-            -B|--before) shift; before=${1-}; shift;;
-            -A|--after) shift; after=${1-}; shift;;
-            --) shift; filepath=${1-}; shift;;
-            *) filepath=${1-}; shift;;
-        esac
-    done
-    if [[ ! -f $filepath ]]; then
-        return 1
-    fi
-    if [[ ! $lineno$before$after =~ ^[0-9]+$ ]]; then
-        return 1
-    fi
-    local lines="$(grep -c "" "$filepath")"
-    if [[ $lineno -le 0 || $lineno -gt $lines ]]; then
-        return 1
-    fi
-    if [[ $((lineno - before)) -le 0 ]]; then
-        before=$((lineno - 1))
-    fi
-    if [[ $((lineno + after)) -gt $lines ]]; then
-        after=$((lines - lineno))
-    fi
-    local lastline=$((lineno + after))
-    local digits=${#lastline}
-
-    \head -n $((lineno + after)) "$filepath" \
-        | \tail -n $((before + after + 1)) \
-        | \nl -n rz -w $digits -b a -v $((lineno - before))
 }
 
 _zetopt::msg::output()
@@ -2369,6 +2361,44 @@ _zetopt::utils::stack_trace()
     do
         \printf -- "%s (%s)\n" "${funcs[$i]}" "${lines[$i]}"
     done
+}
+
+_zetopt::utils::viewfile()
+{
+    local lineno=1 before=2 after=2 filepath=
+
+    while [[ ! $# -eq 0 ]]
+    do
+        case $1 in
+            -L|--line) shift; lineno=${1-}; shift;;
+            -B|--before) shift; before=${1-}; shift;;
+            -A|--after) shift; after=${1-}; shift;;
+            --) shift; filepath=${1-}; shift;;
+            *) filepath=${1-}; shift;;
+        esac
+    done
+    if [[ ! -f $filepath ]]; then
+        return 1
+    fi
+    if [[ ! $lineno$before$after =~ ^[0-9]+$ ]]; then
+        return 1
+    fi
+    local lines="$(grep -c "" "$filepath")"
+    if [[ $lineno -le 0 || $lineno -gt $lines ]]; then
+        return 1
+    fi
+    if [[ $((lineno - before)) -le 0 ]]; then
+        before=$((lineno - 1))
+    fi
+    if [[ $((lineno + after)) -gt $lines ]]; then
+        after=$((lines - lineno))
+    fi
+    local lastline=$((lineno + after))
+    local digits=${#lastline}
+
+    \head -n $((lineno + after)) "$filepath" \
+        | \tail -n $((before + after + 1)) \
+        | \nl -n rz -w $digits -b a -v $((lineno - before))
 }
 
 _zetopt::utils::repeat()

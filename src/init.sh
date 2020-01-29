@@ -84,7 +84,7 @@ readonly _ZETOPT_DFLTCFG_ERRMSG_COL_WARNING="0;0;33"
 readonly _ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 readonly _ZETOPT_DFLTCFG_DEBUG=true
 
-# initialize all variables
+# init(): initialize all variables
 # def.) _zetopt::init::init
 # e.g.) _zetopt::init::init
 # STDOUT: NONE
@@ -115,7 +115,7 @@ _zetopt::init::init()
     _zetopt::init::init_config
 }
 
-# initialize config variables
+# init_config(): initialize config variables
 # def.) _zetopt::init::init_config
 # e.g.) _zetopt::init::init_config
 # STDOUT: NONE
@@ -142,7 +142,7 @@ _zetopt::init::init_config()
     ZETOPT_CFG_DEBUG=$_ZETOPT_DFLTCFG_DEBUG
 }
 
-# reset parse data only
+# reset(): reset parse data only
 # def.) _zetopt::init::reset
 # e.g.) _zetopt::init::reset
 # STDOUT: NONE

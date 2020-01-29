@@ -2,7 +2,7 @@
 # _zetopt::parser
 #------------------------------------------------------------
 
-# Initialize variables concerned with the parser. 
+# init(): Initialize variables concerned with the parser. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::init
 # STDOUT: NONE
@@ -16,7 +16,7 @@ _zetopt::parser::init()
     ZETOPT_LAST_COMMAND=/
 }
 
-# Parse arguments. 
+# parse(): Parse arguments. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::parse {ARGUMENTS}
 # e.g.) _zetopt::parser::parse "$@"
@@ -214,7 +214,7 @@ _zetopt::parser::parse()
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
-# Increment the set count of a sub-command. 
+# setsub(): Increment the set count of a sub-command. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::setsub {NAMESPACE}
 # e.g.) _zetopt::parser::setsub /sub/
@@ -238,7 +238,7 @@ _zetopt::parser::setsub()
     _ZETOPT_PARSED=$head_lines$1:$2:$3:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
 }
 
-# Set option data. 
+# setopt(): Set option data. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::setopt {NAMESPACE} {PREFIX} {OPTNAME} {PSEUDO} [ARGUMENTS]
 # e.g.) _zetopt::parser::setopt /sub/cmd - version "$@"
@@ -413,7 +413,7 @@ _zetopt::parser::setopt()
 }
 
 
-# Assign indices to subcommand parameters. 
+# assign_args(): Assign indices to subcommand parameters. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::assign_args {NAMESPACE}
 # e.g.) _zetopt::parser::assign_args /sub/cmd/

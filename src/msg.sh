@@ -1,6 +1,11 @@
 #------------------------------------------------------------
 # _zetopt::msg
 #------------------------------------------------------------
+
+# user_error(): Print error message for user
+# def.) _zetopt::msg::user_error {TITLE} {VALUE} [MESSAGE]
+# e.g.) _zetopt::msg::user_error ERROR foo "Invalid Data"
+# STDOUT: NONE
 _zetopt::msg::user_error()
 {
     if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
@@ -26,12 +31,20 @@ _zetopt::msg::user_error()
     \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
+# def_error(): Print definition-error message for script programmer
+# def.) _zetopt::msg::def_error {TITLE} {VALUE} [MESSAGE]
+# e.g.) _zetopt::msg::def_error ERROR foo "Invalid Data"
+# STDOUT: NONE
 _zetopt::msg::def_error()
 {
     _ZETOPT_DEF_ERROR=true
     _zetopt::msg::debug "$@"
 }
 
+# debug(): Print definition-error message for script programmer
+# def.) _zetopt::msg::debug {MESSAGE} {VALUE}
+# e.g.) _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
+# STDOUT: NONE
 _zetopt::msg::debug()
 {
     if [[ $ZETOPT_CFG_DEBUG != true ]]; then
@@ -57,47 +70,9 @@ _zetopt::msg::debug()
         \printf -- " %b %b\n" "$text" "$value"
         \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
         \printf -- " -> %b\n" ${stack[@]}
-        _zetopt::msg::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
+        _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
             | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
     } >&2
-}
-
-_zetopt::msg::viewfile()
-{
-    local lineno=1 before=2 after=2 filepath=
-
-    while [[ ! $# -eq 0 ]]
-    do
-        case $1 in
-            -L|--line) shift; lineno=${1-}; shift;;
-            -B|--before) shift; before=${1-}; shift;;
-            -A|--after) shift; after=${1-}; shift;;
-            --) shift; filepath=${1-}; shift;;
-            *) filepath=${1-}; shift;;
-        esac
-    done
-    if [[ ! -f $filepath ]]; then
-        return 1
-    fi
-    if [[ ! $lineno$before$after =~ ^[0-9]+$ ]]; then
-        return 1
-    fi
-    local lines="$(grep -c "" "$filepath")"
-    if [[ $lineno -le 0 || $lineno -gt $lines ]]; then
-        return 1
-    fi
-    if [[ $((lineno - before)) -le 0 ]]; then
-        before=$((lineno - 1))
-    fi
-    if [[ $((lineno + after)) -gt $lines ]]; then
-        after=$((lines - lineno))
-    fi
-    local lastline=$((lineno + after))
-    local digits=${#lastline}
-
-    \head -n $((lineno + after)) "$filepath" \
-        | \tail -n $((before + after + 1)) \
-        | \nl -n rz -w $digits -b a -v $((lineno - before))
 }
 
 _zetopt::msg::output()

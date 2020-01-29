@@ -1,7 +1,9 @@
 #------------------------------------------------------------
 # Main
 #------------------------------------------------------------
-# zetopt {SUB-COMMAND} [ARGS]
+# zetopt(): Interface for shell script programmer
+# def.) zetopt {SUB-COMMAND} [ARGS]
+# e.g.) zetopt def ver:v,version
 # STDOUT: depending on each sub-commands
 zetopt()
 {

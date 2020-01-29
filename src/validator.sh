@@ -2,7 +2,7 @@
 # _zetopt::validator
 #------------------------------------------------------------
 
-# Define validator
+# def(): Define validator
 # ** Must be executed in the current shell **
 # def.) _zetopt::validator::def [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}
 # e.g.) _zetopt::validator::def is_number '^[1-9][0-9]*$' "#Input Number"
@@ -92,7 +92,11 @@ _zetopt::validator::def()
     _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
 }
 
-
+# validate(): Validate value
+# ** Must be executed in the current shell **
+# def.) _zetopt::validator::validate {ARG-DEFINITION} {VALUE-TO_VALIDATE}
+# e.g.) _zetopt::validator::validate @FOO~1 123
+# STDOUT: NONE
 _zetopt::validator::validate()
 {
     local param_def="${1-}" arg="${2-}"
