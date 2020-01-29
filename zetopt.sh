@@ -120,6 +120,10 @@ readonly _ZETOPT_DFLTCFG_ERRMSG_COL_WARNING="0;0;33"
 readonly _ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 readonly _ZETOPT_DFLTCFG_DEBUG=true
 
+# initialize all variables
+# def.) _zetopt::init::init
+# e.g.) _zetopt::init::init
+# STDOUT: NONE
 _zetopt::init::init()
 {
     _ZETOPT_DEF_ERROR=false
@@ -147,13 +151,10 @@ _zetopt::init::init()
     _zetopt::init::init_config
 }
 
-_zetopt::init::reset()
-{
-    _zetopt::parser::init
-    _zetopt::data::init
-}
-
-# config
+# initialize config variables
+# def.) _zetopt::init::init_config
+# e.g.) _zetopt::init::init_config
+# STDOUT: NONE
 _zetopt::init::init_config()
 {
     ZETOPT_CFG_VALUE_IFS=$_ZETOPT_DFLTCFG_VALUE_IFS
@@ -176,6 +177,19 @@ _zetopt::init::init_config()
     ZETOPT_CFG_ERRMSG_COL_SCRIPTERR=$_ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR
     ZETOPT_CFG_DEBUG=$_ZETOPT_DFLTCFG_DEBUG
 }
+
+# reset parse data only
+# def.) _zetopt::init::reset
+# e.g.) _zetopt::init::reset
+# STDOUT: NONE
+_zetopt::init::reset()
+{
+    _zetopt::parser::init
+    _zetopt::data::init
+}
+
+# Call init when sourcing
+_zetopt::init::init
 
 
 #------------------------------------------------------------
