@@ -176,7 +176,7 @@ _zetopt::parser::parse()
     _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
-    if [[ $ZETOPT_CFG_ERRMSG == true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
         IFS=$' \t\n'
         local subcmdstr="${namespace//\// }" msg=
 

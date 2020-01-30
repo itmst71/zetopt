@@ -17,8 +17,8 @@ __index__=1
 setUp() {
     printf "%2s: " $((__index__++))
     zetopt init
-    ZETOPT_CFG_DEBUG=false
-    ZETOPT_CFG_ERRMSG=false
+    ZETOPT_CFG_ERRMSG_SCRIPT_ERROR=false
+    ZETOPT_CFG_ERRMSG_USER_ERROR=false
 }
 tearDown() { :; }
 oneTimeTearDown() { :; }

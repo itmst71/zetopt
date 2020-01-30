@@ -98,7 +98,7 @@ zetopt()
         status)
             _zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$@";;
         count)
-            _zetopt::data::count "$@";;
+            _zetopt::data::print $ZETOPT_FIELD_DATA_COUNT "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)

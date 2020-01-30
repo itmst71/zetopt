@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-30 02:00)
+# Version     : 1.2.0a (2020-01-30 13:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-30 02:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-30 13:00)"
 
 
 #------------------------------------------------------------
@@ -99,26 +99,6 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
 
-# default config variables
-readonly _ZETOPT_DFLTCFG_VALUE_IFS=" "
-readonly _ZETOPT_DFLTCFG_ESCAPE_DOUBLE_HYPHEN=false
-readonly _ZETOPT_DFLTCFG_SINGLE_PREFIX_LONG=false
-readonly _ZETOPT_DFLTCFG_PSEUDO_OPTION=false
-readonly _ZETOPT_DFLTCFG_CONCATENATED_OPTARG=true
-readonly _ZETOPT_DFLTCFG_ABBREVIATED_LONG=true
-readonly _ZETOPT_DFLTCFG_IGNORE_BLANK_STRING=false
-readonly _ZETOPT_DFLTCFG_IGNORE_SUBCMD_UNDEFERR=false
-readonly _ZETOPT_DFLTCFG_OPTTYPE_PLUS=false
-readonly _ZETOPT_DFLTCFG_FLAGVAL_TRUE=true
-readonly _ZETOPT_DFLTCFG_FLAGVAL_FALSE=false
-readonly _ZETOPT_DFLTCFG_ERRMSG=true
-readonly _ZETOPT_DFLTCFG_ERRMSG_APPNAME=$ZETOPT_CALLER_NAME
-readonly _ZETOPT_DFLTCFG_ERRMSG_COL_MODE=auto
-readonly _ZETOPT_DFLTCFG_ERRMSG_COL_DEFAULT="0;0;39"
-readonly _ZETOPT_DFLTCFG_ERRMSG_COL_ERROR="0;1;31"
-readonly _ZETOPT_DFLTCFG_ERRMSG_COL_WARNING="0;0;33"
-readonly _ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR="0;1;31"
-readonly _ZETOPT_DFLTCFG_DEBUG=true
 
 # init(): initialize all variables
 # def.) _zetopt::init::init
@@ -157,25 +137,28 @@ _zetopt::init::init()
 # STDOUT: NONE
 _zetopt::init::init_config()
 {
-    ZETOPT_CFG_VALUE_IFS=$_ZETOPT_DFLTCFG_VALUE_IFS
-    ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=$_ZETOPT_DFLTCFG_ESCAPE_DOUBLE_HYPHEN
-    ZETOPT_CFG_SINGLE_PREFIX_LONG=$_ZETOPT_DFLTCFG_SINGLE_PREFIX_LONG
-    ZETOPT_CFG_PSEUDO_OPTION=$_ZETOPT_DFLTCFG_PSEUDO_OPTION
-    ZETOPT_CFG_CONCATENATED_OPTARG=$_ZETOPT_DFLTCFG_CONCATENATED_OPTARG
-    ZETOPT_CFG_ABBREVIATED_LONG=$_ZETOPT_DFLTCFG_ABBREVIATED_LONG
-    ZETOPT_CFG_IGNORE_BLANK_STRING=$_ZETOPT_DFLTCFG_IGNORE_BLANK_STRING
-    ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=$_ZETOPT_DFLTCFG_IGNORE_SUBCMD_UNDEFERR
-    ZETOPT_CFG_OPTTYPE_PLUS=$_ZETOPT_DFLTCFG_OPTTYPE_PLUS
-    ZETOPT_CFG_FLAGVAL_TRUE=$_ZETOPT_DFLTCFG_FLAGVAL_TRUE
-    ZETOPT_CFG_FLAGVAL_FALSE=$_ZETOPT_DFLTCFG_FLAGVAL_FALSE
-    ZETOPT_CFG_ERRMSG=$_ZETOPT_DFLTCFG_ERRMSG
-    ZETOPT_CFG_ERRMSG_APPNAME=$_ZETOPT_DFLTCFG_ERRMSG_APPNAME
-    ZETOPT_CFG_ERRMSG_COL_MODE=$_ZETOPT_DFLTCFG_ERRMSG_COL_MODE
-    ZETOPT_CFG_ERRMSG_COL_DEFAULT=$_ZETOPT_DFLTCFG_ERRMSG_COL_DEFAULT
-    ZETOPT_CFG_ERRMSG_COL_ERROR=$_ZETOPT_DFLTCFG_ERRMSG_COL_ERROR
-    ZETOPT_CFG_ERRMSG_COL_WARNING=$_ZETOPT_DFLTCFG_ERRMSG_COL_WARNING
-    ZETOPT_CFG_ERRMSG_COL_SCRIPTERR=$_ZETOPT_DFLTCFG_ERRMSG_COL_SCRIPTERR
-    ZETOPT_CFG_DEBUG=$_ZETOPT_DFLTCFG_DEBUG
+    ZETOPT_CFG_VARIABLE_PREFIX=zv_
+    ZETOPT_CFG_VARIABLE_DEFAULT=_NULL
+    ZETOPT_CFG_VALUE_IFS=" "
+    ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
+    ZETOPT_CFG_SINGLE_PREFIX_LONG=false
+    ZETOPT_CFG_PSEUDO_OPTION=false
+    ZETOPT_CFG_CONCATENATED_OPTARG=true
+    ZETOPT_CFG_ABBREVIATED_LONG=true
+    ZETOPT_CFG_IGNORE_BLANK_STRING=false
+    ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
+    ZETOPT_CFG_OPTTYPE_PLUS=false
+    ZETOPT_CFG_FLAGVAL_TRUE=true
+    ZETOPT_CFG_FLAGVAL_FALSE=false
+    ZETOPT_CFG_ERRMSG_USER_ERROR=true
+    ZETOPT_CFG_ERRMSG_SCRIPT_ERROR=true
+    ZETOPT_CFG_ERRMSG_STACKTRACE=true
+    ZETOPT_CFG_ERRMSG_APPNAME=$ZETOPT_CALLER_NAME
+    ZETOPT_CFG_ERRMSG_COL_MODE=auto
+    ZETOPT_CFG_ERRMSG_COL_DEFAULT="0;0;39"
+    ZETOPT_CFG_ERRMSG_COL_ERROR="0;1;31"
+    ZETOPT_CFG_ERRMSG_COL_WARNING="0;0;33"
+    ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 }
 
 # reset(): reset parse data only
@@ -292,7 +275,7 @@ zetopt()
         status)
             _zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$@";;
         count)
-            _zetopt::data::count "$@";;
+            _zetopt::data::print $ZETOPT_FIELD_DATA_COUNT "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)
@@ -333,6 +316,11 @@ _zetopt::def::define()
 
     if [[ -z $@ ]]; then
         _zetopt::msg::def_error "No Definition Given"
+        return 1
+    fi
+
+    if [[ -n $ZETOPT_CFG_VARIABLE_PREFIX && ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
     fi
 
@@ -423,6 +411,10 @@ _zetopt::def::define()
         return 1
     fi
 
+    # define variable for storing the last value
+    local var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    var_base_name=${var_base_name//[\/\-]/_}
+    
     # namespace(subcommand) definition
     if [[ $id == $namespace ]]; then
         cmdmode=true
@@ -537,6 +529,7 @@ _zetopt::def::define()
         declare -i param_idx=$INIT_IDX param_default_idx
         local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_name=
+        local var_name var_param_name var_param_default var_param_len=$(($maxloop-$idx))
         params=()
         for ((; idx<maxloop; idx++))
         do
@@ -570,12 +563,14 @@ _zetopt::def::define()
             fi
 
             # check if parameter names are duplicated
+            var_param_name=$param_idx
             if [[ -n $param_name ]]; then
                 if [[ $param_names =~ \ $param_name\  ]]; then
                     _zetopt::msg::def_error "Duplicate Parameter Name:" "$param_name"
                     return 1
                 fi
                 param_names+=" $param_name "
+                var_param_name=$param_name
             fi
 
             param_validator_idxs=0
@@ -598,7 +593,9 @@ _zetopt::def::define()
             fi
 
             # save default value
+            var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
             if [[ -n $param_default ]]; then
+                var_param_default=${param_default##=}
                 _ZETOPT_DEFAULTS+=("${param_default##=}")
                 param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
                 default_is_set=true
@@ -608,9 +605,22 @@ _zetopt::def::define()
             fi
             params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
+
+            # define variable 
+            if [[ $var_param_len == 1 ]]; then
+                var_name=$var_base_name
+            else
+                var_name=$var_base_name$([[ $cmdmode == false ]] && echo _ ||:)$var_param_name
+            fi
+            \eval $var_name'=$var_param_default'
         done
         IFS=$' '
         param_def="${params[*]}"
+
+    # Flag option
+    else
+        local var_name=$var_base_name
+        \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
     fi
 
     if [[ -n "$helpdef" ]]; then
@@ -1354,7 +1364,7 @@ _zetopt::parser::parse()
     _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
-    if [[ $ZETOPT_CFG_ERRMSG == true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
         IFS=$' \t\n'
         local subcmdstr="${namespace//\// }" msg=
 
@@ -2089,7 +2099,7 @@ _zetopt::data::print()
     if [[ $__out_mode =~ ^(array|variable)$ ]]; then
         # check the user defined variable name before eval to avoid overwriting local variables
         if [[ ! $__var_name =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__var_name =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Array Name:" "$__var_name"
+            _zetopt::msg::debug "Invalid Variable Name:" "$__var_name"
             return 1
         fi
         case $__out_mode in
@@ -2102,7 +2112,14 @@ _zetopt::data::print()
     if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
         return 1
     fi
-    local __id="${__args[$((0 + $INIT_IDX))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
+
+    local __id="${__args[$((0 + $INIT_IDX))]}"
+    if ! _zetopt::def::exists "$__id"; then
+        _zetopt::msg::debug "No Such ID:" "$__id" 
+        return 1
+    fi
+    [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
+    
     local __keys=${__args[@]:1}
     if [[ -z $__keys ]]; then
         [[ $__field == $ZETOPT_FIELD_DATA_ARGV ]] \
@@ -2110,7 +2127,12 @@ _zetopt::data::print()
         || __keys=$
     fi
     
-    local __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
+    local __list_str
+    if [[ $__field != $ZETOPT_FIELD_DATA_COUNT ]]; then
+        __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
+    else
+        __list_str=$(_zetopt::data::field "$__id" $__field || echo 0)
+    fi
     if [[ -z "$__list_str" ]]; then
         return 1
     fi
@@ -2187,15 +2209,6 @@ _zetopt::data::print()
     fi
 }
 
-# count(): Print the number of times the target used
-# def.) _zetopt::data::count {ID}
-# e.g.) _zetopt::data::count /foo
-# STDOUT: an integer
-_zetopt::data::count()
-{
-    _zetopt::data::field "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
-}
-
 # setids(): Print the list of IDs set
 # def.) _zetopt::data::setids
 # e.g.) _zetopt::data::setids
@@ -2216,7 +2229,7 @@ _zetopt::data::setids()
 # STDOUT: NONE
 _zetopt::msg::user_error()
 {
-    if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR != true ]]; then
         return 0
     fi
 
@@ -2255,7 +2268,7 @@ _zetopt::msg::def_error()
 # STDOUT: NONE
 _zetopt::msg::debug()
 {
-    if [[ $ZETOPT_CFG_DEBUG != true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_SCRIPT_ERROR != true ]]; then
         return 0
     fi
     local text="${1-}" value="${2-}"
@@ -2267,19 +2280,23 @@ _zetopt::msg::debug()
     local col="${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}"
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local before=2 after=2
-    local IFS=$LF stack
-    stack=($(_zetopt::utils::stack_trace))
-    local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
-    [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
-    && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
-    || local caller_lineno=0
+    local IFS=$LF
+    if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
+        local stack=($(_zetopt::utils::stack_trace))
+        local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
+        [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
+        && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
+        || local caller_lineno=0
+    fi
     {
         \printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"
         \printf -- " %b %b\n" "$text" "$value"
-        \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
-        \printf -- " -> %b\n" ${stack[@]}
-        _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
-            | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
+        if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
+            \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
+            \printf -- " -> %b\n" ${stack[@]}
+            _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
+                | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
+        fi
     } >&2
 }
 

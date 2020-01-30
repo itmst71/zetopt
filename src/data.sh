@@ -376,7 +376,7 @@ _zetopt::data::print()
     if [[ $__out_mode =~ ^(array|variable)$ ]]; then
         # check the user defined variable name before eval to avoid overwriting local variables
         if [[ ! $__var_name =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__var_name =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Array Name:" "$__var_name"
+            _zetopt::msg::debug "Invalid Variable Name:" "$__var_name"
             return 1
         fi
         case $__out_mode in
@@ -389,7 +389,14 @@ _zetopt::data::print()
     if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
         return 1
     fi
-    local __id="${__args[$((0 + $INIT_IDX))]}" && [[ ! $__id =~ ^/ ]] && __id="/$__id"
+
+    local __id="${__args[$((0 + $INIT_IDX))]}"
+    if ! _zetopt::def::exists "$__id"; then
+        _zetopt::msg::debug "No Such ID:" "$__id" 
+        return 1
+    fi
+    [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
+    
     local __keys=${__args[@]:1}
     if [[ -z $__keys ]]; then
         [[ $__field == $ZETOPT_FIELD_DATA_ARGV ]] \
@@ -397,7 +404,12 @@ _zetopt::data::print()
         || __keys=$
     fi
     
-    local __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
+    local __list_str
+    if [[ $__field != $ZETOPT_FIELD_DATA_COUNT ]]; then
+        __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
+    else
+        __list_str=$(_zetopt::data::field "$__id" $__field || echo 0)
+    fi
     if [[ -z "$__list_str" ]]; then
         return 1
     fi
@@ -472,15 +484,6 @@ _zetopt::data::print()
             __i+=1
         done
     fi
-}
-
-# count(): Print the number of times the target used
-# def.) _zetopt::data::count {ID}
-# e.g.) _zetopt::data::count /foo
-# STDOUT: an integer
-_zetopt::data::count()
-{
-    _zetopt::data::field "${1-}" $ZETOPT_FIELD_DATA_COUNT || echo 0
 }
 
 # setids(): Print the list of IDs set

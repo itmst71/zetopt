@@ -20,6 +20,11 @@ _zetopt::def::define()
         return 1
     fi
 
+    if [[ -n $ZETOPT_CFG_VARIABLE_PREFIX && ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
+        return 1
+    fi
+
     local IFS=$' \n\t' args
     declare -i arglen=$#
     args=("$@")
@@ -107,6 +112,10 @@ _zetopt::def::define()
         return 1
     fi
 
+    # define variable for storing the last value
+    local var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    var_base_name=${var_base_name//[\/\-]/_}
+    
     # namespace(subcommand) definition
     if [[ $id == $namespace ]]; then
         cmdmode=true
@@ -221,6 +230,7 @@ _zetopt::def::define()
         declare -i param_idx=$INIT_IDX param_default_idx
         local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_name=
+        local var_name var_param_name var_param_default var_param_len=$(($maxloop-$idx))
         params=()
         for ((; idx<maxloop; idx++))
         do
@@ -254,12 +264,14 @@ _zetopt::def::define()
             fi
 
             # check if parameter names are duplicated
+            var_param_name=$param_idx
             if [[ -n $param_name ]]; then
                 if [[ $param_names =~ \ $param_name\  ]]; then
                     _zetopt::msg::def_error "Duplicate Parameter Name:" "$param_name"
                     return 1
                 fi
                 param_names+=" $param_name "
+                var_param_name=$param_name
             fi
 
             param_validator_idxs=0
@@ -282,7 +294,9 @@ _zetopt::def::define()
             fi
 
             # save default value
+            var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
             if [[ -n $param_default ]]; then
+                var_param_default=${param_default##=}
                 _ZETOPT_DEFAULTS+=("${param_default##=}")
                 param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
                 default_is_set=true
@@ -292,9 +306,22 @@ _zetopt::def::define()
             fi
             params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
+
+            # define variable 
+            if [[ $var_param_len == 1 ]]; then
+                var_name=$var_base_name
+            else
+                var_name=$var_base_name$([[ $cmdmode == false ]] && echo _ ||:)$var_param_name
+            fi
+            \eval $var_name'=$var_param_default'
         done
         IFS=$' '
         param_def="${params[*]}"
+
+    # Flag option
+    else
+        local var_name=$var_base_name
+        \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
     fi
 
     if [[ -n "$helpdef" ]]; then

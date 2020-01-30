@@ -8,7 +8,7 @@
 # STDOUT: NONE
 _zetopt::msg::user_error()
 {
-    if [[ $ZETOPT_CFG_ERRMSG != true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR != true ]]; then
         return 0
     fi
 
@@ -47,7 +47,7 @@ _zetopt::msg::def_error()
 # STDOUT: NONE
 _zetopt::msg::debug()
 {
-    if [[ $ZETOPT_CFG_DEBUG != true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_SCRIPT_ERROR != true ]]; then
         return 0
     fi
     local text="${1-}" value="${2-}"
@@ -59,19 +59,23 @@ _zetopt::msg::debug()
     local col="${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}"
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local before=2 after=2
-    local IFS=$LF stack
-    stack=($(_zetopt::utils::stack_trace))
-    local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
-    [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
-    && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
-    || local caller_lineno=0
+    local IFS=$LF
+    if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
+        local stack=($(_zetopt::utils::stack_trace))
+        local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
+        [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
+        && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
+        || local caller_lineno=0
+    fi
     {
         \printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"
         \printf -- " %b %b\n" "$text" "$value"
-        \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
-        \printf -- " -> %b\n" ${stack[@]}
-        _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
-            | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
+        if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
+            \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
+            \printf -- " -> %b\n" ${stack[@]}
+            _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
+                | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
+        fi
     } >&2
 }
 
