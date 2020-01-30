@@ -1,3 +1,4 @@
+# **Sorry, this document is outdated for the current version of develop branch.**  
 
 # Reference
 **Sorry, documentation is inadequate.**  
@@ -12,8 +13,8 @@
     * [parse](#parse)
     * [parsed](#parsed)
     * [isset](#isset)
-    * [count, cnt](#count-cnt)
-    * [status, stat](#status-stat)
+    * [count](#count-cnt)
+    * [status](#status-stat)
     * [isok](#isok)
     * [hasval](#hasval)
     * [value, val](#value-val)
@@ -43,7 +44,7 @@
     * [ZETOPT_CFG_TYPE_PLUS](#zetopt_cfg_type_plus)
     * [ZETOPT_CFG_FLAGVAL_TRUE](#zetopt_cfg_flagval_true)
     * [ZETOPT_CFG_FLAGVAL_FALSE](#zetopt_cfg_flagval_false)
-    * [ZETOPT_CFG_ERRMSG](#zetopt_cfg_errmsg)
+    * [ZETOPT_CFG_ERRMSG_USER_ERROR](#zetopt_cfg_errmsg_user_error)
     * [ZETOPT_CFG_ERRMSG_APPNAME](#zetopt_cfg_errmsg_appname)
     * [ZETOPT_CFG_ERRMSG_COL_MODE](#zetopt_cfg_errmsg_col_mode)
     * [ZETOPT_CFG_ERRMSG_COL_DEFAULT](#zetopt_cfg_errmsg_col_default)
@@ -830,12 +831,12 @@ false
 ```
 
 
-#### ZETOPT_CFG_ERRMSG
-Print error messages.  
+#### ZETOPT_CFG_ERRMSG_USER_ERROR
+Print user error messages.  
 
 **Default**
 ```bash
-ZETOPT_CFG_ERRMSG=true
+ZETOPT_CFG_ERRMSG_USER_ERROR=true
 ```
 
 #### ZETOPT_CFG_ERRMSG_APPNAME

@@ -1,3 +1,4 @@
+# **Sorry, this document is outdated for the current version of develop branch.**  
 
 # Tutorial
 I will explain how to define options and sub-commands and also briefly describe the `zetopt` sub-commands used in the sample code.  
