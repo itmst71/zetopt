@@ -17,7 +17,7 @@ elif [[ -n ${ZSH_VERSION-} ]]; then
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
     readonly ZETOPT_OLDBASH=false
-    readonly ZETOPT_ARRAY_INITIAL_IDX=$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)
+    readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)"
 else
     echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
     return 1

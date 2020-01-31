@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-01-30 13:00)
+# Version     : 1.2.0a (2020-01-31 19:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-01-30 13:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-01-31 19:00)"
 
 
 #------------------------------------------------------------
@@ -53,7 +53,7 @@ elif [[ -n ${ZSH_VERSION-} ]]; then
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
     readonly ZETOPT_OLDBASH=false
-    readonly ZETOPT_ARRAY_INITIAL_IDX=$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)
+    readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)"
 else
     echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
     return 1
@@ -282,6 +282,8 @@ zetopt()
             _zetopt::data::isvalid "$@";;
         parsed)
             _zetopt::data::parsed "$@";;
+        argvloop)
+            _zetopt::data::argvloop "$@";;
 
         # help
         def-help | define-help)
@@ -619,7 +621,7 @@ _zetopt::def::define()
 
     # Flag option
     else
-        local var_name=$var_base_name
+        local var_name="$var_base_name"
         \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
     fi
 
@@ -1193,6 +1195,7 @@ _zetopt::validator::validate()
 # init(): Initialize variables concerned with the parser. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::init
+# e.g.) _zetopt::parser::init
 # STDOUT: NONE
 _zetopt::parser::init()
 {
@@ -2207,6 +2210,61 @@ _zetopt::data::print()
             __i+=1
         done
     fi
+}
+
+
+_ZETOPT_ARGVLOOP_IDX=$ZETOPT_ARRAY_INITIAL_IDX
+_zetopt::data::argvloop()
+{
+    local __args__ __var_name__=ZOPT_ARGV __idx_name__=ZOPT_INDEX
+    __args__=()
+    while [[ $# -ne 0 ]]
+    do
+        case "$1" in
+            -v|--variable)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-v, --variable <VARIABLE_NAME>"
+                    return 1
+                fi
+                __var_name__=$1
+                shift
+                ;;
+            -i|--index)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-i, --index <IFS_VALUE>"
+                    return 1
+                fi
+                __idx_name__=$1
+                shift
+                ;;
+            --reset)
+                _ZETOPT_ARGVLOOP_IDX=$ZETOPT_ARRAY_INITIAL_IDX
+                return 0
+                ;;
+            --) shift; __args__+=("$@"); break;;
+            *)  __args__+=("$1"); shift;;
+        esac
+    done
+
+    # check the user defined variable name before eval to avoid overwriting local variables
+    for __tmp_var_name__ in "$__var_name__" "$__idx_name__"
+    do
+        if [[ ! $__tmp_var_name__ =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*__$)|(^IFS$)) ]]; then
+            _zetopt::msg::debug "Invalid Variable Name:" "$__tmp_var_name__"
+            return 1
+        fi
+    done
+
+    if [[ $(($_ZETOPT_ARGVLOOP_IDX - $INIT_IDX)) -ge ${#ZETOPT_ARGS[@]} ]]; then
+        return 1
+    fi
+
+    eval $__var_name__='"${ZETOPT_ARGS[$_ZETOPT_ARGVLOOP_IDX]}"'
+    eval $__idx_name__='$_ZETOPT_ARGVLOOP_IDX'
+    _ZETOPT_ARGVLOOP_IDX=$(($_ZETOPT_ARGVLOOP_IDX + 1))
+    return 0
 }
 
 # setids(): Print the list of IDs set

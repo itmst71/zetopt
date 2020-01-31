@@ -105,6 +105,8 @@ zetopt()
             _zetopt::data::isvalid "$@";;
         parsed)
             _zetopt::data::parsed "$@";;
+        argvloop)
+            _zetopt::data::argvloop "$@";;
 
         # help
         def-help | define-help)

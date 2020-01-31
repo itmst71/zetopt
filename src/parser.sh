@@ -5,6 +5,7 @@
 # init(): Initialize variables concerned with the parser. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::init
+# e.g.) _zetopt::parser::init
 # STDOUT: NONE
 _zetopt::parser::init()
 {

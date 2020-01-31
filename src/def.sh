@@ -320,7 +320,7 @@ _zetopt::def::define()
 
     # Flag option
     else
-        local var_name=$var_base_name
+        local var_name="$var_base_name"
         \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
     fi
 
