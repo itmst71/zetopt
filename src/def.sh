@@ -113,7 +113,7 @@ _zetopt::def::define()
     fi
 
     # define variable for storing the last value
-    local var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    local var_name var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
     var_base_name=${var_base_name//[\/\-]/_}
     
     # namespace(subcommand) definition
@@ -230,7 +230,7 @@ _zetopt::def::define()
         declare -i param_idx=$INIT_IDX param_default_idx
         local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_names= param_validator= param_validator_name=
-        local var_name var_param_name var_param_default var_param_len=$(($maxloop-$idx))
+        local var_param_name var_param_default var_param_len=$(($maxloop-$idx))
         params=()
         for ((; idx<maxloop; idx++))
         do
@@ -320,7 +320,7 @@ _zetopt::def::define()
 
     # Flag option
     else
-        local var_name="$var_base_name"
+        var_name="$var_base_name"
         \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
     fi
 

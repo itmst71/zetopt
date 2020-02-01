@@ -17,9 +17,9 @@ _zetopt::data::init()
         set -- $line
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
-    _ZETOPT_OPTVALS=()
-    _ZETOPT_PSEUDOS=("")
+    _ZETOPT_DATA=()
     ZETOPT_ARGS=()
+    ZETOPT_EXTRA_ARGV=()
 }
 
 # parsed(): Print the parsed data. Print all if ID not given
@@ -421,23 +421,7 @@ _zetopt::data::print()
 
     # indexes to refer target data in array
     if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
-        __args=()
-        case $__field in
-            $ZETOPT_FIELD_DATA_ARGV)
-                # for subcommands
-                if [[ $__id =~ ^/(.*/)?$ ]]; then
-                    __args=("${ZETOPT_ARGS[@]}")
-
-                # for options
-                else
-                    __args=("${_ZETOPT_OPTVALS[@]}")
-                fi
-                ;;
-            $ZETOPT_FIELD_DATA_PSEUDO)
-                __args=("${_ZETOPT_PSEUDOS[@]}")
-                ;;
-        esac
-
+        __args=("${_ZETOPT_DATA[@]}")
         for __idx in "$@"
         do
             # store data in user specified array
@@ -513,7 +497,7 @@ _zetopt::data::argvloop()
                 __idx_name__=$1
                 shift
                 ;;
-            --reset)
+            --reset|--init)
                 _ZETOPT_ARGVLOOP_IDX=$ZETOPT_ARRAY_INITIAL_IDX
                 return 0
                 ;;
