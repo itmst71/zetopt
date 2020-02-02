@@ -10,7 +10,7 @@
 _zetopt::def::define()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/::::0 0$LF"
+        _ZETOPT_DEFINED="/:::%.0~0...=0:0 0$LF"
         _ZETOPT_OPTHELPS=("")
         _ZETOPT_DEFAULTS=("")
     fi
@@ -137,7 +137,7 @@ _zetopt::def::define()
             local tail_lines="${BASH_REMATCH[$((6 + $INIT_IDX))]}"
 
             # remove auto defined namespace
-            if [[ $tmp_line == "${id}::::0 0" ]]; then
+            if [[ $tmp_line == "${id}:::%.0~0...=0:0 0$LF" ]]; then
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
             elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$LF$ ]]; then
@@ -343,7 +343,7 @@ _zetopt::def::define()
     do
         curr_ns="${curr_ns%*/}/$ns/"
         [[ $LF$_ZETOPT_DEFINED =~ $LF$curr_ns: ]] && return 0
-        _ZETOPT_DEFINED+="$curr_ns::::0 0$LF"
+        _ZETOPT_DEFINED+="$curr_ns:::%.0~0...=0:0 0$LF"
     done
 }
 
