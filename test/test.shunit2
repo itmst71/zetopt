@@ -589,7 +589,7 @@ test_status_multi() {
     zetopt def val:v @FOO @BAR %BAZ...3
     zetopt parse -f -ff -f -v foo bar baz -v foo bar
     assertEquals "0 0 0 0" "$(zetopt status flag @)"
-    assertEquals "0::0::0::0" "$(zetopt status --ifs :: -- flag @)"
+    assertEquals "0::0::0::0" "$(zetopt status --IFS :: -- flag @)"
     assertEquals "0 $ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS" "$(zetopt status val @)"
 }
 

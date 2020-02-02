@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-02 04:00)
+# Version     : 1.2.0a (2020-02-03 03:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-02 04:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-03 03:00)"
 
 
 #------------------------------------------------------------
@@ -282,8 +282,8 @@ zetopt()
             _zetopt::data::isvalid "$@";;
         parsed)
             _zetopt::data::parsed "$@";;
-        argvloop)
-            _zetopt::data::argvloop "$@";;
+        iterate)
+            _zetopt::data::iterate "$@";;
 
         # help
         def-help | define-help)
@@ -1637,7 +1637,7 @@ _zetopt::parser::assign_args()
         done
         
         # variable length arguments
-        for ((; idx<def_max_len; idx++))
+        for ((; idx<$((def_max_len+INIT_IDX)); idx++))
         do
             _ZETOPT_DATA+=("${ZETOPT_ARGS[ref_arr[idx]]}")
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
@@ -2050,9 +2050,9 @@ _zetopt::data::hasarg()
 
 # print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
-# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-i,--ifs <IFS_VALUE>]
+# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-I,--IFS <IFS_VALUE>]
 # e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARGV @:@ --array myarr
-# STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --ifs value
+# STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
 _zetopt::data::print()
 {
     if [[ $# -eq 0 ]]; then
@@ -2067,7 +2067,7 @@ _zetopt::data::print()
     while [[ $# -ne 0 ]]
     do
         case "$1" in
-            --array|-a)
+            -a | --array)
                 __out_mode=array
                 shift
                 if [[ $# -eq 0 ]]; then
@@ -2077,7 +2077,7 @@ _zetopt::data::print()
                 __var_name=$1
                 shift
                 ;;
-            -v|--variable)
+            -v | --variable)
                 __out_mode=variable
                 shift
                 if [[ $# -eq 0 ]]; then
@@ -2087,10 +2087,10 @@ _zetopt::data::print()
                 __var_name=$1
                 shift
                 ;;
-            -i|--ifs)
+            -I | --IFS)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-i, --ifs <IFS_VALUE>"
+                    _zetopt::msg::debug "Missing Required Argument:" "-I, --IFS <IFS_VALUE>"
                     return 1
                 fi
                 __ifs=$1
@@ -2200,57 +2200,118 @@ _zetopt::data::print()
 }
 
 
-_ZETOPT_ARGVLOOP_IDX=$ZETOPT_ARRAY_INITIAL_IDX
-_zetopt::data::argvloop()
+_zetopt::data::iterate()
 {
-    local __args__ __var_name__=ZOPT_ARGV __idx_name__=ZOPT_INDEX
+    local __args__ __reset__=false
+    local __user_value__= __user_key__= __user_last_key__= __user_array__=
     __args__=()
     while [[ $# -ne 0 ]]
     do
         case "$1" in
-            -v|--variable)
+            -v|--value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-v, --variable <VARIABLE_NAME>"
+                    _zetopt::msg::debug "Missing Required Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE>"
                     return 1
                 fi
-                __var_name__=$1
+                __user_value__=$1
                 shift
                 ;;
-            -i|--index)
+            -k|--key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-i, --index <IFS_VALUE>"
+                    _zetopt::msg::debug "Missing Required Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY>"
                     return 1
                 fi
-                __idx_name__=$1
+                __user_key__=$1
                 shift
                 ;;
-            --reset|--init)
-                _ZETOPT_ARGVLOOP_IDX=$ZETOPT_ARRAY_INITIAL_IDX
-                return 0
+            -l|--last-key)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-l, --last-key <VARIABLE_NAME_FOR_LAST_KEY>"
+                    return 1
+                fi
+                __user_last_key__=$1
+                shift
+                ;;
+            -a|--array)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
+                    return 1
+                fi
+                __user_array__=$1
+                shift
+                ;;
+            --reset)
+                __reset__=true
+                shift
+                ;;
+            --*|-[a-zA-Z])
+                _zetopt::msg::debug "Undefined Option:" "$1"
+                return 1
                 ;;
             --) shift; __args__+=("$@"); break;;
             *)  __args__+=("$1"); shift;;
         esac
     done
 
+    # make variable names based on ID
+    local __id__="${__args__[$((0 + $INIT_IDX))]}"
+    if ! _zetopt::def::exists "$__id__"; then
+        _zetopt::msg::debug "No Such ID:" "$__id__" 
+        return 1
+    fi
+    [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
+
+    __id__=${__id__:1}
+    __id__=${__id__//[\/\-]/_}
+    local __prefix__=_zetopt_iterator_$__id__
+    local __array__=${__prefix__}_array__
+    local __index__=${__prefix__}_index__
+    if [[ $__reset__ == true ]]; then
+        unset $__array__
+        unset $__index__
+        return 0
+    fi
+
     # check the user defined variable name before eval to avoid overwriting local variables
-    for __tmp_var_name__ in "$__var_name__" "$__idx_name__"
+    for __tmp_var_name__ in "$__user_value__" "$__user_key__" "$__user_last_key__" "$__user_array__"
     do
+        [[ -z $__tmp_var_name__ ]] && continue ||:
         if [[ ! $__tmp_var_name__ =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*__$)|(^IFS$)) ]]; then
             _zetopt::msg::debug "Invalid Variable Name:" "$__tmp_var_name__"
             return 1
         fi
     done
 
-    if [[ $(($_ZETOPT_ARGVLOOP_IDX - $INIT_IDX)) -ge ${#ZETOPT_ARGS[@]} ]]; then
+    # initialize if unbound
+    if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
+        if _zetopt::data::print $ZETOPT_FIELD_DATA_ARGV "${__args__[@]}" -a $__array__; then
+            eval $__index__'=$INIT_IDX'
+
+        # unset and return error if failed
+        else
+            unset $__array__
+            unset $__index__
+            return 1
+        fi
+    fi
+
+    # no next
+    if [[ $__index__ -ge $(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))') ]]; then
+        unset $__array__
+        unset $__index__
         return 1
     fi
 
-    eval $__var_name__='"${ZETOPT_ARGS[$_ZETOPT_ARGVLOOP_IDX]}"'
-    eval $__idx_name__='$_ZETOPT_ARGVLOOP_IDX'
-    _ZETOPT_ARGVLOOP_IDX=$(($_ZETOPT_ARGVLOOP_IDX + 1))
+    [[ -n $__user_value__ ]] && eval $__user_value__'="${'$__array__'[$'$__index__']}"' ||:
+    [[ -n $__user_key__ ]] && eval $__user_key__'=$'$__index__ ||:
+    [[ -n $__user_last_key__ ]] && eval $__user_last_key__'=$((${#'$__array__'[@]} - 1 + $INIT_IDX))' ||:
+    [[ -n $__user_array__ ]] && eval $__user_array__'=("${'$__array__'[@]}")' ||:
+
+    eval $__index__'=$(('$__index__' + 1))'
     return 0
 }
 

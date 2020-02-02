@@ -447,7 +447,7 @@ _zetopt::parser::assign_args()
         done
         
         # variable length arguments
-        for ((; idx<def_max_len; idx++))
+        for ((; idx<$((def_max_len+INIT_IDX)); idx++))
         do
             _ZETOPT_DATA+=("${ZETOPT_ARGS[ref_arr[idx]]}")
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
