@@ -30,7 +30,7 @@ _zetopt::parser::parse()
     fi
 
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:::$LF"
+        _ZETOPT_DEFINED="/:::%.0~0...=0:0 0$LF"
     fi
     _zetopt::parser::init
     _zetopt::data::init

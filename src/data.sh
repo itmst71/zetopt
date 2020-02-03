@@ -494,7 +494,7 @@ _zetopt::data::print()
 
 _zetopt::data::iterate()
 {
-    local __args__ __reset__=false __field__=$ZETOPT_FIELD_DATA_ARGV
+    local __args__ __action__= __field__=$ZETOPT_FIELD_DATA_ARGV
     local __user_value__=ZV_VALUE __user_key__= __user_last_key__= __user_array__=
     local __itr_id__= __null_value__=NULL __null_key__=NULL
     __args__=()
@@ -504,7 +504,7 @@ _zetopt::data::iterate()
             -v | --value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE,...>"
                     return 1
                 fi
                 __user_value__=$1
@@ -512,7 +512,7 @@ _zetopt::data::iterate()
             -k | --key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY,...>"
                     return 1
                 fi
                 __user_key__=$1
@@ -533,7 +533,7 @@ _zetopt::data::iterate()
                 fi
                 __user_array__=$1
                 shift;;
-            -V | --null-value)
+            --nv | --null-value)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Option Argument:" "-V, --null-value <NULL_VALUE>"
@@ -541,7 +541,7 @@ _zetopt::data::iterate()
                 fi
                 __null_value__=$1
                 shift;;
-            -K | --null-key)
+            --nk | --null-key)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Option Argument:" "-K, --null-key <NULL_KEY>"
@@ -558,7 +558,13 @@ _zetopt::data::iterate()
                 __itr_id__=_$1
                 shift;;
             --reset)
-                __reset__=true
+                __action__=reset
+                shift;;
+            --unset)
+                __action__=unset
+                shift;;
+            --has-next)
+                __action__=has-next
                 shift;;
             --extra)
                 __field__=$ZETOPT_FIELD_DATA_EXTRA_ARGV
@@ -585,21 +591,53 @@ _zetopt::data::iterate()
     fi
     [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
 
-    # make variable names based on ID, KEY and --id <ITERATOR_ID>
-    local __tmpid__="$__id__${__args__[@]}$__itr_id__"
-    __tmpid__=${__tmpid__//[\/\-]/_}
-    __tmpid__=${__tmpid__//\ /_20}
-    __tmpid__=${__tmpid__//\$/_24}
-    __tmpid__=${__tmpid__//\,/_2C}
-    __tmpid__=${__tmpid__//\:/_3A}
-    __tmpid__=${__tmpid__//\@/_40}
-    __tmpid__=${__tmpid__//\^/_5E}
-    __tmpid__=${__tmpid__//[!a-zA-Z0-9_]/}
-    local __array__=_zetopt_iterator_array_$__tmpid__
-    local __index__=_zetopt_iterator_index_$__tmpid__
+    # make variable names based on ID, KEY or --id <ITERATOR_ID>
+    local __var_id_suffix__
+    if [[ -n $__itr_id__ ]]; then
+        if [[ ! $__itr_id__ =~ ^[a-zA-Z0-9_]+$ ]]; then
+            _zetopt::msg::debug "Invalid Iterator ID:" "$__itr_id__"
+            return 1
+        fi
+        __var_id_suffix__=$__itr_id__
+    else
+        __var_id_suffix__="$__id__${__args__[@]}"
+        __var_id_suffix__=${__var_id_suffix__//\ /_20}
+        __var_id_suffix__=${__var_id_suffix__//\$/_24}
+        __var_id_suffix__=${__var_id_suffix__//\,/_2C}
+        __var_id_suffix__=${__var_id_suffix__//\:/_3A}
+        __var_id_suffix__=${__var_id_suffix__//\@/_40}
+        __var_id_suffix__=${__var_id_suffix__//\^/_5E}
+    fi
+    __var_id_suffix__=${__var_id_suffix__//[\/\-]/_}
+    __var_id_suffix__=${__var_id_suffix__//[!a-zA-Z0-9_]/}
+    local __array__=_zetopt_iterator_array_$__var_id_suffix__
+    local __index__=_zetopt_iterator_index_$__var_id_suffix__
 
-    # --reset unsets global variables, which means initializing
-    if [[ $__reset__ == true ]]; then
+    # --has-next checks next item existence
+    if [[ $__action__ == has-next ]]; then
+        if [[ -n $(eval 'echo ${'$__array__'+x}') && -n $(eval 'echo ${'$__index__'+x}') ]]; then
+            if [[ $__index__ -ge $(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))') ]]; then
+                return 1
+            else
+                return 0
+            fi
+        else
+            return 1
+        fi
+    fi
+
+    # --reset resets index
+    if [[ $__action__ == reset ]]; then
+        if [[ -n $(eval 'echo ${'$__array__'+x}') && -n $(eval 'echo ${'$__index__'+x}') ]]; then
+            eval $__index__'=$INIT_IDX'
+            return 0
+        else
+            return 1
+        fi
+    fi
+
+    # --unset unsets array and index
+    if [[ $__action__ == unset ]]; then
         unset $__array__ ||:
         unset $__index__ ||:
         return 0
