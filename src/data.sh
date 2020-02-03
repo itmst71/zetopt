@@ -18,7 +18,7 @@ _zetopt::data::init()
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
     _ZETOPT_DATA=()
-    _ZETOPT_TEMP_ARGS=()
+    _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
 }
 
@@ -570,20 +570,22 @@ _zetopt::data::iterate()
             *)  __args__+=("$1"); shift;;
         esac
     done
-
-    # make variable names based on arguments and --id <ITERATOR_ID>
+    
     local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
     local __complemented_id__=
-    # complement ID if the first arg looks a key
-    if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
-        __id__=$ZETOPT_LAST_COMMAND
-        __complemented_id__=$ZETOPT_LAST_COMMAND
-    fi
     if ! _zetopt::def::exists "$__id__"; then
-        _zetopt::msg::debug "No Such ID:" "$__id__" 
-        return 1
+        # complement ID if the first arg looks a key
+        if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
+            __id__=$ZETOPT_LAST_COMMAND
+            __complemented_id__=$ZETOPT_LAST_COMMAND
+        else
+            _zetopt::msg::debug "No Such ID:" "$__id__" 
+            return 1
+        fi
     fi
     [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
+
+    # make variable names based on ID, KEY and --id <ITERATOR_ID>
     local __tmpid__="$__id__${__args__[@]}$__itr_id__"
     __tmpid__=${__tmpid__//[\/\-]/_}
     __tmpid__=${__tmpid__//\ /_20}
@@ -596,13 +598,14 @@ _zetopt::data::iterate()
     local __array__=_zetopt_iterator_array_$__tmpid__
     local __index__=_zetopt_iterator_index_$__tmpid__
 
+    # --reset unsets global variables, which means initializing
     if [[ $__reset__ == true ]]; then
-        unset $__array__
-        unset $__index__
+        unset $__array__ ||:
+        unset $__index__ ||:
         return 0
     fi
 
-    # check the user defined variable name before eval to avoid overwriting local variables
+    # check the user defined variable name before eval to avoid invalid characters and overwriting local variables
     local IFS=,
     set -- $__user_value__ $__user_key__ $__user_last_key__ $__user_array__
     for __tmp_var_name__ in $@
@@ -616,12 +619,11 @@ _zetopt::data::iterate()
     local __user_value_names__ __user_key_names__
     __user_value_names__=($__user_value__)
     __user_key_names__=($__user_key__)
-    if [[ -n $__user_value__ && -n $__user_key__ && ${#__user_value_names__[@]} -ne ${#__user_key_names__[@]} ]]; then
+    if [[ (-n $__user_value__ && -n $__user_key__) && (${#__user_value_names__[@]} -ne ${#__user_key_names__[@]}) ]]; then
         _zetopt::msg::debug "Number of Variables Mismatch :" "--value=$__user_value__ --key=$__user_key__"
         return 1
     fi
     IFS=$' \n\t'
-
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
@@ -636,7 +638,7 @@ _zetopt::data::iterate()
         fi
     fi
 
-    # no next
+    # has no next
     local __max__=$(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))')
     if [[ $__index__ -ge $__max__ ]]; then
         unset $__array__
@@ -664,13 +666,14 @@ _zetopt::data::iterate()
                 eval ${__user_key_names__[$__idx__]}'=$'$__index__ ||:
             fi
 
+            # increment index
             eval $__index__'=$(('$__index__' + 1))'
             if [[ $__index__ -ge $__max__ ]]; then
                 break
             fi
         done
 
-        # substitute NULL_VALUE/NULL_KEY if __array__ length is short
+        # substitute NULL_VALUE/NULL_KEY if breaking the previous loop because of __array__ being short
         for (( __idx__++; __idx__<__max_idx__; __idx__++ ))
         do
             # value
@@ -684,6 +687,7 @@ _zetopt::data::iterate()
             fi
         done
     else
+        # increment for using last-key / array only
         eval $__index__'=$(('$__index__' + 1))'
     fi
     return 0
