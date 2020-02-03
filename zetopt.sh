@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-03 11:00)
+# Version     : 1.2.0a (2020-02-03 13:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-03 11:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-03 13:00)"
 
 
 #------------------------------------------------------------
@@ -2152,7 +2152,7 @@ _zetopt::data::print()
     fi
 
     local IFS=' '
-    local __id="${__args[$((0 + $INIT_IDX))]-/}"
+    local __id="${__args[$((0 + $INIT_IDX))]-$ZETOPT_LAST_COMMAND}"
     if ! _zetopt::def::exists "$__id"; then
         _zetopt::msg::debug "No Such ID:" "$__id" 
         return 1
@@ -2240,7 +2240,8 @@ _zetopt::data::print()
 _zetopt::data::iterate()
 {
     local __args__ __reset__=false __field__=$ZETOPT_FIELD_DATA_ARGV
-    local __user_value__=ZV_VALUE __user_key__= __user_last_key__= __user_array__= __iterateid__=
+    local __user_value__=ZV_VALUE __user_key__= __user_last_key__= __user_array__=
+    local __itr_id__= __null_value__=NULL __null_key__=NULL
     __args__=()
     while [[ $# -ne 0 ]]
     do
@@ -2277,13 +2278,29 @@ _zetopt::data::iterate()
                 fi
                 __user_array__=$1
                 shift;;
+            -V | --null-value)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-V, --null-value <NULL_VALUE>"
+                    return 1
+                fi
+                __null_value__=$1
+                shift;;
+            -K | --null-key)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "-K, --null-key <NULL_KEY>"
+                    return 1
+                fi
+                __null_key__=$1
+                shift;;
             --id)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "--id <ITERATOR_ID>"
                     return 1
                 fi
-                __iterateid__=_$1
+                __itr_id__=_$1
                 shift;;
             --reset)
                 __reset__=true
@@ -2300,15 +2317,15 @@ _zetopt::data::iterate()
     done
 
     # make variable names based on arguments and --id <ITERATOR_ID>
-    local __id__="${__args__[$((0 + $INIT_IDX))]-/}"
+    local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
     if ! _zetopt::def::exists "$__id__"; then
         _zetopt::msg::debug "No Such ID:" "$__id__" 
         return 1
     fi
     [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
-    local __tmpid__="$__id__${__args__[@]}$__iterateid__"
+    local __tmpid__="$__id__${__args__[@]}$__itr_id__"
     __tmpid__=${__tmpid__//[\/\-]/_}
-    __tmpid__=${__tmpid__//\ /}
+    __tmpid__=${__tmpid__//\ /_20}
     __tmpid__=${__tmpid__//\$/_24}
     __tmpid__=${__tmpid__//\,/_2C}
     __tmpid__=${__tmpid__//\:/_3A}
@@ -2325,7 +2342,9 @@ _zetopt::data::iterate()
     fi
 
     # check the user defined variable name before eval to avoid overwriting local variables
-    for __tmp_var_name__ in "$__user_value__" "$__user_key__" "$__user_last_key__" "$__user_array__"
+    local IFS=,
+    set -- $__user_value__ $__user_key__ $__user_last_key__ $__user_array__
+    for __tmp_var_name__ in $@
     do
         [[ -z $__tmp_var_name__ ]] && continue ||:
         if [[ ! $__tmp_var_name__ =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*__$)|(^IFS$)) ]]; then
@@ -2333,6 +2352,15 @@ _zetopt::data::iterate()
             return 1
         fi
     done
+    local __user_value_names__ __user_key_names__
+    __user_value_names__=($__user_value__)
+    __user_key_names__=($__user_key__)
+    if [[ -n $__user_value__ && -n $__user_key__ && ${#__user_value_names__[@]} -ne ${#__user_key_names__[@]} ]]; then
+        _zetopt::msg::debug "Number of Variables Mismatch :" "--value=$__user_value__ --key=$__user_key__"
+        return 1
+    fi
+    IFS=$' \n\t'
+
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
@@ -2348,18 +2376,55 @@ _zetopt::data::iterate()
     fi
 
     # no next
-    if [[ $__index__ -ge $(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))') ]]; then
+    local __max__=$(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))')
+    if [[ $__index__ -ge $__max__ ]]; then
         unset $__array__
         unset $__index__
         return 1
     fi
 
-    [[ -n $__user_value__ ]] && eval $__user_value__'="${'$__array__'[$'$__index__']}"' ||:
-    [[ -n $__user_key__ ]] && eval $__user_key__'=$'$__index__ ||:
+    # last-key / array
     [[ -n $__user_last_key__ ]] && eval $__user_last_key__'=$((${#'$__array__'[@]} - 1 + $INIT_IDX))' ||:
     [[ -n $__user_array__ ]] && eval $__user_array__'=("${'$__array__'[@]}")' ||:
 
-    eval $__index__'=$(('$__index__' + 1))'
+    # value / key : Iterate with multiple values/keys
+    if [[ -n $__user_value__ || -n $__user_key__ ]]; then
+        local __idx__=
+        local __max_idx__=$(($([[ -n $__user_value__ ]] && echo ${#__user_value_names__[@]} || echo ${#__user_key_names__[@]}) + $INIT_IDX))
+        for (( __idx__=INIT_IDX; __idx__<__max_idx__; __idx__++ ))
+        do
+            # value
+            if [[ -n $__user_value__ ]]; then
+                eval ${__user_value_names__[$__idx__]}'="${'$__array__'[$'$__index__']}"' ||:
+            fi
+
+            # key
+            if [[ -n $__user_key__ ]]; then
+                eval ${__user_key_names__[$__idx__]}'=$'$__index__ ||:
+            fi
+
+            eval $__index__'=$(('$__index__' + 1))'
+            if [[ $__index__ -ge $__max__ ]]; then
+                break
+            fi
+        done
+
+        # substitute NULL_VALUE/NULL_KEY if __array__ length is short
+        for (( __idx__++; __idx__<__max_idx__; __idx__++ ))
+        do
+            # value
+            if [[ -n $__user_value__ ]]; then
+                eval ${__user_value_names__[$__idx__]}'=$__null_value__' ||:
+            fi
+
+            # key
+            if [[ -n $__user_key__ ]]; then
+                eval ${__user_key_names__[$__idx__]}'=$__null_key__' ||:
+            fi
+        done
+    else
+        eval $__index__'=$(('$__index__' + 1))'
+    fi
     return 0
 }
 
