@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-03 13:00)
+# Version     : 1.2.0a (2020-02-03 13:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-03 13:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-03 13:30)"
 
 
 #------------------------------------------------------------
@@ -2318,6 +2318,11 @@ _zetopt::data::iterate()
 
     # make variable names based on arguments and --id <ITERATOR_ID>
     local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
+    local __pickup_id__=
+    if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-] ]]; then
+        __id__=$ZETOPT_LAST_COMMAND
+        __pickup_id__=$ZETOPT_LAST_COMMAND
+    fi
     if ! _zetopt::def::exists "$__id__"; then
         _zetopt::msg::debug "No Such ID:" "$__id__" 
         return 1
@@ -2364,7 +2369,7 @@ _zetopt::data::iterate()
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
-        if _zetopt::data::print $__field__ "${__args__[@]}" -a $__array__; then
+        if _zetopt::data::print $__field__ $__pickup_id__ "${__args__[@]}" -a $__array__; then
             eval $__index__'=$INIT_IDX'
 
         # unset and return error if failed

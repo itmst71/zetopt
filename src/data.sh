@@ -573,6 +573,11 @@ _zetopt::data::iterate()
 
     # make variable names based on arguments and --id <ITERATOR_ID>
     local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
+    local __pickup_id__=
+    if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-] ]]; then
+        __id__=$ZETOPT_LAST_COMMAND
+        __pickup_id__=$ZETOPT_LAST_COMMAND
+    fi
     if ! _zetopt::def::exists "$__id__"; then
         _zetopt::msg::debug "No Such ID:" "$__id__" 
         return 1
@@ -619,7 +624,7 @@ _zetopt::data::iterate()
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
-        if _zetopt::data::print $__field__ "${__args__[@]}" -a $__array__; then
+        if _zetopt::data::print $__field__ $__pickup_id__ "${__args__[@]}" -a $__array__; then
             eval $__index__'=$INIT_IDX'
 
         # unset and return error if failed
