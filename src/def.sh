@@ -456,6 +456,21 @@ _zetopt::def::options()
     <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:"
 }
 
+# is_cmd(): Check if ID is command
+# def.) _zetopt::def::is_cmd {ID}
+# e.g.) _zetopt::def::is_cmd /sub/
+# STDOUT: NONE
+_zetopt::def::is_cmd()
+{
+    if [[ -z ${1-} ]]; then
+        return 1
+    fi
+    local ns="$1"
+    [[ ! $ns =~ ^/ ]] && ns=/$ns ||:
+    [[ ! $ns =~ /$ ]] && ns=$ns/ ||:
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}: ]]
+}
+
 # namespaces(): Print namespace definition
 # def.) _zetopt::def::namespaces
 # e.g.) _zetopt::def::namespaces

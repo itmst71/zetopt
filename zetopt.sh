@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-03 03:00)
+# Version     : 1.2.0a (2020-02-03 11:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-03 03:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-03 11:00)"
 
 
 #------------------------------------------------------------
@@ -76,6 +76,7 @@ readonly ZETOPT_FIELD_DATA_TYPE=4
 readonly ZETOPT_FIELD_DATA_PSEUDO=5
 readonly ZETOPT_FIELD_DATA_STATUS=6
 readonly ZETOPT_FIELD_DATA_COUNT=7
+readonly ZETOPT_FIELD_DATA_EXTRA_ARGV=8
 
 # types
 readonly ZETOPT_TYPE_CMD=0
@@ -755,6 +756,21 @@ _zetopt::def::options()
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
     <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:"
+}
+
+# is_cmd(): Check if ID is command
+# def.) _zetopt::def::is_cmd {ID}
+# e.g.) _zetopt::def::is_cmd /sub/
+# STDOUT: NONE
+_zetopt::def::is_cmd()
+{
+    if [[ -z ${1-} ]]; then
+        return 1
+    fi
+    local ns="$1"
+    [[ ! $ns =~ ^/ ]] && ns=/$ns ||:
+    [[ ! $ns =~ /$ ]] && ns=$ns/ ||:
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}: ]]
 }
 
 # namespaces(): Print namespace definition
@@ -1787,8 +1803,25 @@ _zetopt::data::field()
         $ZETOPT_FIELD_DATA_PSEUDO) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_PSEUDO))]}";;
         $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_STATUS))]}";;
         $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_COUNT))]}";;
+        $ZETOPT_FIELD_DATA_EXTRA_ARGV) \printf -- "%s" "$(_zetopt::data::extra_field $id)";;
         *) return 1;;
     esac
+}
+
+_zetopt::data::extra_field()
+{
+    if [[ -z ${1-} ]]; then
+        return 1
+    fi
+    local id="$1"
+    [[ ! $id =~ ^/ ]] && id=/$id ||:
+    [[ ! $id =~ /$ ]] && id=$id/ ||:
+    
+    if [[ $ZETOPT_LAST_COMMAND == $id ]]; then
+        if [[ ${#ZETOPT_EXTRA_ARGV[@]} -ne 0 ]]; then
+            \printf -- "%s" "$(eval '\echo {'$INIT_IDX'..'$((${#ZETOPT_EXTRA_ARGV[@]} - 1 + $INIT_IDX))'}')"
+        fi
+    fi
 }
 
 # isset(): Check if the option is set
@@ -1839,7 +1872,7 @@ _zetopt::data::pickup()
         return 1
     fi
     case $2 in
-        $ZETOPT_FIELD_DATA_ARGV | $ZETOPT_FIELD_DATA_ARGC | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS) :;;
+        $ZETOPT_FIELD_DATA_ARGV | $ZETOPT_FIELD_DATA_ARGC | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS | $ZETOPT_FIELD_DATA_EXTRA_ARGV) :;;
         *) return 1;;
     esac
     local field="$2"
@@ -2060,7 +2093,7 @@ _zetopt::data::print()
     fi
     local __field=$1
     shift
-    local __out_mode=stdout __var_name= __newline=
+    local __out_mode=stdout __var_name= __newline=$LF
     local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
     __args=()
 
@@ -2096,8 +2129,12 @@ _zetopt::data::print()
                 __ifs=$1
                 shift
                 ;;
-            -n) __newline=$LF; shift;;
+            -E | --extra) __field=$ZETOPT_FIELD_DATA_EXTRA_ARGV; shift;;
+            -n | --no-newline) __newline=; shift;;
             --) shift; __args+=("$@"); break;;
+            --*|-[a-zA-Z])
+                _zetopt::msg::debug "Undefined Option:" "$1"
+                return 1;;
             *)  __args+=("$1"); shift;;
         esac
     done
@@ -2115,11 +2152,7 @@ _zetopt::data::print()
     fi
 
     local IFS=' '
-    if [[ -z ${__args[$((0 + $INIT_IDX))]-} ]]; then
-        return 1
-    fi
-
-    local __id="${__args[$((0 + $INIT_IDX))]}"
+    local __id="${__args[$((0 + $INIT_IDX))]-/}"
     if ! _zetopt::def::exists "$__id"; then
         _zetopt::msg::debug "No Such ID:" "$__id" 
         return 1
@@ -2128,7 +2161,7 @@ _zetopt::data::print()
     
     local __keys=${__args[@]:1}
     if [[ -z $__keys ]]; then
-        [[ $__field == $ZETOPT_FIELD_DATA_ARGV ]] \
+        [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]] \
         && __keys=@ \
         || __keys=$
     fi
@@ -2149,8 +2182,12 @@ _zetopt::data::print()
     local __nl=
 
     # indexes to refer target data in array
-    if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
-        __args=("${_ZETOPT_DATA[@]}")
+    if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]]; then
+        if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
+            __args=("${_ZETOPT_DATA[@]}")
+        else
+            __args=("${ZETOPT_EXTRA_ARGV[@]}")
+        fi
         for __idx in "$@"
         do
             # store data in user specified array
@@ -2202,74 +2239,85 @@ _zetopt::data::print()
 
 _zetopt::data::iterate()
 {
-    local __args__ __reset__=false
-    local __user_value__= __user_key__= __user_last_key__= __user_array__=
+    local __args__ __reset__=false __field__=$ZETOPT_FIELD_DATA_ARGV
+    local __user_value__=ZV_VALUE __user_key__= __user_last_key__= __user_array__= __iterateid__=
     __args__=()
     while [[ $# -ne 0 ]]
     do
         case "$1" in
-            -v|--value)
+            -v | --value)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE>"
                     return 1
                 fi
                 __user_value__=$1
-                shift
-                ;;
-            -k|--key)
+                shift;;
+            -k | --key)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY>"
                     return 1
                 fi
                 __user_key__=$1
-                shift
-                ;;
-            -l|--last-key)
+                shift;;
+            -l | --last-key)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-l, --last-key <VARIABLE_NAME_FOR_LAST_KEY>"
                     return 1
                 fi
                 __user_last_key__=$1
-                shift
-                ;;
-            -a|--array)
+                shift;;
+            -a | --array)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::debug "Missing Required Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
                     return 1
                 fi
                 __user_array__=$1
+                shift;;
+            --id)
                 shift
-                ;;
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::debug "Missing Required Argument:" "--id <ITERATOR_ID>"
+                    return 1
+                fi
+                __iterateid__=_$1
+                shift;;
             --reset)
                 __reset__=true
-                shift
-                ;;
-            --*|-[a-zA-Z])
+                shift;;
+            --extra)
+                __field__=$ZETOPT_FIELD_DATA_EXTRA_ARGV
+                shift;;
+            --* | -[a-zA-Z])
                 _zetopt::msg::debug "Undefined Option:" "$1"
-                return 1
-                ;;
+                return 1;;
             --) shift; __args__+=("$@"); break;;
             *)  __args__+=("$1"); shift;;
         esac
     done
 
-    # make variable names based on ID
-    local __id__="${__args__[$((0 + $INIT_IDX))]}"
+    # make variable names based on arguments and --id <ITERATOR_ID>
+    local __id__="${__args__[$((0 + $INIT_IDX))]-/}"
     if ! _zetopt::def::exists "$__id__"; then
         _zetopt::msg::debug "No Such ID:" "$__id__" 
         return 1
     fi
     [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
+    local __tmpid__="$__id__${__args__[@]}$__iterateid__"
+    __tmpid__=${__tmpid__//[\/\-]/_}
+    __tmpid__=${__tmpid__//\ /}
+    __tmpid__=${__tmpid__//\$/_24}
+    __tmpid__=${__tmpid__//\,/_2C}
+    __tmpid__=${__tmpid__//\:/_3A}
+    __tmpid__=${__tmpid__//\@/_40}
+    __tmpid__=${__tmpid__//\^/_5E}
+    __tmpid__=${__tmpid__//[!a-zA-Z0-9_]/}
+    local __array__=_zetopt_iterator_array_$__tmpid__
+    local __index__=_zetopt_iterator_index_$__tmpid__
 
-    __id__=${__id__:1}
-    __id__=${__id__//[\/\-]/_}
-    local __prefix__=_zetopt_iterator_$__id__
-    local __array__=${__prefix__}_array__
-    local __index__=${__prefix__}_index__
     if [[ $__reset__ == true ]]; then
         unset $__array__
         unset $__index__
@@ -2288,7 +2336,7 @@ _zetopt::data::iterate()
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
-        if _zetopt::data::print $ZETOPT_FIELD_DATA_ARGV "${__args__[@]}" -a $__array__; then
+        if _zetopt::data::print $__field__ "${__args__[@]}" -a $__array__; then
             eval $__index__'=$INIT_IDX'
 
         # unset and return error if failed
