@@ -18,8 +18,8 @@ _zetopt::data::init()
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
     _ZETOPT_DATA=()
-    ZETOPT_ARGS=()
-    ZETOPT_EXTRA_ARGV=()
+    _ZETOPT_TEMP_ARGS=()
+    _ZETOPT_EXTRA_ARGV=()
 }
 
 # parsed(): Print the parsed data. Print all if ID not given
@@ -73,8 +73,8 @@ _zetopt::data::extra_field()
     [[ ! $id =~ /$ ]] && id=$id/ ||:
     
     if [[ $ZETOPT_LAST_COMMAND == $id ]]; then
-        if [[ ${#ZETOPT_EXTRA_ARGV[@]} -ne 0 ]]; then
-            \printf -- "%s" "$(eval '\echo {'$INIT_IDX'..'$((${#ZETOPT_EXTRA_ARGV[@]} - 1 + $INIT_IDX))'}')"
+        if [[ ${#_ZETOPT_EXTRA_ARGV[@]} -ne 0 ]]; then
+            \printf -- "%s" "$(eval '\echo {'$INIT_IDX'..'$((${#_ZETOPT_EXTRA_ARGV[@]} - 1 + $INIT_IDX))'}')"
         fi
     fi
 }
@@ -359,7 +359,7 @@ _zetopt::data::print()
                 __out_mode=array
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <ARRAY_NAME>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
                 __var_name=$1
@@ -369,7 +369,7 @@ _zetopt::data::print()
                 __out_mode=variable
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-v, --variable <VARIABLE_NAME>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --variable <VARIABLE_NAME>"
                     return 1
                 fi
                 __var_name=$1
@@ -378,7 +378,7 @@ _zetopt::data::print()
             -I | --IFS)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-I, --IFS <IFS_VALUE>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-I, --IFS <IFS_VALUE>"
                     return 1
                 fi
                 __ifs=$1
@@ -441,7 +441,7 @@ _zetopt::data::print()
         if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
             __args=("${_ZETOPT_DATA[@]}")
         else
-            __args=("${ZETOPT_EXTRA_ARGV[@]}")
+            __args=("${_ZETOPT_EXTRA_ARGV[@]}")
         fi
         for __idx in "$@"
         do
@@ -504,7 +504,7 @@ _zetopt::data::iterate()
             -v | --value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE>"
                     return 1
                 fi
                 __user_value__=$1
@@ -512,7 +512,7 @@ _zetopt::data::iterate()
             -k | --key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-k, --key <VARIABLE_NAME_FOR_KEY>"
                     return 1
                 fi
                 __user_key__=$1
@@ -520,7 +520,7 @@ _zetopt::data::iterate()
             -l | --last-key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-l, --last-key <VARIABLE_NAME_FOR_LAST_KEY>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-l, --last-key <VARIABLE_NAME_FOR_LAST_KEY>"
                     return 1
                 fi
                 __user_last_key__=$1
@@ -528,7 +528,7 @@ _zetopt::data::iterate()
             -a | --array)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
                     return 1
                 fi
                 __user_array__=$1
@@ -536,7 +536,7 @@ _zetopt::data::iterate()
             -V | --null-value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-V, --null-value <NULL_VALUE>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-V, --null-value <NULL_VALUE>"
                     return 1
                 fi
                 __null_value__=$1
@@ -544,7 +544,7 @@ _zetopt::data::iterate()
             -K | --null-key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "-K, --null-key <NULL_KEY>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "-K, --null-key <NULL_KEY>"
                     return 1
                 fi
                 __null_key__=$1
@@ -552,7 +552,7 @@ _zetopt::data::iterate()
             --id)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Argument:" "--id <ITERATOR_ID>"
+                    _zetopt::msg::debug "Missing Required Option Argument:" "--id <ITERATOR_ID>"
                     return 1
                 fi
                 __itr_id__=_$1
@@ -573,10 +573,11 @@ _zetopt::data::iterate()
 
     # make variable names based on arguments and --id <ITERATOR_ID>
     local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
-    local __pickup_id__=
-    if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-] ]]; then
+    local __complemented_id__=
+    # complement ID if the first arg looks a key
+    if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
         __id__=$ZETOPT_LAST_COMMAND
-        __pickup_id__=$ZETOPT_LAST_COMMAND
+        __complemented_id__=$ZETOPT_LAST_COMMAND
     fi
     if ! _zetopt::def::exists "$__id__"; then
         _zetopt::msg::debug "No Such ID:" "$__id__" 
@@ -624,7 +625,7 @@ _zetopt::data::iterate()
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
-        if _zetopt::data::print $__field__ $__pickup_id__ "${__args__[@]}" -a $__array__; then
+        if _zetopt::data::print $__field__ $__complemented_id__ "${__args__[@]}" -a $__array__; then
             eval $__index__'=$INIT_IDX'
 
         # unset and return error if failed
