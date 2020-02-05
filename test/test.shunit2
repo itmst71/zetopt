@@ -335,22 +335,40 @@ test_parse_ERR_Ambiguously_shortened_long() {
 #------------------------------------------------
 # isset
 #------------------------------------------------
-test_isset_isset_ver() {
+test_isset_single() {
     zetopt def ver:v:version  "#Help Message"
-    zetopt parse "-v"
+    zetopt parse -v
     zetopt isset ver
     assertTrue "[isset] isset ver" $?
+}
+
+test_isset_multi() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt def foo:f:foo      "#Help Message"
+    zetopt parse -v -h -f
+    zetopt isset ver help foo
+    assertTrue "[isset] isset ver help" $?
 }
 
 #------------------------------------------------
 # isset Error
 #------------------------------------------------
-test_isset_ERR_isset_ver() {
+test_isset_ERR_single() {
     zetopt def ver:v:version  "#Help Message"
     zetopt def help:h:help    "#Help Message"
-    zetopt parse "-v"
+    zetopt parse -v
     zetopt isset help
-    assertFalse "[isset][ERR] --> isset ver" $?
+    assertFalse "[isset][ERR] parse -v --> isset help" $?
+}
+
+test_isset_ERR_multi() {
+    zetopt def ver:v:version  "#Help Message"
+    zetopt def help:h:help    "#Help Message"
+    zetopt def foo:f:foo      "#Help Message"
+    zetopt parse -v -h -f
+    zetopt isset ver help bar foo
+    assertFalse "[isset][ERR] parse -v -h -f --> isset ver help bar foo" $?
 }
 
 #------------------------------------------------

@@ -1830,11 +1830,17 @@ _zetopt::data::extra_field()
 # STDOUT: NONE
 _zetopt::data::isset()
 {
-    if [[ -z ${1-} ]]; then
+    [[ $# -eq 0 ]] && return 1 ||:
+
+    local id
+    for id in "$@"
+    do
+        [[ -z $id ]] && return 1 ||:
+        [[ ! $id =~ ^/ ]] && id="/$id" ||:
+        [[ $LF${_ZETOPT_PARSED-} =~ $LF$id && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]] && continue ||:
         return 1
-    fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    [[ $LF${_ZETOPT_PARSED-} =~ $LF$id: && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]
+    done
+    return 0
 }
 
 # isvalid(): Check if the option is set and its status is OK
