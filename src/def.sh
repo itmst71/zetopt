@@ -558,6 +558,38 @@ _zetopt::def::paramidx()
     return 1
 }
 
+# keyparams2idx(): translate parameter names to index numbers
+# def.) _zetopt::def::keyparams2idx {ID} {KEYS}
+# e.g.) _zetopt::def::keyparams2idx /foo FOO,BAR $,BAZ
+# STDOUT: string of translated keys
+_zetopt::def::keyparams2idx()
+{
+    if [[ ! $# -eq 2 ]]; then
+        return 1
+    fi
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local key="$2" head tail name
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    if [[ -n $def_args ]]; then
+        while true
+        do
+            if [[ $key =~ ^([0-9\^\$@,\ \-]*)([a-zA-Z_][a-zA-Z0-9_]*)(.*)$ ]]; then
+                head=${BASH_REMATCH[$((1 + $INIT_IDX))]}
+                name=${BASH_REMATCH[$((2 + $INIT_IDX))]}
+                tail=${BASH_REMATCH[$((3 + $INIT_IDX))]}
+                if [[ ! $def_args =~ [@%]${name}[.]([0-9]+) ]]; then
+                    _zetopt::msg::debug "Parameter Name Not Found:" "$name"
+                    return 1
+                fi
+                key=$head${BASH_REMATCH[$((1 + INIT_IDX))]}$tail
+            else
+                break
+            fi
+        done
+    fi
+    \printf -- "%s" "$key"
+}
+
 # paramlen(): Print the length of parameters
 # def.) _zetopt::def::paramlen {ID} [all | required | @ | optional | % | max]
 # e.g.) _zetopt::def::paramlen /foo required

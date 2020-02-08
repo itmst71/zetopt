@@ -138,11 +138,12 @@ _zetopt::data::pickup()
     esac
     local field="$2"
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local IFS=, lists output_list
+    local IFS=, lists
     lists=($(_zetopt::data::field "$id" $field))
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
+    local output_list
     output_list=()
     local lists_last_idx="$((${#lists[@]} - 1 + $INIT_IDX))"
 
@@ -429,6 +430,7 @@ _zetopt::data::print()
     
     local __list_str
     if [[ $__field != $ZETOPT_FIELD_DATA_COUNT ]]; then
+        __keys=$(_zetopt::def::keyparams2idx $__id "$__keys")
         __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
     else
         __list_str=$(_zetopt::data::field "$__id" $__field || echo 0)

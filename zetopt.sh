@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-04 07:00)
+# Version     : 1.2.0a (2020-02-05 13:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-04 07:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-05 13:00)"
 
 
 #------------------------------------------------------------
@@ -859,6 +859,39 @@ _zetopt::def::paramidx()
     fi
     return 1
 }
+
+# keyparams2idx(): translate parameter names to index numbers
+# def.) _zetopt::def::keyparams2idx {ID} {KEYS}
+# e.g.) _zetopt::def::keyparams2idx /foo FOO,BAR $,BAZ
+# STDOUT: string of translated keys
+_zetopt::def::keyparams2idx()
+{
+    if [[ ! $# -eq 2 ]]; then
+        return 1
+    fi
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local key="$2" head tail name
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    if [[ -n $def_args ]]; then
+        while true
+        do
+            if [[ $key =~ ^([0-9\^\$@,\ \-]*)([a-zA-Z_][a-zA-Z0-9_]*)(.*)$ ]]; then
+                head=${BASH_REMATCH[$((1 + $INIT_IDX))]}
+                name=${BASH_REMATCH[$((2 + $INIT_IDX))]}
+                tail=${BASH_REMATCH[$((3 + $INIT_IDX))]}
+                if [[ ! $def_args =~ [@%]${name}[.]([0-9]+) ]]; then
+                    _zetopt::msg::debug "Parameter Name Not Found:" "$name"
+                    return 1
+                fi
+                key=$head${BASH_REMATCH[$((1 + INIT_IDX))]}$tail
+            else
+                break
+            fi
+        done
+    fi
+    \printf -- "%s" "$key"
+}
+
 
 # paramlen(): Print the length of parameters
 # def.) _zetopt::def::paramlen {ID} [all | required | @ | optional | % | max]
@@ -1883,11 +1916,12 @@ _zetopt::data::pickup()
     esac
     local field="$2"
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local IFS=, lists output_list
+    local IFS=, lists
     lists=($(_zetopt::data::field "$id" $field))
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
+    local output_list
     output_list=()
     local lists_last_idx="$((${#lists[@]} - 1 + $INIT_IDX))"
 
@@ -2174,6 +2208,7 @@ _zetopt::data::print()
     
     local __list_str
     if [[ $__field != $ZETOPT_FIELD_DATA_COUNT ]]; then
+        __keys=$(_zetopt::def::keyparams2idx $__id "$__keys")
         __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
     else
         __list_str=$(_zetopt::data::field "$__id" $__field || echo 0)
