@@ -14,6 +14,7 @@ zetopt()
     local IFS=$' \t\n'
     declare -r LF=$'\n'
     declare -r INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
+    declare -r REG_VNAME='[a-zA-Z_][a-zA-Z0-9_]*'
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then

@@ -165,7 +165,7 @@ _zetopt::data::pickup()
         local input_idx= tmp_list
         for input_idx in "$@"
         do
-            if [[ ! $input_idx =~ ^(@|([$\^$INIT_IDX]|-?[1-9][0-9]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?)?$ ]]; then
+            if [[ ! $input_idx =~ ^(@|([$\^$INIT_IDX]|-?[1-9][0-9]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?)?$ ]]; then
                 _zetopt::msg::debug "Bad Key:" "$input_idx"
                 return 1
             fi
@@ -262,7 +262,7 @@ _zetopt::data::pickup()
             local idx=0 param_name=
             for param_name in $tmp_val_start_idx $tmp_val_end_idx
             do
-                if [[ ! $param_name =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
+                if [[ ! $param_name =~ ^$REG_VNAME$ ]]; then
                     idx+=1
                     continue
                 fi
@@ -403,7 +403,7 @@ _zetopt::data::print()
 
     if [[ $__out_mode =~ ^(array|variable)$ ]]; then
         # check the user defined variable name before eval to avoid overwriting local variables
-        if [[ ! $__var_name =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__var_name =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*$)|(^IFS$)) ]]; then
+        if [[ ! $__var_name =~ ^$REG_VNAME$ ]] || [[ $__var_name =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*$)|(^IFS$)) ]]; then
             _zetopt::msg::debug "Invalid Variable Name:" "$__var_name"
             return 1
         fi
@@ -414,7 +414,7 @@ _zetopt::data::print()
     fi
 
     local IFS=' '
-    local __id="${__args[$((0 + $INIT_IDX))]-$ZETOPT_LAST_COMMAND}"
+    local __id="${__args[$((0 + $INIT_IDX))]=$ZETOPT_LAST_COMMAND}"
     if ! _zetopt::def::exists "$__id"; then
         _zetopt::msg::debug "No Such ID:" "$__id" 
         return 1
@@ -585,7 +585,7 @@ _zetopt::data::iterate()
         esac
     done
     
-    local __id__="${__args__[$((0 + $INIT_IDX))]-${ZETOPT_LAST_COMMAND}}"
+    local __id__="${__args__[$((0 + $INIT_IDX))]=${ZETOPT_LAST_COMMAND}}"
     local __complemented_id__=
     if ! _zetopt::def::exists "$__id__"; then
         # complement ID if the first arg looks a key
@@ -657,7 +657,7 @@ _zetopt::data::iterate()
     for __tmp_var_name__ in $@
     do
         [[ -z $__tmp_var_name__ ]] && continue ||:
-        if [[ ! $__tmp_var_name__ =~ ^[a-zA-Z_]([0-9a-zA-Z_]+)*$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[0-9a-zA-Z][0-9a-zA-Z_]*__$)|(^IFS$)) ]]; then
+        if [[ ! $__tmp_var_name__ =~ ^$REG_VNAME$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*__$)|(^IFS$)) ]]; then
             _zetopt::msg::debug "Invalid Variable Name:" "$__tmp_var_name__"
             return 1
         fi

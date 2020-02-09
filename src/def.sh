@@ -20,7 +20,7 @@ _zetopt::def::define()
         return 1
     fi
 
-    if [[ -n $ZETOPT_CFG_VARIABLE_PREFIX && ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    if [[ -n $ZETOPT_CFG_VARIABLE_PREFIX && ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ ]]; then
         _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
     fi
@@ -236,7 +236,7 @@ _zetopt::def::define()
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])([a-zA-Z_][a-zA-Z0-9_]*)?(([~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*)|([\[]=[~][a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::def_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
@@ -275,7 +275,7 @@ _zetopt::def::define()
             fi
 
             param_validator_idxs=0
-            if [[ $param_validator =~ ([a-zA-Z_][a-zA-Z0-9_]*(,[a-zA-Z_][a-zA-Z0-9_]*)*) ]]; then
+            if [[ $param_validator =~ ($REG_VNAME(,$REG_VNAME)*) ]]; then
                 param_validator_separator=
                 param_validator_idxs=
                 IFS=,
@@ -543,7 +543,7 @@ _zetopt::def::paramidx()
     if [[ $# -lt 2 ]]; then
         return 1
     fi
-    if [[ ! $2 =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
+    if [[ ! $2 =~ ^$REG_VNAME$ ]]; then
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
@@ -573,7 +573,7 @@ _zetopt::def::keyparams2idx()
     if [[ -n $def_args ]]; then
         while true
         do
-            if [[ $key =~ ^([0-9\^\$@,\ \-]*)([a-zA-Z_][a-zA-Z0-9_]*)(.*)$ ]]; then
+            if [[ $key =~ ^([0-9\^\$@,\ \-]*)($REG_VNAME)(.*)$ ]]; then
                 head=${BASH_REMATCH[$((1 + $INIT_IDX))]}
                 name=${BASH_REMATCH[$((2 + $INIT_IDX))]}
                 tail=${BASH_REMATCH[$((3 + $INIT_IDX))]}
@@ -668,7 +668,7 @@ _zetopt::def::default()
     declare -i last_idx="$((${#params[@]} - 1 + $INIT_IDX))"
     for key in "$@"
     do
-        if [[ ! $key =~ ^(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|[a-zA-Z_]+[a-zA-Z0-9_]*)?)?)?)?$ ]]; then
+        if [[ ! $key =~ ^(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?$ ]]; then
             _zetopt::msg::debug "Bad Key:" "$key"
             return 1
         fi
@@ -701,7 +701,7 @@ _zetopt::def::default()
         local param_name=
         for param_name in $tmp_start_idx $tmp_end_idx
         do
-            if [[ ! $param_name =~ ^[a-zA-Z_]+[a-zA-Z0-9_]*$ ]]; then
+            if [[ ! $param_name =~ ^$REG_VNAME$ ]]; then
                 idx+=1
                 continue
             elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then

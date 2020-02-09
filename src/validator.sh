@@ -60,7 +60,7 @@ _zetopt::validator::def()
         _zetopt::msg::def_error "zetopt def-validator [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
-    if [[ ! $name =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+    if [[ ! $name =~ ^$REG_VNAME$ ]]; then
         _zetopt::msg::def_error "Invalid Validator Name:" "$name"
         return 1
     fi
