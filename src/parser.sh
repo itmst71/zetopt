@@ -15,6 +15,7 @@ _zetopt::parser::init()
     ZETOPT_OPTERR_MISSING_OPTIONAL=()
     ZETOPT_PARSE_ERRORS=$ZETOPT_STATUS_NORMAL
     ZETOPT_LAST_COMMAND=/
+    ZETOPT_EXCLUSIVE_OPTION_ID=
 }
 
 # parse(): Parse arguments. 
@@ -24,7 +25,6 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-
     if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
@@ -107,6 +107,7 @@ _zetopt::parser::parse()
             else
                 _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
             fi
+            [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
             check_subcmd=false
 
         # short option(s)
@@ -124,20 +125,24 @@ _zetopt::parser::parse()
                     if [[ $ZETOPT_CFG_PSEUDO_OPTION == true && ${optnames:$((idx+1)):1} == : ]]; then
                         pseudoname=${optnames:$((idx+2)):$(($optnames_len - $idx - 1))}
                         _zetopt::parser::setopt $namespace $opt_prefix $optname "$pseudoname" "$@" ||:
+                        [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
                         break
                     else
                         if [[ $ZETOPT_CFG_CONCATENATED_OPTARG == true ]]; then
                             _zetopt::parser::setopt $namespace $opt_prefix $optname "" "${optnames:$((idx+1)):$(($optnames_len - $idx - 1))}" "$@" ||:
+                            [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
                             if [[ $consumed_args_count -ne $_CONSUMED_ARGS_COUNT ]]; then
                                 additional_args_count=1
                                 break
                             fi
                         else
                             _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@"||:
+                            [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
                         fi
                     fi
                 else
                     _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@" ||:
+                    [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
                 fi
             done
             check_subcmd=false
@@ -262,6 +267,16 @@ _zetopt::parser::setopt()
         ZETOPT_OPTERR_UNDEFINED+=("$opt_prefix$opt")
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_OPTION))
         return 1
+    fi
+
+    # exclusive option
+    if [[ "$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_FLAGS)" =~ x ]]; then
+        local lc=$ZETOPT_LAST_COMMAND
+        _zetopt::def::reset
+        _zetopt::data::init
+        _zetopt::parser::init
+        ZETOPT_LAST_COMMAND=$lc
+        ZETOPT_EXCLUSIVE_OPTION_ID=$id
     fi
 
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then

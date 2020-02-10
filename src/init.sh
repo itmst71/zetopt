@@ -30,7 +30,8 @@ readonly ZETOPT_FIELD_DEF_SHORT=2
 readonly ZETOPT_FIELD_DEF_LONG=3
 readonly ZETOPT_FIELD_DEF_ARG=4
 readonly ZETOPT_FIELD_DEF_VNAME=5
-readonly ZETOPT_FIELD_DEF_HELP=6
+readonly ZETOPT_FIELD_DEF_FLAGS=6
+readonly ZETOPT_FIELD_DEF_HELP=7
 
 # field numbers for parsed data
 readonly ZETOPT_FIELD_DATA_ALL=0
@@ -65,6 +66,8 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
 
+# __NULL is default value for auto-defined variable
+__NULL(){ false; }
 
 # init(): initialize all variables
 # def.) _zetopt::init::init
@@ -78,7 +81,7 @@ _zetopt::init::init()
     _ZETOPT_HELPS_IDX=()
     _ZETOPT_HELPS=()
     _ZETOPT_HELPS_CUSTOM=
-    _ZETOPT_DEFAULTS=(NULL)
+    _ZETOPT_DEFAULTS=()
     _ZETOPT_VALIDATOR_KEYS=
     _ZETOPT_VALIDATOR_DATA=
     _ZETOPT_VALIDATOR_ERRMSG=
@@ -107,7 +110,7 @@ _zetopt::init::init()
 _zetopt::init::init_config()
 {
     ZETOPT_CFG_VARIABLE_PREFIX=zv_
-    ZETOPT_CFG_VARIABLE_DEFAULT=NULL
+    ZETOPT_CFG_VARIABLE_DEFAULT=__NULL
     ZETOPT_CFG_VALUE_IFS=" "
     ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
     ZETOPT_CFG_SINGLE_PREFIX_LONG=false
