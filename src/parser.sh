@@ -377,7 +377,7 @@ _zetopt::parser::setopt()
                 while [[ $def_idx -lt $def_len ]]
                 do
                     def=${def_arr[$def_idx]}
-                    
+
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([0-9]+) ]]; then
                         arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + INIT_IDX))]}]}

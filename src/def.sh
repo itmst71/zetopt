@@ -1,6 +1,11 @@
 #------------------------------------------------------------
 # _zetopt::def
 #------------------------------------------------------------
+# reset(): Reset auto-defined user variables.
+# ** Must be executed in the current shell **
+# def.) _zetopt::def::reset
+# e.g.) _zetopt::def::reset
+# STDOUT: NONE
 _zetopt::def::reset()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
@@ -43,7 +48,7 @@ _zetopt::def::reset()
     done
 }
 
-# define(): Define options. 
+# define(): Define options.
 # ** Must be executed in the current shell **
 # def.) _zetopt::def::define {DEFINITION-STRING}
 # e.g.) _zetopt::def::define "ver:v:version"
@@ -353,7 +358,7 @@ _zetopt::def::define()
 
             # define variable 
             if [[ $var_param_len == 1 ]]; then
-                var_name=$var_base_name
+                var_name=$var_base_name$([[ $cmdmode == true ]] && echo $var_param_name ||:)
             else
                 var_name=$var_base_name$([[ $cmdmode == false ]] && echo _ ||:)$var_param_name
             fi
