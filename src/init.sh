@@ -29,7 +29,8 @@ readonly ZETOPT_FIELD_DEF_ID=1
 readonly ZETOPT_FIELD_DEF_SHORT=2
 readonly ZETOPT_FIELD_DEF_LONG=3
 readonly ZETOPT_FIELD_DEF_ARG=4
-readonly ZETOPT_FIELD_DEF_HELP=5
+readonly ZETOPT_FIELD_DEF_VNAME=5
+readonly ZETOPT_FIELD_DEF_HELP=6
 
 # field numbers for parsed data
 readonly ZETOPT_FIELD_DATA_ALL=0
@@ -52,14 +53,14 @@ readonly ZETOPT_TYPE_PLUS=3
 readonly ZETOPT_STATUS_NORMAL=0
 readonly ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS=$((1 << 0))
 readonly ZETOPT_STATUS_MISSING_OPTIONAL_ARGS=$((1 << 1))
-readonly ZETOPT_STATUS_VALIDATOR_FAILED=$((1 << 2))
-readonly ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 3))
+readonly ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 2))
+readonly ZETOPT_STATUS_VALIDATOR_FAILED=$((1 << 3))
 readonly ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 4))
 readonly ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 5))
 readonly ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 6))
 readonly ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 7))
 readonly ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 8))
-readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
+readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS | ZETOPT_STATUS_TOO_MATCH_ARGS))
 
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
@@ -77,7 +78,7 @@ _zetopt::init::init()
     _ZETOPT_HELPS_IDX=()
     _ZETOPT_HELPS=()
     _ZETOPT_HELPS_CUSTOM=
-    _ZETOPT_DEFAULTS=()
+    _ZETOPT_DEFAULTS=(NULL)
     _ZETOPT_VALIDATOR_KEYS=
     _ZETOPT_VALIDATOR_DATA=
     _ZETOPT_VALIDATOR_ERRMSG=
@@ -85,6 +86,9 @@ _zetopt::init::init()
     _ZETOPT_DATA=()
     _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
+
+    _zetopt::init::unset_user_vars
+    _ZETOPT_VARIABLE_NAMES=()
 
     ZETOPT_PARSE_ERRORS=$ZETOPT_STATUS_NORMAL
     ZETOPT_OPTERR_INVALID=()
@@ -103,7 +107,7 @@ _zetopt::init::init()
 _zetopt::init::init_config()
 {
     ZETOPT_CFG_VARIABLE_PREFIX=zv_
-    ZETOPT_CFG_VARIABLE_DEFAULT=_NULL
+    ZETOPT_CFG_VARIABLE_DEFAULT=NULL
     ZETOPT_CFG_VALUE_IFS=" "
     ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
     ZETOPT_CFG_SINGLE_PREFIX_LONG=false
@@ -126,12 +130,29 @@ _zetopt::init::init_config()
     ZETOPT_CFG_ERRMSG_COL_SCRIPTERR="0;1;31"
 }
 
+# unset_user_vars(): unset all of auto-defined variables
+# def.) _zetopt::init::unset_user_vars
+# e.g.) _zetopt::init::unset_user_vars
+# STDOUT: NONE
+_zetopt::init::unset_user_vars()
+{
+    if [[ ! -n ${_ZETOPT_VARIABLE_NAMES+x} ]]; then
+        return 0
+    fi
+
+    for v in "${_ZETOPT_VARIABLE_NAMES[@]}"
+    do
+        \unset $v
+    done
+}
+
 # reset(): reset parse data only
 # def.) _zetopt::init::reset
 # e.g.) _zetopt::init::reset
 # STDOUT: NONE
 _zetopt::init::reset()
 {
+    _zetopt::def::reset
     _zetopt::parser::init
     _zetopt::data::init
 }

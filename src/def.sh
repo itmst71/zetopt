@@ -1,6 +1,47 @@
 #------------------------------------------------------------
 # _zetopt::def
 #------------------------------------------------------------
+_zetopt::def::reset()
+{
+    if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
+        return 0
+    fi
+
+    local lines line id args arg vars var dfnum df
+    declare -i idx
+    args=()
+    vars=()
+    local IFS=$'\n'
+    lines=($_ZETOPT_DEFINED)
+    IFS=$' \n\t'
+
+    for line in "${lines[@]}"
+    do
+        if [[ $line =~ ^([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*)$ ]]; then
+            id=${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_ID))]}
+            args=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_ARG))]})
+            vars=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_VNAME))]})
+            for ((idx=$INIT_IDX; idx<$((${#vars[@]} + $INIT_IDX)); idx++ ))
+            do
+                var=${vars[$idx]}
+                if [[ ${#args[@]} -eq 0 ]]; then
+                    \eval $var'=$ZETOPT_CFG_FLAGVAL_FALSE'
+                else
+                    arg=${args[$idx]}
+                    if [[ $arg =~ \=([0-9]+) ]]; then
+                        dfnum=${BASH_REMATCH[$(($INIT_IDX + 1))]}
+                        df=${_ZETOPT_DEFAULTS[$dfnum]}
+                    fi
+                    if [[ $arg =~ [.]{3,3} ]]; then
+                        \eval $var'=("$df")'
+                    else
+                        \eval $var'=$df'
+                    fi
+                fi
+            done
+        fi
+    done
+}
 
 # define(): Define options. 
 # ** Must be executed in the current shell **
@@ -9,19 +50,19 @@
 # STDOUT: NONE
 _zetopt::def::define()
 {
+    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
+        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
+        return 1
+    fi
+
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:::%.0~0...=0:0 0$LF"
+        _ZETOPT_DEFINED="/:::%.0~0...=0::0 0$LF"
         _ZETOPT_OPTHELPS=("")
-        _ZETOPT_DEFAULTS=("")
+        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_VARIABLE_DEFAULT")
     fi
 
     if [[ -z $@ ]]; then
         _zetopt::msg::def_error "No Definition Given"
-        return 1
-    fi
-
-    if [[ -n $ZETOPT_CFG_VARIABLE_PREFIX && ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ ]]; then
-        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
     fi
 
@@ -113,8 +154,11 @@ _zetopt::def::define()
     fi
 
     # define variable for storing the last value
-    local var_name var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    local var_name var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1} var_name_list=
     var_base_name=${var_base_name//[\/\-]/_}
+    if [[ -z $var_base_name ]]; then
+        var_base_name=_
+    fi
     
     # namespace(subcommand) definition
     if [[ $id == $namespace ]]; then
@@ -137,7 +181,7 @@ _zetopt::def::define()
             local tail_lines="${BASH_REMATCH[$((6 + $INIT_IDX))]}"
 
             # remove auto defined namespace
-            if [[ $tmp_line == "${id}:::%.0~0...=0:0 0$LF" ]]; then
+            if [[ $tmp_line == "${id}:::%.0~0...=0::0 0$LF" ]]; then
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
             elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$LF$ ]]; then
@@ -235,7 +279,7 @@ _zetopt::def::define()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
-            param_default_idx=0
+            param_default_idx=$INIT_IDX
             if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _zetopt::msg::def_error "Invalid Parameter Definition:" "$param"
                 return 1
@@ -313,7 +357,11 @@ _zetopt::def::define()
             else
                 var_name=$var_base_name$([[ $cmdmode == false ]] && echo _ ||:)$var_param_name
             fi
-            \eval $var_name'=$var_param_default'
+
+            [[ -n $param_varlen ]] \
+            && \eval $var_name'=("$var_param_default")' \
+            || \eval $var_name'=$var_param_default'
+            var_name_list+="$var_name "
         done
         IFS=$' '
         param_def="${params[*]}"
@@ -321,8 +369,19 @@ _zetopt::def::define()
     # Flag option
     else
         var_name="$var_base_name"
+
+        # check variable name conflict
+        if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
+            _zetopt::msg::def_error "Variable name \"$var_name\" is already in use"
+            return 1
+        fi
         \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
+        var_name_list=$var_name
     fi
+    var_name_list=${var_name_list% }
+
+    IFS=$' '
+    _ZETOPT_VARIABLE_NAMES+=($var_name_list)
 
     if [[ -n "$helpdef" ]]; then
         _ZETOPT_OPTHELPS+=("$helpdef")
@@ -334,7 +393,7 @@ _zetopt::def::define()
         fi
     fi
 
-    _ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$helpidx$LF"
+    _ZETOPT_DEFINED+="$id$global:$short:$long:$param_def:$var_name_list:$helpidx$LF"
 
     # defines parent subcommands automatically
     IFS=$' '
@@ -343,7 +402,7 @@ _zetopt::def::define()
     do
         curr_ns="${curr_ns%*/}/$ns/"
         [[ $LF$_ZETOPT_DEFINED =~ $LF$curr_ns: ]] && return 0
-        _ZETOPT_DEFINED+="$curr_ns:::%.0~0...=0:0 0$LF"
+        _ZETOPT_DEFINED+="$curr_ns:::%.0~0...=0::0 0$LF"
     done
 }
 
@@ -354,7 +413,7 @@ _zetopt::def::define()
 _zetopt::def::defined()
 {
     if [[ -z ${_ZETOPT_DEFINED-} ]]; then
-        _ZETOPT_DEFINED="/:::$LF"
+        _ZETOPT_DEFINED="/:::%.0~0...=0::0 0$LF"
     fi
     if [[ -z ${1-} ]]; then
         \printf -- "%s" "$_ZETOPT_DEFINED"
@@ -373,7 +432,7 @@ _zetopt::def::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
+    if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
@@ -383,6 +442,7 @@ _zetopt::def::field()
         $ZETOPT_FIELD_DEF_SHORT) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_SHORT))]}";;
         $ZETOPT_FIELD_DEF_LONG)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_LONG))]}";;
         $ZETOPT_FIELD_DEF_ARG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_ARG))]}";;
+        $ZETOPT_FIELD_DEF_VNAME) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_VNAME))]}";;
         $ZETOPT_FIELD_DEF_HELP)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_HELP))]}";;
         *) return 1;;
     esac

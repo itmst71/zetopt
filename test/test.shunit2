@@ -19,6 +19,7 @@ setUp() {
     zetopt init
     ZETOPT_CFG_ERRMSG_SCRIPT_ERROR=false
     ZETOPT_CFG_ERRMSG_USER_ERROR=false
+    ZETOPT_CFG_ERRMSG_STACKTRACE=false
 }
 tearDown() { :; }
 oneTimeTearDown() { :; }
@@ -549,10 +550,10 @@ test_default_noarg2() {
 }
 
 test_default_noarg3() {
-    zetopt def val:v % %...5=bar
+    zetopt def val:v % %...5
     zetopt parse -v
     local v=$(zetopt value val)
-    assertEquals "" "$v"
+    assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
 }
 
 test_default_defval() {
