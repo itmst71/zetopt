@@ -84,7 +84,7 @@ _zetopt::utils::viewfile()
 _zetopt::utils::repeat()
 {
     if [[ $# -ne 2 || ! $1 =~ ^[1-9][0-9]*$ ]]; then
-        _zetopt::msg::debug "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
+        _zetopt::msg::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
         return 1
     fi
     local IFS=$' '
@@ -118,12 +118,12 @@ _zetopt::utils::seq()
     fi
     
     if [[ $error == true ]]; then
-        _zetopt::msg::debug "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
+        _zetopt::msg::script_error "_zetopt::utils::seq <START> <END> [-d,--delimiter <DELIMITER>]"
         return 1
     fi
 
     if [[ ! $start =~ ^([a-zA-Z]|-?[0-9]+)$ ]] || [[ ! $end =~ ^([a-zA-Z]|-?[0-9]+)$ ]]; then
-        _zetopt::msg::debug "Accepts:" "^([a-zA-Z]|-?[0-9]+)$"
+        _zetopt::msg::script_error "Accepts:" "^([a-zA-Z]|-?[0-9]+)$"
         return 1
     fi
 
@@ -192,7 +192,7 @@ _zetopt::utils::fold()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::debug "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--lang <LANG>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
+        _zetopt::msg::script_error "Usage:" "echo \"\$str\" | _zetopt::utils::fold [-w|--width <WIDTH>] [-l|--lang <LANG>] [-i|--indent <INDENT_COUNT>] [--indent-string <INDENT_STRING>] [-t|--tab <SPACES_COUNT>]"
         return 1
     fi
 

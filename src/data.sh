@@ -166,7 +166,7 @@ _zetopt::data::pickup()
         for input_idx in "$@"
         do
             if [[ ! $input_idx =~ ^(@|([$\^$INIT_IDX]|-?[1-9][0-9]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?)?$ ]]; then
-                _zetopt::msg::debug "Bad Key:" "$input_idx"
+                _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
 
@@ -231,7 +231,7 @@ _zetopt::data::pickup()
                 [[ $list_start_idx == $list_end_idx ]] \
                 && local translated_idx=$list_start_idx \
                 || local translated_idx=$list_start_idx~$list_end_idx
-                _zetopt::msg::debug "Session Index Out of Range ($INIT_IDX~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
+                _zetopt::msg::script_error "Session Index Out of Range ($INIT_IDX~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -268,7 +268,7 @@ _zetopt::data::pickup()
                 fi
 
                 if [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                    _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
+                    _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
                     return 1
                 fi
 
@@ -317,7 +317,7 @@ _zetopt::data::pickup()
                     [[ $val_start_idx == $val_end_idx ]] \
                     && local translated_idx=$val_start_idx \
                     || local translated_idx=$val_start_idx~$val_end_idx
-                    _zetopt::msg::debug "Value Index Out of Range ($INIT_IDX~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
+                    _zetopt::msg::script_error "Value Index Out of Range ($INIT_IDX~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
@@ -366,7 +366,7 @@ _zetopt::data::print()
                 __out_mode=array
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-a, --array <ARRAY_NAME>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
                 __var_name=$1
@@ -376,7 +376,7 @@ _zetopt::data::print()
                 __out_mode=variable
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --variable <VARIABLE_NAME>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-v, --variable <VARIABLE_NAME>"
                     return 1
                 fi
                 __var_name=$1
@@ -385,7 +385,7 @@ _zetopt::data::print()
             -I | --IFS)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-I, --IFS <IFS_VALUE>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-I, --IFS <IFS_VALUE>"
                     return 1
                 fi
                 __ifs=$1
@@ -395,7 +395,7 @@ _zetopt::data::print()
             -n | --no-newline) __newline=; shift;;
             --) shift; __args+=("$@"); break;;
             --*|-[a-zA-Z])
-                _zetopt::msg::debug "Undefined Option:" "$1"
+                _zetopt::msg::script_error "Undefined Option:" "$1"
                 return 1;;
             *)  __args+=("$1"); shift;;
         esac
@@ -404,7 +404,7 @@ _zetopt::data::print()
     if [[ $__out_mode =~ ^(array|variable)$ ]]; then
         # check the user defined variable name before eval to avoid overwriting local variables
         if [[ ! $__var_name =~ ^$REG_VNAME$ ]] || [[ $__var_name =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Variable Name:" "$__var_name"
+            _zetopt::msg::script_error "Invalid Variable Name:" "$__var_name"
             return 1
         fi
         case $__out_mode in
@@ -416,7 +416,7 @@ _zetopt::data::print()
     local IFS=' '
     local __id="${__args[$((0 + $INIT_IDX))]=$ZETOPT_LAST_COMMAND}"
     if ! _zetopt::def::exists "$__id"; then
-        _zetopt::msg::debug "No Such ID:" "$__id" 
+        _zetopt::msg::script_error "No Such ID:" "$__id" 
         return 1
     fi
     [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
@@ -512,7 +512,7 @@ _zetopt::data::iterate()
             -v | --value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE,...>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE,...>"
                     return 1
                 fi
                 __user_value__=$1
@@ -520,7 +520,7 @@ _zetopt::data::iterate()
             -i | --index)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-i, --index <VARIABLE_NAME_FOR_KEY,...>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-i, --index <VARIABLE_NAME_FOR_KEY,...>"
                     return 1
                 fi
                 __user_index__=$1
@@ -528,7 +528,7 @@ _zetopt::data::iterate()
             -l | --last-key)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-l, --last-index <VARIABLE_NAME_FOR_LAST_KEY>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-l, --last-index <VARIABLE_NAME_FOR_LAST_KEY>"
                     return 1
                 fi
                 __user_last_index__=$1
@@ -536,7 +536,7 @@ _zetopt::data::iterate()
             -a | --array)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
                     return 1
                 fi
                 __user_array__=$1
@@ -544,7 +544,7 @@ _zetopt::data::iterate()
             --nv | --null-value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-V, --null-value <NULL_VALUE>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-V, --null-value <NULL_VALUE>"
                     return 1
                 fi
                 __null_value__=$1
@@ -552,7 +552,7 @@ _zetopt::data::iterate()
             --ni | --null-index)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "-K, --null-key <NULL_KEY>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-K, --null-key <NULL_KEY>"
                     return 1
                 fi
                 __null_index__=$1
@@ -560,7 +560,7 @@ _zetopt::data::iterate()
             --id)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::debug "Missing Required Option Argument:" "--id <ITERATOR_ID>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "--id <ITERATOR_ID>"
                     return 1
                 fi
                 __itr_id__=_$1
@@ -578,7 +578,7 @@ _zetopt::data::iterate()
                 __field__=$ZETOPT_FIELD_DATA_EXTRA_ARGV
                 shift;;
             --* | -[a-zA-Z])
-                _zetopt::msg::debug "Undefined Option:" "$1"
+                _zetopt::msg::script_error "Undefined Option:" "$1"
                 return 1;;
             --) shift; __args__+=("$@"); break;;
             *)  __args__+=("$1"); shift;;
@@ -593,7 +593,7 @@ _zetopt::data::iterate()
             __id__=$ZETOPT_LAST_COMMAND
             __complemented_id__=$ZETOPT_LAST_COMMAND
         else
-            _zetopt::msg::debug "No Such ID:" "$__id__" 
+            _zetopt::msg::script_error "No Such ID:" "$__id__" 
             return 1
         fi
     fi
@@ -603,7 +603,7 @@ _zetopt::data::iterate()
     local __var_id_suffix__
     if [[ -n $__itr_id__ ]]; then
         if [[ ! $__itr_id__ =~ ^[a-zA-Z0-9_]+$ ]]; then
-            _zetopt::msg::debug "Invalid Iterator ID:" "$__itr_id__"
+            _zetopt::msg::script_error "Invalid Iterator ID:" "$__itr_id__"
             return 1
         fi
         __var_id_suffix__=$__itr_id__
@@ -658,7 +658,7 @@ _zetopt::data::iterate()
     do
         [[ -z $__tmp_var_name__ ]] && continue ||:
         if [[ ! $__tmp_var_name__ =~ ^$REG_VNAME$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*__$)|(^IFS$)) ]]; then
-            _zetopt::msg::debug "Invalid Variable Name:" "$__tmp_var_name__"
+            _zetopt::msg::script_error "Invalid Variable Name:" "$__tmp_var_name__"
             return 1
         fi
     done
@@ -666,7 +666,7 @@ _zetopt::data::iterate()
     __user_value_names__=($__user_value__)
     __user_index_names__=($__user_index__)
     if [[ (-n $__user_value__ && -n $__user_index__) && (${#__user_value_names__[@]} -ne ${#__user_index_names__[@]}) ]]; then
-        _zetopt::msg::debug "Number of Variables Mismatch :" "--value=$__user_value__ --key=$__user_index__"
+        _zetopt::msg::script_error "Number of Variables Mismatch :" "--value=$__user_value__ --key=$__user_index__"
         return 1
     fi
     IFS=$' \n\t'

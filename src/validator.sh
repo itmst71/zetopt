@@ -57,11 +57,13 @@ _zetopt::validator::def()
 
     # check errors
     if [[ $error == true ]]; then
-        _zetopt::msg::def_error "zetopt def-validator [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "zetopt def-validator [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
     if [[ ! $name =~ ^$REG_VNAME$ ]]; then
-        _zetopt::msg::def_error "Invalid Validator Name:" "$name"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Validator Name:" "$name"
         return 1
     fi
     if [[ $type == f ]]; then
@@ -69,16 +71,19 @@ _zetopt::validator::def()
         && local _type=$(whence -w "$validator") \
         || local _type=$(type -t "$validator")
         if [[ ! ${_type#*:} =~ function ]]; then
-            _zetopt::msg::def_error "No Such Shell Function:" "$validator"
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "No Such Shell Function:" "$validator"
             return 1
         fi
     fi
     if [[ $LF$_ZETOPT_VALIDATOR_KEYS =~ $LF$name: ]]; then
-        _zetopt::msg::def_error "Duplicate Validator Name:" "$name"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Duplicate Validator Name:" "$name"
         return 1
     fi
     if [[ -n $errmsg && $errmsg =~ ^[^\#] ]]; then
-        _zetopt::msg::def_error "Help message should start with \"#\""
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Help message should start with \"#\""
         return 1
     fi
 
@@ -116,7 +121,7 @@ _zetopt::validator::validate()
         shift 1
 
         if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
-            _zetopt::msg::debug "Internal Error:" "Validator Broken"
+            _zetopt::msg::script_error "Internal Error:" "Validator Broken"
             return 1
         fi
         local validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"

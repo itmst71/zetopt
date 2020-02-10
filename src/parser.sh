@@ -26,12 +26,13 @@ _zetopt::parser::parse()
 {
 
     if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
-        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
     fi
 
     if [[ $_ZETOPT_DEF_ERROR == true ]]; then
-        _zetopt::msg::debug "Invalid Definition Data:" "Fix definition error before parse"
+        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
         return 1
     fi
 
@@ -49,7 +50,7 @@ _zetopt::parser::parse()
     declare -i _CONSUMED_ARGS_COUNT=0
 
     if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::msg::debug "Invalid Definition Data:" "Root Namespace Not Found"
+        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
         return 1
     fi
 
@@ -386,7 +387,7 @@ _zetopt::parser::setopt()
                         optarg_idx+=1
                         def_idx+=1
                     else
-                        _zetopt::msg::debug "Internal Error:" "Definition Data Broken"
+                        _zetopt::msg::script_error "Internal Error:" "Definition Data Broken"
                         return 1
                     fi
                 done

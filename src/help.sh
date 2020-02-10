@@ -74,18 +74,18 @@ _zetopt::help::rename()
         _zetopt::help::init
     fi
     if [[ $# -ne 2 || -z ${1-} || -z ${2-} ]]; then
-        _zetopt::msg::debug "Usage:" "zetopt def-help --rename <OLD_TITLE> <NEW_TITLE>"
+        _zetopt::msg::script_error "Usage:" "zetopt def-help --rename <OLD_TITLE> <NEW_TITLE>"
         return 1
     fi
     local oldtitle="$1"
     local newtitle="$2"
     local idx=$(_zetopt::help::search "$oldtitle")
     if [[ $idx == $ZETOPT_IDX_NOT_FOUND ]]; then
-        _zetopt::msg::debug "No Such Help Title: $oldtitle"
+        _zetopt::msg::script_error "No Such Help Title: $oldtitle"
         return 1
     fi
     if [[ $(_zetopt::help::search "$newtitle") -ne $ZETOPT_IDX_NOT_FOUND ]]; then
-        _zetopt::msg::debug "Already Exists: $newtitle"
+        _zetopt::msg::script_error "Already Exists: $newtitle"
         return 1
     fi
     local refidx=$(($idx + $INIT_IDX))
@@ -132,7 +132,7 @@ _zetopt::help::show()
         esac
     done
     if [[ $error == true ]]; then
-        _zetopt::msg::debug "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
+        _zetopt::msg::script_error "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
         return 1
     fi
     IFS=$' '

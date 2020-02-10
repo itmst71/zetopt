@@ -56,7 +56,8 @@ _zetopt::def::reset()
 _zetopt::def::define()
 {
     if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
-        _zetopt::msg::def_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
     fi
 
@@ -67,7 +68,8 @@ _zetopt::def::define()
     fi
 
     if [[ -z $@ ]]; then
-        _zetopt::msg::def_error "No Definition Given"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "No Definition Given"
         return 1
     fi
 
@@ -98,7 +100,8 @@ _zetopt::def::define()
             namedef=/
             has_param=true
         elif [[ $arg =~ ^\# ]]; then
-            _zetopt::msg::def_error "Help must be placed in the last argument"
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Help must be placed in the last argument"
             return 1
         else
             namedef=$arg
@@ -109,7 +112,8 @@ _zetopt::def::define()
             elif [[ $arg =~ ^\# ]]; then
                 help_only=true
             else
-                _zetopt::msg::def_error "Invalid Definition"
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Invalid Definition"
                 return 1
             fi
         fi
@@ -135,7 +139,8 @@ _zetopt::def::define()
     \set -- $namedef
     IFS=$' \t\n'
     if [[ $# -gt 3 ]]; then
-        _zetopt::msg::def_error "Invalid Definition"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Definition"
         return 1
     fi
 
@@ -149,12 +154,14 @@ _zetopt::def::define()
 
     # can not determine whether it is a subcommand or an option
     if [[ $namedef =~ : && $id =~ /$ ]]; then
-        _zetopt::msg::def_error "Invalid Definition"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Definition"
         return 1
     fi
 
     if [[ ! $id =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ ]]; then
-        _zetopt::msg::def_error "Invalid Identifier:" "$id"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Invalid Identifier:" "$id"
         return 1
     fi
 
@@ -170,7 +177,8 @@ _zetopt::def::define()
         cmdmode=true
 
         if [[ -n $global ]]; then
-            _zetopt::msg::def_error "Sub-Command Difinition with Global Option Sign +"
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Sub-Command Difinition with Global Option Sign +"
             return 1
         fi
 
@@ -190,7 +198,8 @@ _zetopt::def::define()
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
             elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$LF$ ]]; then
-                _zetopt::msg::def_error "Already Defined:" "$id"
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Already Defined:" "$id"
                 return 1
 
             # help only definition: rewrite help reference number part of existing definition
@@ -208,7 +217,8 @@ _zetopt::def::define()
     fi
     
     if [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]; then
-        _zetopt::msg::def_error "Duplicate Identifier:" "$id"
+        _ZETOPT_DEF_ERROR=true
+        _zetopt::msg::script_error "Duplicate Identifier:" "$id"
         return 1
     fi
 
@@ -228,18 +238,21 @@ _zetopt::def::define()
             # short option
             if [[ ${#1} -eq 1 ]]; then
                 if [[ -n $short ]]; then
-                    _zetopt::msg::def_error "2 Short Options at once:" "$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "2 Short Options at once:" "$1"
                     return 1
                 fi
 
                 if [[ ! $1 =~ ^[a-zA-Z0-9_]$ ]]; then
-                    _zetopt::msg::def_error "Invalid Short Option Name:" "$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Invalid Short Option Name:" "$1"
                     return 1
                 fi
                 
                 # subcommand scope option
                 if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:$1: ]]; then
-                    _zetopt::msg::def_error "Already Defined:" "-$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Already Defined:" "-$1"
                     return 1
                 fi
                 short=$1
@@ -247,18 +260,21 @@ _zetopt::def::define()
             # long option
             else
                 if [[ -n $long ]]; then
-                    _zetopt::msg::def_error "2 Long Options at once:" "$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "2 Long Options at once:" "$1"
                     return 1
                 fi
 
                 if [[ ! $1 =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
-                    _zetopt::msg::def_error "Invalid Long Option Name:" "$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Invalid Long Option Name:" "$1"
                     return 1
                 fi
 
                 # subcommand scope option
                 if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:[^:]?:$1: ]]; then
-                    _zetopt::msg::def_error "Already Defined:" "--$1"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Already Defined:" "--$1"
                     return 1
                 fi
                 long=$1
@@ -286,7 +302,8 @@ _zetopt::def::define()
             param=${args[$idx]}
             param_default_idx=$INIT_IDX
             if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
-                _zetopt::msg::def_error "Invalid Parameter Definition:" "$param"
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
             fi
 
@@ -300,7 +317,8 @@ _zetopt::def::define()
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
-                    _zetopt::msg::def_error "Required Parameter after Optional"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Required Parameter after Optional"
                     return 1
                 fi
             else
@@ -308,7 +326,8 @@ _zetopt::def::define()
             fi
 
             if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then
-                _zetopt::msg::def_error "Variable-length parameter must be at the last"
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Variable-length parameter must be at the last"
                 return 1
             fi
 
@@ -316,7 +335,8 @@ _zetopt::def::define()
             var_param_name=$param_idx
             if [[ -n $param_name ]]; then
                 if [[ $param_names =~ \ $param_name\  ]]; then
-                    _zetopt::msg::def_error "Duplicate Parameter Name:" "$param_name"
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Duplicate Parameter Name:" "$param_name"
                     return 1
                 fi
                 param_names+=" $param_name "
@@ -333,7 +353,8 @@ _zetopt::def::define()
                 do
                     param_validator_name=$1
                     if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
-                        _zetopt::msg::def_error "Undefined Validator:" "$param_validator_name"
+                        _ZETOPT_DEF_ERROR=true
+                        _zetopt::msg::script_error "Undefined Validator:" "$param_validator_name"
                         return 1
                     fi
                     param_validator_idxs="$param_validator_idxs$param_validator_separator${BASH_REMATCH[$((1 + INIT_IDX))]}"
@@ -350,7 +371,8 @@ _zetopt::def::define()
                 param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
                 default_is_set=true
             elif [[ $default_is_set == true ]]; then
-                _zetopt::msg::def_error "Non-default Argument Following Default Argument:" "$param_name"
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Non-default Argument Following Default Argument:" "$param_name"
                 return 1
             fi
             params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
@@ -377,7 +399,8 @@ _zetopt::def::define()
 
         # check variable name conflict
         if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
-            _zetopt::msg::def_error "Variable name \"$var_name\" is already in use"
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
             return 1
         fi
         \eval $var_name'=$ZETOPT_CFG_FLAGVAL_FALSE'
@@ -643,7 +666,7 @@ _zetopt::def::keyparams2idx()
                 name=${BASH_REMATCH[$((2 + $INIT_IDX))]}
                 tail=${BASH_REMATCH[$((3 + $INIT_IDX))]}
                 if [[ ! $def_args =~ [@%]${name}[.]([0-9]+) ]]; then
-                    _zetopt::msg::debug "Parameter Name Not Found:" "$name"
+                    _zetopt::msg::script_error "Parameter Name Not Found:" "$name"
                     return 1
                 fi
                 key=$head${BASH_REMATCH[$((1 + INIT_IDX))]}$tail
@@ -702,13 +725,13 @@ _zetopt::def::paramlen()
 _zetopt::def::default()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} || -z ${1-} ]]; then
-        _zetopt::msg::debug "Syntax Error"
+        _zetopt::msg::script_error "Syntax Error"
         return 1
     fi
 
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
-        _zetopt::msg::debug "No Such Indentifier:" "${1-}"
+        _zetopt::msg::script_error "No Such Indentifier:" "${1-}"
         return 1
     fi
     shift
@@ -718,13 +741,13 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        _zetopt::msg::debug "No Parameter Defined"
+        _zetopt::msg::script_error "No Parameter Defined"
         return 1
     fi
 
     defaults_idx_arr=(${params[@]#*=})
     if [[ "${defaults_idx_arr[*]}" =~ ^[0\ ]$ ]]; then
-        _zetopt::msg::debug "Default Value Not Set"
+        _zetopt::msg::script_error "Default Value Not Set"
         return 1
     fi
 
@@ -734,7 +757,7 @@ _zetopt::def::default()
     for key in "$@"
     do
         if [[ ! $key =~ ^(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?$ ]]; then
-            _zetopt::msg::debug "Bad Key:" "$key"
+            _zetopt::msg::script_error "Bad Key:" "$key"
             return 1
         fi
 
@@ -770,7 +793,7 @@ _zetopt::def::default()
                 idx+=1
                 continue
             elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                _zetopt::msg::debug "Parameter Name Not Found:" "$param_name"
+                _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
                 return 1
             fi
 
@@ -810,7 +833,7 @@ _zetopt::def::default()
             [[ $start_idx == $end_idx ]] \
             && local translated_idx=$start_idx \
             || local translated_idx=$start_idx~$end_idx
-            _zetopt::msg::debug "Index Out of Range ($INIT_IDX~$last_idx):" "Translate \"$key\" -> $translated_idx"
+            _zetopt::msg::script_error "Index Out of Range ($INIT_IDX~$last_idx):" "Translate \"$key\" -> $translated_idx"
             return 1
         fi
 
@@ -819,7 +842,7 @@ _zetopt::def::default()
         do
             default_idx=${defaults_idx_arr[idx]}
             if [[ $default_idx -eq 0 ]]; then
-                _zetopt::msg::debug "Default Value Not Set"
+                _zetopt::msg::script_error "Default Value Not Set"
                 return 1
             fi
             output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")

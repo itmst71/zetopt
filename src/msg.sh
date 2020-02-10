@@ -31,21 +31,11 @@ _zetopt::msg::user_error()
     \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
-# def_error(): Print definition-error message for script programmer
-# def.) _zetopt::msg::def_error {TITLE} {VALUE} [MESSAGE]
-# e.g.) _zetopt::msg::def_error ERROR foo "Invalid Data"
-# STDOUT: NONE
-_zetopt::msg::def_error()
-{
-    _ZETOPT_DEF_ERROR=true
-    _zetopt::msg::debug "$@"
-}
-
 # debug(): Print definition-error message for script programmer
-# def.) _zetopt::msg::debug {MESSAGE} {VALUE}
-# e.g.) _zetopt::msg::debug "Undefined Sub-Command:" "$subcmd"
+# def.) _zetopt::msg::script_error {MESSAGE} {VALUE}
+# e.g.) _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
 # STDOUT: NONE
-_zetopt::msg::debug()
+_zetopt::msg::script_error()
 {
     if [[ $ZETOPT_CFG_ERRMSG_SCRIPT_ERROR != true ]]; then
         return 0
