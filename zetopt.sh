@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-10 15:30)
+# Version     : 1.2.0a (2020-02-10 18:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-10 15:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-10 18:30)"
 
 
 #------------------------------------------------------------
@@ -2468,7 +2468,7 @@ _zetopt::data::print()
 _zetopt::data::iterate()
 {
     local __args__ __action__= __field__=$ZETOPT_FIELD_DATA_ARGV
-    local __user_value__=ZV_VALUE __user_index__= __user_last_index__= __user_array__=
+    local __user_value__=ZV_VALUE __user_index__= __user_last_index__= __user_array__= __user_count__=
     local __itr_id__= __null_value__=NULL __null_index__=NULL
     __args__=()
     while [[ $# -ne 0 ]]
@@ -2505,6 +2505,14 @@ _zetopt::data::iterate()
                     return 1
                 fi
                 __user_array__=$1
+                shift;;
+            -c | --count)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-c, --count <VARIABLE_NAME_FOR_COUNT>"
+                    return 1
+                fi
+                __user_count__=$1
                 shift;;
             --nv | --null-value)
                 shift
@@ -2618,7 +2626,7 @@ _zetopt::data::iterate()
 
     # check the user defined variable name before eval to avoid invalid characters and overwriting local variables
     local IFS=,
-    set -- $__user_value__ $__user_index__ $__user_last_index__ $__user_array__
+    set -- $__user_value__ $__user_index__ $__user_last_index__ $__user_array__ $__user_count__
     for __tmp_var_name__ in $@
     do
         [[ -z $__tmp_var_name__ ]] && continue ||:
@@ -2657,9 +2665,10 @@ _zetopt::data::iterate()
         return 1
     fi
 
-    # last-index / array
+    # last-index / array / count
     [[ -n $__user_last_index__ ]] && eval $__user_last_index__'=$((${#'$__array__'[@]} - 1 + $INIT_IDX))' ||:
     [[ -n $__user_array__ ]] && eval $__user_array__'=("${'$__array__'[@]}")' ||:
+    [[ -n $__user_count__ ]] && eval $__user_count__'=${#'$__array__'[@]}' ||:
 
     # value / index : Iterate with multiple values/indexs
     if [[ -n $__user_value__ || -n $__user_index__ ]]; then
@@ -2698,7 +2707,7 @@ _zetopt::data::iterate()
             fi
         done
     else
-        # increment for using last-key / array only
+        # increment for using last-key / array / count only
         eval $__index__'=$(('$__index__' + 1))'
     fi
     return 0
