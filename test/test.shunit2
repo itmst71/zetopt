@@ -553,7 +553,7 @@ test_default_noarg3() {
     zetopt def val:v % %...5
     zetopt parse -v
     local v=$(zetopt value val)
-    assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
+    assertEquals "" "$v"
 }
 
 test_default_defval() {

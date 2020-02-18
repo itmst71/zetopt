@@ -55,7 +55,7 @@ _zetopt::def::reset()
 # STDOUT: NONE
 _zetopt::def::define()
 {
-    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
+    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_VARIABLE_PREFIX == _ ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
@@ -313,8 +313,8 @@ _zetopt::def::define()
         for ((; idx<maxloop; idx++))
         do
             param=${args[$idx]}
-            param_default_idx=$INIT_IDX
-            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            param_default_idx=0
+            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=(.*))?$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
@@ -326,7 +326,7 @@ _zetopt::def::define()
             param_validator=${BASH_REMATCH[$((4 + INIT_IDX))]}
             param_varlen=${BASH_REMATCH[$((9 + INIT_IDX))]}
             param_varlen_max=${BASH_REMATCH[$((10 + INIT_IDX))]}
-            param_default=${BASH_REMATCH[$((11 + INIT_IDX))]}
+            param_default=${BASH_REMATCH[$((12 + INIT_IDX))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -356,6 +356,7 @@ _zetopt::def::define()
                 var_param_name=$param_name
             fi
 
+            # translate validator name to indexes
             param_validator_idxs=0
             if [[ $param_validator =~ ($REG_VNAME(,$REG_VNAME)*) ]]; then
                 param_validator_separator=
@@ -379,8 +380,8 @@ _zetopt::def::define()
             # save default value
             var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
             if [[ -n $param_default ]]; then
-                var_param_default=${param_default##=}
-                _ZETOPT_DEFAULTS+=("${param_default##=}")
+                var_param_default=$param_default
+                _ZETOPT_DEFAULTS+=("$param_default")
                 param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
                 default_is_set=true
             elif [[ $default_is_set == true ]]; then

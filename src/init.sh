@@ -54,20 +54,20 @@ readonly ZETOPT_TYPE_PLUS=3
 readonly ZETOPT_STATUS_NORMAL=0
 readonly ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS=$((1 << 0))
 readonly ZETOPT_STATUS_MISSING_OPTIONAL_ARGS=$((1 << 1))
-readonly ZETOPT_STATUS_TOO_MATCH_ARGS=$((1 << 2))
+readonly ZETOPT_STATUS_EXTRA_ARGS=$((1 << 2))
 readonly ZETOPT_STATUS_VALIDATOR_FAILED=$((1 << 3))
 readonly ZETOPT_STATUS_MISSING_REQUIRED_OPTARGS=$((1 << 4))
 readonly ZETOPT_STATUS_MISSING_REQUIRED_ARGS=$((1 << 5))
 readonly ZETOPT_STATUS_UNDEFINED_OPTION=$((1 << 6))
 readonly ZETOPT_STATUS_UNDEFINED_SUBCMD=$((1 << 7))
 readonly ZETOPT_STATUS_INVALID_OPTFORMAT=$((1 << 8))
-readonly ZETOPT_STATUS_ERROR_THRESHOLD=$((ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS | ZETOPT_STATUS_TOO_MATCH_ARGS))
+readonly ZETOPT_STATUS_ERROR_THRESHOLD=$ZETOPT_STATUS_EXTRA_ARGS
 
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
 
 # __NULL is default value for auto-defined variable
-__NULL(){ false; }
+__NULL(){ return 1; }
 
 # init(): initialize all variables
 # def.) _zetopt::init::init
@@ -139,14 +139,10 @@ _zetopt::init::init_config()
 # STDOUT: NONE
 _zetopt::init::unset_user_vars()
 {
-    if [[ ! -n ${_ZETOPT_VARIABLE_NAMES+x} ]]; then
+    if [[ -z ${_ZETOPT_VARIABLE_NAMES-} ]]; then
         return 0
     fi
-
-    for v in "${_ZETOPT_VARIABLE_NAMES[@]}"
-    do
-        \unset $v
-    done
+    \unset "${_ZETOPT_VARIABLE_NAMES[@]}" ||:
 }
 
 # reset(): reset parse data only

@@ -25,7 +25,7 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^($REG_VNAME|_) ]]; then
+    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_VARIABLE_PREFIX == _ ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
         return 1
@@ -37,7 +37,7 @@ _zetopt::parser::parse()
     fi
 
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:::%.0~0...=0::0 0$LF"
+        _ZETOPT_DEFINED="/:::%.0~0...=0:::0 0$LF"
     fi
     _zetopt::parser::init
     _zetopt::data::init
@@ -218,7 +218,7 @@ _zetopt::parser::parse()
         fi
 
         # Too Match Positional Arguments
-        if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_TOO_MATCH_ARGS)) -ne 0 ]]; then
+        if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_EXTRA_ARGS)) -ne 0 ]]; then
             msg=($subcmdstr "${#_ZETOPT_TEMP_ARGV[@]} Arguments Given (Up To "$(_zetopt::def::paramlen $namespace max)")")
             _zetopt::msg::user_error Error "Too Match Arguments:" "${msg[*]}"
         fi
@@ -395,15 +395,14 @@ _zetopt::parser::setopt()
                     def=${def_arr[$def_idx]}
 
                     # has default value
-                    if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([0-9]+) ]]; then
+                    if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
                         arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + INIT_IDX))]}]}
                         _ZETOPT_DATA+=("$arg")
                         ref_arr+=($optarg_idx)
                         optarg_idx+=1
                         def_idx+=1
                     else
-                        _zetopt::msg::script_error "Internal Error:" "Definition Data Broken"
-                        return 1
+                        break
                     fi
                 done
             fi
@@ -415,6 +414,7 @@ _zetopt::parser::setopt()
         -)  type=$ZETOPT_TYPE_SHORT;;
         --) type=$ZETOPT_TYPE_LONG;;
         +)  type=$ZETOPT_TYPE_PLUS;;
+        ++) type=$ZETOPT_TYPE_PLUS;;
     esac
 
     _ZETOPT_DATA+=("$pseudoname")
@@ -504,8 +504,8 @@ _zetopt::parser::assign_args()
         # too match arguments
         if [[ $arg_len -gt $def_max_len ]]; then
             _ZETOPT_EXTRA_ARGV=("${_ZETOPT_TEMP_ARGV[@]:$((def_max_len))}")
-            #rtn=$((rtn | ZETOPT_STATUS_TOO_MATCH_ARGS))
-            : #ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+            rtn=$((rtn | ZETOPT_STATUS_EXTRA_ARGS))
+            ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
         fi
 
     # not enough
@@ -557,12 +557,17 @@ _zetopt::parser::assign_args()
         for ((; ref_idx<maxloop; ref_idx++))
         do
             # missing required
-            if [[ ! ${def_arr[ref_idx]} =~ ^-{0,2}%([A-Za-z_][A-Za-z0-9_]*)?[.][0-9]+[~][0-9]+(,[0-9]+)*([.]{3,3}([1-9][0-9]*)?)?=([0-9]+)$ ]]; then
+            if [[ ${def_arr[ref_idx]} =~ @ ]]; then
                 rtn=$((rtn | ZETOPT_STATUS_MISSING_REQUIRED_ARGS))
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
             fi
-            default_idx=${BASH_REMATCH[$((5 + INIT_IDX))]}
+            if [[ ! ${def_arr[ref_idx]} =~ \=([1-9][0-9]*)$ ]]; then
+                rtn=$((rtn | ZETOPT_STATUS_MISSING_OPTIONAL_ARGS))
+                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
+                break
+            fi
+            default_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
 
             # set default value
             _ZETOPT_DATA+=("${_ZETOPT_DEFAULTS[default_idx]}")

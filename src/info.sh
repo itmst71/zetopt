@@ -31,4 +31,4 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-10 18:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-18 19:30)"
