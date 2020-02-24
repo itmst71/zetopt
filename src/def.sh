@@ -23,9 +23,9 @@ _zetopt::def::reset()
     for line in "${lines[@]}"
     do
         if [[ $line =~ ^([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*)$ ]]; then
-            id=${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_ID))]}
-            args=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_ARG))]})
-            vars=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_FIELD_DEF_VNAME))]})
+            id=${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_DEFID_ID))]}
+            args=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_DEFID_ARG))]})
+            vars=(${BASH_REMATCH[$(($INIT_IDX + $ZETOPT_DEFID_VARNAME))]})
             for ((idx=$INIT_IDX; idx<$((${#vars[@]} + $INIT_IDX)); idx++ ))
             do
                 var=${vars[$idx]}
@@ -463,12 +463,12 @@ _zetopt::def::defined()
         \printf -- "%s" "$_ZETOPT_DEFINED"
         return 0
     fi
-    _zetopt::def::field "$1" $ZETOPT_FIELD_DEF_ALL
+    _zetopt::def::field "$1" $ZETOPT_DEFID_ALL
 }
 
 # field(): Search and print the definition.
 # def.) _zetopt::def::field {ID} [FIELD-DEF-NUMBER-TO-PRINT]
-# e.g.) _zetopt::def::field /foo $ZETOPT_FIELD_DEF_ARG
+# e.g.) _zetopt::def::field /foo $ZETOPT_DEFID_ARG
 # STDOUT: string
 _zetopt::def::field()
 {
@@ -479,16 +479,16 @@ _zetopt::def::field()
     if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id)[+]?:([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
-    local field="${2:-$ZETOPT_FIELD_DEF_ALL}"
+    local field="${2:-$ZETOPT_DEFID_ALL}"
     case "$field" in
-        $ZETOPT_FIELD_DEF_ALL)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_ALL))]}";;
-        $ZETOPT_FIELD_DEF_ID)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_ID))]}";;
-        $ZETOPT_FIELD_DEF_SHORT) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_SHORT))]}";;
-        $ZETOPT_FIELD_DEF_LONG)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_LONG))]}";;
-        $ZETOPT_FIELD_DEF_ARG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_ARG))]}";;
-        $ZETOPT_FIELD_DEF_VNAME) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_VNAME))]}";;
-        $ZETOPT_FIELD_DEF_FLAGS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_FLAGS))]}";;
-        $ZETOPT_FIELD_DEF_HELP)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DEF_HELP))]}";;
+        $ZETOPT_DEFID_ALL)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ALL))]}";;
+        $ZETOPT_DEFID_ID)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ID))]}";;
+        $ZETOPT_DEFID_SHORT) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_SHORT))]}";;
+        $ZETOPT_DEFID_LONG)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_LONG))]}";;
+        $ZETOPT_DEFID_ARG)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ARG))]}";;
+        $ZETOPT_DEFID_VARNAME) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_VARNAME))]}";;
+        $ZETOPT_DEFID_FLAGS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_FLAGS))]}";;
+        $ZETOPT_DEFID_HELP)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_HELP))]}";;
         *) return 1;;
     esac
 }
@@ -652,7 +652,7 @@ _zetopt::def::paramidx()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    local def_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -z $def_str ]]; then
         return 1
     fi
@@ -674,7 +674,7 @@ _zetopt::def::keyparams2idx()
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     local key="$2" head tail name
-    local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -n $def_args ]]; then
         while true
         do
@@ -705,7 +705,7 @@ _zetopt::def::paramlen()
     if ! _zetopt::def::exists "$id"; then
         \echo 0; return 1
     fi
-    local def="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -z $def ]]; then
         \echo 0; return 0
     fi
@@ -755,7 +755,7 @@ _zetopt::def::default()
 
     local IFS=' ' params defaults_idx_arr output_list
     output_list=()
-    local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
         \printf "%s\n" $INIT_IDX

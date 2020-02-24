@@ -37,12 +37,12 @@ _zetopt::data::parsed()
         \echo "${_ZETOPT_PARSED-}"
         return 0
     fi
-    _zetopt::data::field "$1" $ZETOPT_FIELD_DATA_ALL
+    _zetopt::data::field "$1" $ZETOPT_DATAID_ALL
 }
 
 # field(): Search and print the parsed data
 # def.) _zetopt::data::field {ID} [FILED-DATA-NUMBER]
-# e.g.) _zetopt::data::field /foo $ZETOPT_FIELD_DATA_ARGV
+# e.g.) _zetopt::data::field /foo $ZETOPT_DATAID_ARGV
 # STDOUT: string
 _zetopt::data::field()
 {
@@ -53,17 +53,17 @@ _zetopt::data::field()
     if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
-    local field="${2:-$ZETOPT_FIELD_DATA_ALL}"
+    local field="${2:-$ZETOPT_DATAID_ALL}"
     case "$field" in
-        $ZETOPT_FIELD_DATA_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ALL))]}";;
-        $ZETOPT_FIELD_DATA_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ID))]}";;
-        $ZETOPT_FIELD_DATA_ARGV)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ARGV))]}";;
-        $ZETOPT_FIELD_DATA_ARGC)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_ARGC))]}";;
-        $ZETOPT_FIELD_DATA_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_TYPE))]}";;
-        $ZETOPT_FIELD_DATA_PSEUDO) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_PSEUDO))]}";;
-        $ZETOPT_FIELD_DATA_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_STATUS))]}";;
-        $ZETOPT_FIELD_DATA_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_FIELD_DATA_COUNT))]}";;
-        $ZETOPT_FIELD_DATA_EXTRA_ARGV) \printf -- "%s" "$(_zetopt::data::extra_field $id)";;
+        $ZETOPT_DATAID_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
+        $ZETOPT_DATAID_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
+        $ZETOPT_DATAID_ARGV)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
+        $ZETOPT_DATAID_ARGC)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
+        $ZETOPT_DATAID_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
+        $ZETOPT_DATAID_PSEUDO) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
+        $ZETOPT_DATAID_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
+        $ZETOPT_DATAID_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
+        $ZETOPT_DATAID_EXTRA_ARGV) \printf -- "%s" "$(_zetopt::data::extra_field $id)";;
         *) return 1;;
     esac
 }
@@ -119,7 +119,7 @@ _zetopt::data::isvalid()
     fi
 
     shift
-    local status_list="$(_zetopt::data::print $ZETOPT_FIELD_DATA_STATUS "$id" "$@")"
+    local status_list="$(_zetopt::data::print $ZETOPT_DATAID_STATUS "$id" "$@")"
     if [[ -z $status_list ]]; then
         return 1
     fi
@@ -309,7 +309,7 @@ _zetopt::data::pickup()
 # STDOUT: NONE
 _zetopt::data::hasarg()
 {
-    local argc_str="$(_zetopt::data::print $ZETOPT_FIELD_DATA_ARGC "$@")"
+    local argc_str="$(_zetopt::data::print $ZETOPT_DATAID_ARGC "$@")"
     [[ -n "$argc_str" && ! "$argc_str" =~ ^[0\ ]+$ ]]
 }
 
@@ -317,7 +317,7 @@ _zetopt::data::hasarg()
 # print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-I,--IFS <IFS_VALUE>]
-# e.g.) _zetopt::data::print $ZETOPT_FIELD_DATA_ARGV /foo @:@ --array myarr
+# e.g.) _zetopt::data::print $ZETOPT_DATAID_ARGV /foo @:@ --array myarr
 # STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
 _zetopt::data::print()
 {
@@ -362,7 +362,7 @@ _zetopt::data::print()
                 __ifs=$1
                 shift
                 ;;
-            -E | --extra) __field=$ZETOPT_FIELD_DATA_EXTRA_ARGV; shift;;
+            -E | --extra) __field=$ZETOPT_DATAID_EXTRA_ARGV; shift;;
             -N | --no-fallback) __fallback=false; shift;;
             -n | --no-newline) __newline=; shift;;
             --) shift; __args+=("$@"); break;;
@@ -394,7 +394,7 @@ _zetopt::data::print()
     [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
 
     case $__field in
-        $ZETOPT_FIELD_DATA_ARGV | $ZETOPT_FIELD_DATA_ARGC | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS | $ZETOPT_FIELD_DATA_COUNT | $ZETOPT_FIELD_DATA_EXTRA_ARGV)
+        $ZETOPT_DATAID_ARGV | $ZETOPT_DATAID_ARGC | $ZETOPT_DATAID_TYPE | $ZETOPT_DATAID_PSEUDO | $ZETOPT_DATAID_STATUS | $ZETOPT_DATAID_COUNT | $ZETOPT_DATAID_EXTRA_ARGV)
             :;;
         *)  _zetopt::msg::script_error "Bad Field Number:" "$__field" 
             return 1;;
@@ -404,7 +404,7 @@ _zetopt::data::print()
     __data=($(_zetopt::data::field "$__id" $__field))
 
     # argv fallback default
-    if [[ $__field == $ZETOPT_FIELD_DATA_ARGV && $__fallback == true ]]; then
+    if [[ $__field == $ZETOPT_DATAID_ARGV && $__fallback == true ]]; then
         local __default_data
         __default_data=($(_zetopt::def::default $__id))
 
@@ -422,7 +422,7 @@ _zetopt::data::print()
     # complement pickup-key
     local __keys="${__args[@]:1}"
     if [[ -z $__keys ]]; then
-        [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]] \
+        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV]$ ]] \
         && __keys=@ \
         || __keys=$
     fi
@@ -442,7 +442,7 @@ _zetopt::data::print()
     local __nl=
 
     # indexes to refer target data in array
-    if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]]; then
+    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV]$ ]]; then
         for __idx in "$@"
         do
             # store data in user specified array
@@ -494,7 +494,7 @@ _zetopt::data::print()
 
 _zetopt::data::iterate()
 {
-    local __args__ __action__= __field__=$ZETOPT_FIELD_DATA_ARGV
+    local __args__ __action__= __field__=$ZETOPT_DATAID_ARGV
     local __user_value__=ZV_VALUE __user_index__= __user_last_index__= __user_array__= __user_count__=
     local __itr_id__= __null_value__=NULL __null_index__=NULL
     __args__=()
@@ -575,7 +575,7 @@ _zetopt::data::iterate()
                 __action__=has-next
                 shift;;
             -E | --extra | --extra-argv)
-                __field__=$ZETOPT_FIELD_DATA_EXTRA_ARGV
+                __field__=$ZETOPT_DATAID_EXTRA_ARGV
                 shift;;
             --* | -[a-zA-Z])
                 _zetopt::msg::script_error "Undefined Option:" "$1"

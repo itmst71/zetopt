@@ -245,7 +245,7 @@ _zetopt::parser::setsub()
     local offset=2
 
     local IFS=:
-    \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
+    \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ALL))]}
     local cnt=$(($7 + 1))
     local pseudoidx=$INIT_IDX
     _ZETOPT_PARSED=$head_lines$1:$2:$3:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
@@ -270,7 +270,7 @@ _zetopt::parser::setopt()
     fi
 
     # exclusive option
-    if [[ "$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_FLAGS)" =~ x ]]; then
+    if [[ "$(_zetopt::def::field "$id" $ZETOPT_DEFID_FLAGS)" =~ x ]]; then
         local lc=$ZETOPT_LAST_COMMAND
         _zetopt::def::reset
         _zetopt::data::init
@@ -285,12 +285,12 @@ _zetopt::parser::setopt()
     local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + INIT_IDX))]}"
     local IFS=:
-    \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}
+    \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_DATAID_ALL))]}
     local id="$1" refs_str="$2" argcs="$3" types="$4" pseudo_idexs="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
-    local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
-    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_VNAME)"
+    local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
     declare -i optarg_idx=$((${#_ZETOPT_DATA[@]} + $INIT_IDX))
     declare -i arg_cnt=0
     ref_arr=()
@@ -457,10 +457,10 @@ _zetopt::parser::assign_args()
     fi
     local arg def_arr def ref_arr
     local IFS=' '
-    def_arr=($(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG))
+    def_arr=($(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG))
     ref_arr=()
     declare -i def_len=${#def_arr[@]} arg_len=${#_ZETOPT_TEMP_ARGV[@]} rtn=$ZETOPT_STATUS_NORMAL idx maxloop
-    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_VNAME)"
+    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
     if [[ -z $var_names_str ]]; then
         var_names_str=${ZETOPT_CFG_VARIABLE_PREFIX}${ZETOPT_LAST_COMMAND:1}
         var_names_str=${var_names_str//[\/\-]/_}$INIT_IDX
@@ -585,14 +585,14 @@ _zetopt::parser::assign_args()
     local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + INIT_IDX))]}"
     local offset=2
-    local line="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ALL))]}"
-    local id="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ID))]}"
-    #local argv="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ARGV))]}"
-    #local argc="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_ARGC))]}"
-    local type="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_TYPE))]}"
-    local pseudoname="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_PSEUDO))]}"
-    #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_STATUS))]}"
-    local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_FIELD_DATA_COUNT))]}"
+    local line="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ALL))]}"
+    local id="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ID))]}"
+    #local argv="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ARGV))]}"
+    #local argc="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ARGC))]}"
+    local type="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_TYPE))]}"
+    local pseudoname="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_PSEUDO))]}"
+    #local status="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_STATUS))]}"
+    local count="${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]-}"
     local argcs=${#ref_arr[@]}
