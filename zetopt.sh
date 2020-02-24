@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-25 06:30)
+# Version     : 1.2.0a (2020-02-25 08:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-25 06:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-25 08:30)"
 
 
 #------------------------------------------------------------
@@ -273,8 +273,7 @@ zetopt()
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
-        default)
-            _zetopt::def::default "$@";;
+
         defined)
             _zetopt::def::defined "$@";;
 
@@ -299,6 +298,8 @@ zetopt()
             _zetopt::data::print $ZETOPT_DATAID_STATUS "$@";;
         count)
             _zetopt::data::print $ZETOPT_DATAID_COUNT "$@";;
+        default)
+            _zetopt::data::print $ZETOPT_DATAID_DEFAULT "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)
@@ -1077,7 +1078,7 @@ _zetopt::def::default()
     fi
     shift
 
-    local IFS=' ' params defaults_idx_arr output_list
+    local IFS=' ' params output_list
     output_list=()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     params=($def_args)
@@ -1917,10 +1918,19 @@ _zetopt::data::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local field="${2:-$ZETOPT_DATAID_ALL}"
+
+    if [[ $field == $ZETOPT_DATAID_DEFAULT ]]; then
+        if ! _zetopt::def::exists $id; then
+            return 1
+        fi
+        \printf -- "%s" "$(_zetopt::def::default $id)"
+        return 0
+    fi
+
     if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
-    local field="${2:-$ZETOPT_DATAID_ALL}"
     case "$field" in
         $ZETOPT_DATAID_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
         $ZETOPT_DATAID_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
@@ -2260,12 +2270,10 @@ _zetopt::data::print()
     fi
     [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
 
-    case $__field in
-        $ZETOPT_DATAID_ARGV | $ZETOPT_DATAID_ARGC | $ZETOPT_DATAID_TYPE | $ZETOPT_DATAID_PSEUDO | $ZETOPT_DATAID_STATUS | $ZETOPT_DATAID_COUNT | $ZETOPT_DATAID_EXTRA_ARGV)
-            :;;
-        *)  _zetopt::msg::script_error "Bad Field Number:" "$__field" 
-            return 1;;
-    esac
+    if [[ ! $__field =~ ^[$ZETOPT_DATAID_ARGV-$ZETOPT_DATAID_DEFAULT]$ ]]; then
+        _zetopt::msg::script_error "Invalid Data ID:" "$__field" 
+        return 1
+    fi
 
     local __data
     __data=($(_zetopt::data::field "$__id" $__field))
@@ -2289,7 +2297,7 @@ _zetopt::data::print()
     # complement pickup-key
     local __keys="${__args[@]:1}"
     if [[ -z $__keys ]]; then
-        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV]$ ]] \
+        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
         && __keys=@ \
         || __keys=$
     fi
@@ -2309,7 +2317,7 @@ _zetopt::data::print()
     local __nl=
 
     # indexes to refer target data in array
-    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV]$ ]]; then
+    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]]; then
         for __idx in "$@"
         do
             # store data in user specified array

@@ -74,8 +74,7 @@ zetopt()
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
-        default)
-            _zetopt::def::default "$@";;
+
         defined)
             _zetopt::def::defined "$@";;
 
@@ -100,6 +99,8 @@ zetopt()
             _zetopt::data::print $ZETOPT_DATAID_STATUS "$@";;
         count)
             _zetopt::data::print $ZETOPT_DATAID_COUNT "$@";;
+        default)
+            _zetopt::data::print $ZETOPT_DATAID_DEFAULT "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)

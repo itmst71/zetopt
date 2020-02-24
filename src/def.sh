@@ -753,7 +753,7 @@ _zetopt::def::default()
     fi
     shift
 
-    local IFS=' ' params defaults_idx_arr output_list
+    local IFS=' ' params output_list
     output_list=()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     params=($def_args)

@@ -525,9 +525,10 @@ test_def_validator_ERR_undefined() {
 #------------------------------------------------
 test_default() {
     zetopt def val:v @FOO %BAR=bar %BAZ...3=baz
-    zetopt parse -v foo
-    local v=$(zetopt value val @)
-    assertEquals "foo bar baz" "$v"
+    local v="$(zetopt default val)"
+    assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT bar baz" "$v"
+    v=$(zetopt default val BAZ,^)
+    assertEquals "baz bar $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
 }
 
 test_default_ERR_def() {
@@ -536,38 +537,40 @@ test_default_ERR_def() {
 }
 
 test_default_noarg() {
-    zetopt def val:v %...5=foo
+    zetopt def val:v %=foo %=bar
     zetopt parse -v
-    local v=$(zetopt value val)
-    assertEquals "foo" "$v"
+    local v="$(zetopt argv val)"
+    assertEquals "foo bar" "$v"
 }
 
-test_default_noarg2() {
-    zetopt def val:v %...5=foo
-    zetopt parse -v
-    local v=$(zetopt value val)
-    assertEquals "foo" "$v"
+test_default_1arg_for_3defs() {
+    zetopt def val:v % % %=bar
+    zetopt parse -v foo
+    local v="$(zetopt argv val)"
+    assertEquals "foo $ZETOPT_CFG_VARIABLE_DEFAULT bar" "$v"
 }
 
 test_default_noarg3() {
     zetopt def val:v % %...5
     zetopt parse -v
-    local v=$(zetopt value val)
+    local v="$(zetopt argv val)"
     assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
 }
 
-test_default_defval() {
+test_default_nouse() {
     zetopt def val:v @FOO=foo @BAR=bar
     zetopt parse
     local v="$(zetopt argv val)"
     assertEquals "foo bar" "$v"
 }
 
-test_default_defval_pickup() {
+test_default_ERR_no_fallback() {
     zetopt def val:v @FOO @BAR=bar
     zetopt parse
-    local v=$(zetopt argv val BAR)
-    assertEquals "bar" "$v"
+    local v="$(zetopt argv val -N)"
+    assertEquals "" "$v"
+    zetopt argv val -N
+    assertFalse $?
 }
 
 #------------------------------------------------
@@ -576,9 +579,9 @@ test_default_defval_pickup() {
 test_pseudo() {
     ZETOPT_CFG_PSEUDO_OPTION=true
     zetopt def foo:f,foo @FOO
-    zetopt parse -f:bar:boo FOO -f:100:A_B_C BAR
+    zetopt parse -f:bar:boo FOO -f:100:A:B_C BAR
     local pseudo_name=$(zetopt pseudo foo @)
-    assertEquals "bar:boo 100:A_B_C" "$pseudo_name"
+    assertEquals "bar:boo 100:A:B_C" "$pseudo_name"
     local val=$(zetopt val foo @:@)
     assertEquals "FOO BAR" "$val"
 }

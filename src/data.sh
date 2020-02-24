@@ -50,10 +50,19 @@ _zetopt::data::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local field="${2:-$ZETOPT_DATAID_ALL}"
+
+    if [[ $field == $ZETOPT_DATAID_DEFAULT ]]; then
+        if ! _zetopt::def::exists $id; then
+            return 1
+        fi
+        \printf -- "%s" "$(_zetopt::def::default $id)"
+        return 0
+    fi
+
     if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
-    local field="${2:-$ZETOPT_DATAID_ALL}"
     case "$field" in
         $ZETOPT_DATAID_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
         $ZETOPT_DATAID_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
@@ -393,12 +402,10 @@ _zetopt::data::print()
     fi
     [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
 
-    case $__field in
-        $ZETOPT_DATAID_ARGV | $ZETOPT_DATAID_ARGC | $ZETOPT_DATAID_TYPE | $ZETOPT_DATAID_PSEUDO | $ZETOPT_DATAID_STATUS | $ZETOPT_DATAID_COUNT | $ZETOPT_DATAID_EXTRA_ARGV)
-            :;;
-        *)  _zetopt::msg::script_error "Bad Field Number:" "$__field" 
-            return 1;;
-    esac
+    if [[ ! $__field =~ ^[$ZETOPT_DATAID_ARGV-$ZETOPT_DATAID_DEFAULT]$ ]]; then
+        _zetopt::msg::script_error "Invalid Data ID:" "$__field" 
+        return 1
+    fi
 
     local __data
     __data=($(_zetopt::data::field "$__id" $__field))
@@ -422,7 +429,7 @@ _zetopt::data::print()
     # complement pickup-key
     local __keys="${__args[@]:1}"
     if [[ -z $__keys ]]; then
-        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV]$ ]] \
+        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
         && __keys=@ \
         || __keys=$
     fi
@@ -442,7 +449,7 @@ _zetopt::data::print()
     local __nl=
 
     # indexes to refer target data in array
-    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV]$ ]]; then
+    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]]; then
         for __idx in "$@"
         do
             # store data in user specified array
