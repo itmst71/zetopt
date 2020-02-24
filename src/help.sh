@@ -482,7 +482,7 @@ _zetopt::help::format()
             default_idx=${arg#*=}
             default_value=
             if [[ $default_idx -ne 0 ]]; then
-                default_value="=${_ZETOPT_DEFAULTS[$default_idx]}"
+                default_value="=${_ZETOPT_DATA[$default_idx]}"
             fi
             if [[ $param == @ ]]; then
                 optargs+=" <$default_argname$cnt>"

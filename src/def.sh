@@ -30,12 +30,12 @@ _zetopt::def::reset()
             do
                 var=${vars[$idx]}
                 if [[ ${#args[@]} -eq 0 ]]; then
-                    \eval $var'=$ZETOPT_CFG_FLAGVAL_FALSE'
+                    \eval $var'=$ZETOPT_CFG_VARIABLE_DEFAULT'
                 else
                     arg=${args[$idx]}
                     if [[ $arg =~ \=([0-9]+) ]]; then
                         dfnum=${BASH_REMATCH[$(($INIT_IDX + 1))]}
-                        df=${_ZETOPT_DEFAULTS[$dfnum]}
+                        df=${_ZETOPT_DATA[$dfnum]}
                     fi
                     if [[ $arg =~ [.]{3,3} ]]; then
                         \eval $var'=("$df")'
@@ -64,7 +64,8 @@ _zetopt::def::define()
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:::%.0~0...=0:::0 0$LF"
         _ZETOPT_OPTHELPS=("")
-        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_VARIABLE_DEFAULT")
+        _ZETOPT_DATA=("$ZETOPT_CFG_VARIABLE_DEFAULT")
+        _ZETOPT_DEFAULT_COUNT=1
     fi
 
     if [[ -z $@ ]]; then
@@ -381,8 +382,8 @@ _zetopt::def::define()
             var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
             if [[ -n $param_default ]]; then
                 var_param_default=$param_default
-                _ZETOPT_DEFAULTS+=("$param_default")
-                param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
+                _ZETOPT_DATA+=("$param_default")
+                param_default_idx=$((${#_ZETOPT_DATA[@]} - 1 + INIT_IDX))
                 default_is_set=true
             elif [[ $default_is_set == true ]]; then
                 _ZETOPT_DEF_ERROR=true
@@ -406,6 +407,7 @@ _zetopt::def::define()
         done
         IFS=$' '
         param_def="${params[*]}"
+        _ZETOPT_DEFAULT_COUNT=${#_ZETOPT_DATA[@]}
 
     # Flag option
     else
@@ -676,7 +678,7 @@ _zetopt::def::keyparams2idx()
     if [[ -n $def_args ]]; then
         while true
         do
-            if [[ $key =~ ^([0-9\^\$@,\ \-]*)($REG_VNAME)(.*)$ ]]; then
+            if [[ $key =~ ^([0-9\^\$@,\ \-:]*)($REG_VNAME)(.*)$ ]]; then
                 head=${BASH_REMATCH[$((1 + $INIT_IDX))]}
                 name=${BASH_REMATCH[$((2 + $INIT_IDX))]}
                 tail=${BASH_REMATCH[$((3 + $INIT_IDX))]}
@@ -756,115 +758,9 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        _zetopt::msg::script_error "No Parameter Defined"
-        return 1
+        \printf "%s\n" $INIT_IDX
+        return 0
     fi
-
-    defaults_idx_arr=(${params[@]#*=})
-    if [[ "${defaults_idx_arr[*]}" =~ ^[0\ ]$ ]]; then
-        _zetopt::msg::script_error "Default Value Not Set"
-        return 1
-    fi
-
-    [[ $# -eq 0 ]] && set -- @
-    local key
-    declare -i last_idx="$((${#params[@]} - 1 + $INIT_IDX))"
-    for key in "$@"
-    do
-        if [[ ! $key =~ ^(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?$ ]]; then
-            _zetopt::msg::script_error "Bad Key:" "$key"
-            return 1
-        fi
-
-        # split the value index range string
-        local tmp_start_idx= tmp_end_idx=
-        if [[ $key =~ , ]]; then
-            tmp_start_idx="${key%%,*}"
-            tmp_end_idx="${key#*,}"
-        else
-            tmp_start_idx=$key
-            tmp_end_idx=$key
-        fi
-
-        case "$tmp_start_idx" in
-            @ | "") tmp_start_idx=$INIT_IDX;;
-            ^)      tmp_start_idx=$INIT_IDX;;
-            $)      tmp_start_idx=$;; # the last index will be determined later
-            *)      tmp_start_idx=$tmp_start_idx;;
-        esac
-        case "$tmp_end_idx" in
-            @ | "") tmp_end_idx=$;; # the last index will be determined later
-            ^)      tmp_end_idx=$INIT_IDX;;
-            $)      tmp_end_idx=$;; # the last index will be determined later
-            *)      tmp_end_idx=$tmp_end_idx;;
-        esac
-
-        # index by name
-        declare -i idx=0
-        local param_name=
-        for param_name in $tmp_start_idx $tmp_end_idx
-        do
-            if [[ ! $param_name =~ ^$REG_VNAME$ ]]; then
-                idx+=1
-                continue
-            elif [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
-                return 1
-            fi
-
-            if [[ $idx -eq 0 ]]; then
-                tmp_start_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
-            else
-                tmp_end_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
-            fi
-            idx+=1
-        done
-
-        # determine the value start/end index
-        declare -i start_idx end_idx
-        if [[ $tmp_start_idx == $ ]]; then
-            start_idx=$last_idx  # set the last index
-        else
-            start_idx=$tmp_start_idx
-        fi
-        if [[ $tmp_end_idx == $ ]]; then
-            end_idx=$last_idx    # set the last index
-        else
-            end_idx=$tmp_end_idx
-        fi
-
-        # convert negative indices to positive
-        if [[ $start_idx =~ ^- ]]; then
-            start_idx=$((last_idx - (start_idx * -1 - 1)))
-        fi
-        if [[ $end_idx =~ ^- ]]; then
-            end_idx=$((last_idx - (end_idx * -1 - 1)))
-        fi
-
-        # check the range
-        if [[ $start_idx -lt $INIT_IDX || $end_idx -gt $last_idx
-            || $end_idx -lt $INIT_IDX || $start_idx -gt $last_idx
-        ]]; then
-            [[ $start_idx == $end_idx ]] \
-            && local translated_idx=$start_idx \
-            || local translated_idx=$start_idx~$end_idx
-            _zetopt::msg::script_error "Index Out of Range ($INIT_IDX~$last_idx):" "Translate \"$key\" -> $translated_idx"
-            return 1
-        fi
-
-        declare -i default_idx idx
-        for idx in $(\eval "\echo {$start_idx..$end_idx}")
-        do
-            default_idx=${defaults_idx_arr[idx]}
-            if [[ $default_idx -eq 0 ]]; then
-                _zetopt::msg::script_error "Default Value Not Set"
-                return 1
-            fi
-            output_list+=("${_ZETOPT_DEFAULTS[default_idx]}")
-        done
-    done
-    if [[ ${#output_list[@]} -ne 0 ]]; then
-        IFS=$ZETOPT_CFG_VALUE_IFS
-        \printf -- "%s" "${output_list[*]}"
-    fi
+    local defaults_idx_string="$(printf -- " %s " "${params[@]#*=}")"
+    echo ${defaults_idx_string// 0 / $INIT_IDX }
 }

@@ -17,7 +17,12 @@ _zetopt::data::init()
         set -- $line
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
-    _ZETOPT_DATA=()
+    if [[ $_ZETOPT_DEFAULT_COUNT -ne 0 ]]; then
+        # remove data other than default values
+        _ZETOPT_DATA=("${_ZETOPT_DATA[@]:0:$_ZETOPT_DEFAULT_COUNT}")
+    else
+        _ZETOPT_DATA=()
+    fi
     _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
 }
@@ -73,9 +78,7 @@ _zetopt::data::extra_field()
     [[ ! $id =~ /$ ]] && id=$id/ ||:
     
     if [[ $ZETOPT_LAST_COMMAND == $id ]]; then
-        if [[ ${#_ZETOPT_EXTRA_ARGV[@]} -ne 0 ]]; then
-            \printf -- "%s" "$(eval '\echo {'$INIT_IDX'..'$((${#_ZETOPT_EXTRA_ARGV[@]} - 1 + $INIT_IDX))'}')"
-        fi
+        \echo "${_ZETOPT_EXTRA_ARGV[@]-}"
     fi
 }
 
@@ -123,41 +126,27 @@ _zetopt::data::isvalid()
     [[ ! $status_list =~ [^$ZETOPT_STATUS_NORMAL$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS$ZETOPT_STATUS_MISSING_OPTIONAL_ARGS\ ] ]]
 }
 
-# pickup(): Print option arguments/status index list
-# def.) _zetopt::data::pickup {ID} {[$ZETOPT_FILED_DATA_ARGS|$ZETOPT_FIELD_DATA_TYPE|$ZETOPT_FIELD_DATA_PSEUDO|$ZETOPT_FILED_DATA_STATUS]} [1D/2D-KEY...]
-# e.g.) _zetopt::data::pickup /foo $ZETOPT_FILED_DATA_ARGS 0 @ 0:1 0:@ 1:@ name 0:1,-1 @:foo,baz 
+# pickup(): Pick up from space/comma separated values with 1D/2D-key
+# def.) _zetopt::data::pickup {SPACE/COMMA-SEPARATED-VALUES} [1D/2D-KEY...]
+# e.g.) _zetopt::data::pickup "0 1 2 3, 4 5 6" 0 @ 0:1 0:@ 1:@ 0:1,-1
 # STDOUT: integers separated with spaces
 _zetopt::data::pickup()
 {
-    if [[ -z ${_ZETOPT_PARSED:-} || $# -lt 2 || -z ${1-} ]]; then
-        return 1
-    fi
-    case $2 in
-        $ZETOPT_FIELD_DATA_ARGV | $ZETOPT_FIELD_DATA_ARGC | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS | $ZETOPT_FIELD_DATA_EXTRA_ARGV) :;;
-        *) return 1;;
-    esac
-    local field="$2"
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     local IFS=, lists
-    lists=($(_zetopt::data::field "$id" $field))
+    lists=(${1-})
     if [[ ${#lists[@]} -eq 0 ]]; then
         return 1
     fi
+    shift 1
+    
     local output_list
     output_list=()
     local lists_last_idx="$((${#lists[@]} - 1 + $INIT_IDX))"
-
-    shift 2
+    
     IFS=' '
     if [[ $# -eq 0 ]]; then
         output_list=(${lists[$lists_last_idx]})
     else
-        # get the arg definition for param names
-        local def_args=
-        if [[ $field -eq $ZETOPT_FIELD_DATA_ARGV ]]; then
-            def_args="$(_zetopt::def::field "$id" $ZETOPT_FIELD_DEF_ARG)"
-        fi
-
         local list_last_vals
         list_last_vals=(${lists[$lists_last_idx]})
         local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1 + $INIT_IDX))
@@ -165,7 +154,7 @@ _zetopt::data::pickup()
         local input_idx= tmp_list
         for input_idx in "$@"
         do
-            if [[ ! $input_idx =~ ^(@|([$\^$INIT_IDX]|-?[1-9][0-9]*)(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)(,([$\^$INIT_IDX]|-?[1-9][0-9]*|$REG_VNAME)?)?)?)?)?$ ]]; then
+            if [[ ! $input_idx =~ ^(@|([$\^$INIT_IDX]|-?[1-9][0-9]*)?(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$INIT_IDX]|-?[1-9][0-9]*)?(,([$\^$INIT_IDX]|-?[1-9][0-9]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
@@ -196,6 +185,8 @@ _zetopt::data::pickup()
             if [[ $tmp_list_idx =~ , ]]; then
                 tmp_list_start_idx="${tmp_list_idx%%,*}"
                 tmp_list_end_idx="${tmp_list_idx#*,}"
+                tmp_list_start_idx=${tmp_list_start_idx:-^}
+                tmp_list_end_idx="${tmp_list_end_idx:-$}"
             else
                 tmp_list_start_idx=$tmp_list_idx
                 tmp_list_end_idx=$tmp_list_idx
@@ -240,6 +231,8 @@ _zetopt::data::pickup()
             if [[ $tmp_val_idx =~ , ]]; then
                 tmp_val_start_idx="${tmp_val_idx%%,*}"
                 tmp_val_end_idx="${tmp_val_idx#*,}"
+                tmp_val_start_idx="${tmp_val_start_idx:-^}"
+                tmp_val_end_idx="${tmp_val_end_idx:-$}"
             else
                 tmp_val_start_idx=$tmp_val_idx
                 tmp_val_end_idx=$tmp_val_idx
@@ -258,28 +251,6 @@ _zetopt::data::pickup()
                 *)      tmp_val_end_idx=$tmp_val_end_idx
             esac
 
-            # index by name : look up a name from parameter definition
-            local idx=0 param_name=
-            for param_name in $tmp_val_start_idx $tmp_val_end_idx
-            do
-                if [[ ! $param_name =~ ^$REG_VNAME$ ]]; then
-                    idx+=1
-                    continue
-                fi
-
-                if [[ ! $def_args =~ [@%]${param_name}[.]([0-9]+) ]]; then
-                    _zetopt::msg::script_error "Parameter Name Not Found:" "$param_name"
-                    return 1
-                fi
-
-                if [[ $idx -eq 0 ]]; then
-                    tmp_val_start_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
-                else
-                    tmp_val_end_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
-                fi
-                idx+=1
-            done
-            
             local list_idx= val_idx= maxidx= val_start_idx= val_end_idx=
             tmp_list=()
             for list_idx in $(\eval "echo {$list_start_idx..$list_end_idx}")
@@ -346,7 +317,7 @@ _zetopt::data::hasarg()
 # print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
 # def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-I,--IFS <IFS_VALUE>]
-# e.g.) _zetopt::data::print /foo $ZETOPT_FIELD_DATA_ARGV @:@ --array myarr
+# e.g.) _zetopt::data::print $ZETOPT_FIELD_DATA_ARGV /foo @:@ --array myarr
 # STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
 _zetopt::data::print()
 {
@@ -355,7 +326,7 @@ _zetopt::data::print()
     fi
     local __field=$1
     shift
-    local __out_mode=stdout __var_name= __newline=$LF
+    local __out_mode=stdout __var_name= __newline=$LF __fallback=true
     local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
     __args=()
 
@@ -392,6 +363,7 @@ _zetopt::data::print()
                 shift
                 ;;
             -E | --extra) __field=$ZETOPT_FIELD_DATA_EXTRA_ARGV; shift;;
+            -N | --no-fallback) __fallback=false; shift;;
             -n | --no-newline) __newline=; shift;;
             --) shift; __args+=("$@"); break;;
             --*|-[a-zA-Z])
@@ -420,25 +392,50 @@ _zetopt::data::print()
         return 1
     fi
     [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
-    
-    local __keys=${__args[@]:1}
+
+    case $__field in
+        $ZETOPT_FIELD_DATA_ARGV | $ZETOPT_FIELD_DATA_ARGC | $ZETOPT_FIELD_DATA_TYPE | $ZETOPT_FIELD_DATA_PSEUDO | $ZETOPT_FIELD_DATA_STATUS | $ZETOPT_FIELD_DATA_COUNT | $ZETOPT_FIELD_DATA_EXTRA_ARGV)
+            :;;
+        *)  _zetopt::msg::script_error "Bad Field Number:" "$__field" 
+            return 1;;
+    esac
+
+    local __data
+    __data=($(_zetopt::data::field "$__id" $__field))
+
+    # argv fallback default
+    if [[ $__field == $ZETOPT_FIELD_DATA_ARGV && $__fallback == true ]]; then
+        local __default_data
+        __default_data=($(_zetopt::def::default $__id))
+
+        # merge parsed data with default data if parsed is short
+        if [[ ${#__data[@]} -lt ${#__default_data[@]} ]]; then
+            __data=$(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}")
+        fi
+    fi
+
+    if [[ -z ${__data[*]-} ]]; then
+        _zetopt::msg::script_error "No Data"
+        return 1
+    fi
+
+    # complement pickup-key
+    local __keys="${__args[@]:1}"
     if [[ -z $__keys ]]; then
         [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]] \
         && __keys=@ \
         || __keys=$
     fi
-    
-    local __list_str
-    if [[ $__field != $ZETOPT_FIELD_DATA_COUNT ]]; then
-        __keys=$(_zetopt::def::keyparams2idx $__id "$__keys")
-        __list_str="$(_zetopt::data::pickup "$__id" $__field $__keys)"
-    else
-        __list_str=$(_zetopt::data::field "$__id" $__field || echo 0)
-    fi
+
+    # translate param names in key to the numeric index
+    __keys=$(_zetopt::def::keyparams2idx $__id "$__keys")
+
+    # pickup data with pickup-keys
+    local __list_str="$(_zetopt::data::pickup "${__data[*]}" $__keys)"
     if [[ -z "$__list_str" ]]; then
         return 1
     fi
-    
+
     declare -i __idx= __i=$INIT_IDX
     \set -- $__list_str
     local __max=$(($# + INIT_IDX - 1))
@@ -446,16 +443,11 @@ _zetopt::data::print()
 
     # indexes to refer target data in array
     if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO$ZETOPT_FIELD_DATA_EXTRA_ARGV]$ ]]; then
-        if [[ $__field =~ ^[$ZETOPT_FIELD_DATA_ARGV$ZETOPT_FIELD_DATA_PSEUDO]$ ]]; then
-            __args=("${_ZETOPT_DATA[@]}")
-        else
-            __args=("${_ZETOPT_EXTRA_ARGV[@]}")
-        fi
         for __idx in "$@"
         do
             # store data in user specified array
             if [[ $__out_mode == array ]]; then
-                \eval $__var_name'[$__i]=${__args[$__idx]}'
+                \eval $__var_name'[$__i]=${_ZETOPT_DATA[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
                     __ifs= __nl=$__newline
@@ -463,17 +455,17 @@ _zetopt::data::print()
                 
                 # print to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "${__args[$__idx]}"
+                    \printf -- "%s$__ifs$__nl" "${_ZETOPT_DATA[$__idx]}"
 
                 # store data in user specified variable
                 else
-                    \eval $__var_name'="$'$__var_name'${__args[$__idx]}$__ifs"'
+                    \eval $__var_name'="$'$__var_name'${_ZETOPT_DATA[$__idx]}$__ifs"'
                 fi
             fi
             __i+=1
         done
 
-    # target data itself
+    # target data is itself
     else
         for __idx in "$@"
         do

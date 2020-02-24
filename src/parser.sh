@@ -390,20 +390,22 @@ _zetopt::parser::setopt()
                 curr_stat=$ZETOPT_STATUS_MISSING_OPTIONAL_OPTARGS
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | curr_stat))
                 ZETOPT_OPTERR_MISSING_OPTIONAL+=("$opt_prefix$opt")
+
                 while [[ $def_idx -lt $def_len ]]
                 do
                     def=${def_arr[$def_idx]}
+                    var_name=${var_names[$def_idx]}
 
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
-                        arg=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((3 + INIT_IDX))]}]}
-                        _ZETOPT_DATA+=("$arg")
-                        ref_arr+=($optarg_idx)
-                        optarg_idx+=1
-                        def_idx+=1
+                        arg=${_ZETOPT_DATA[${BASH_REMATCH[$((3 + INIT_IDX))]}]}
+                        #ref_arr+=(${BASH_REMATCH[$((3 + INIT_IDX))]})
                     else
-                        break
+                        arg=${_ZETOPT_DATA[$INIT_IDX]}
+                        #ref_arr+=($INIT_IDX)
                     fi
+                    \eval $var_name'=$arg'
+                    def_idx+=1
                 done
             fi
         fi
@@ -503,7 +505,10 @@ _zetopt::parser::assign_args()
 
         # too match arguments
         if [[ $arg_len -gt $def_max_len ]]; then
-            _ZETOPT_EXTRA_ARGV=("${_ZETOPT_TEMP_ARGV[@]:$((def_max_len))}")
+            local start_idx=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX + 1))
+            _ZETOPT_DATA+=("${_ZETOPT_TEMP_ARGV[@]:$def_max_len}")
+            local end_idx=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
+            _ZETOPT_EXTRA_ARGV=($(eval '\echo {'$start_idx'..'$end_idx'}'))
             rtn=$((rtn | ZETOPT_STATUS_EXTRA_ARGS))
             ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
         fi
@@ -567,10 +572,8 @@ _zetopt::parser::assign_args()
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
                 break
             fi
-            default_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
-
-            # set default value
-            _ZETOPT_DATA+=("${_ZETOPT_DEFAULTS[default_idx]}")
+            arg=${_ZETOPT_DATA[${BASH_REMATCH[$((1 + INIT_IDX))]}]}
+            _ZETOPT_DATA+=("$arg")
             ref_arr+=($((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX)))
         done
     fi
