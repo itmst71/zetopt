@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-25 18:30)
+# Version     : 1.2.0a (2020-02-25 20:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-25 18:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-25 20:00)"
 
 
 #------------------------------------------------------------
@@ -119,12 +119,12 @@ _zetopt::init::init()
     _ZETOPT_HELPS_IDX=()
     _ZETOPT_HELPS=()
     _ZETOPT_HELPS_CUSTOM=
-    _ZETOPT_DEFAULT_COUNT=0
     _ZETOPT_VALIDATOR_KEYS=
     _ZETOPT_VALIDATOR_DATA=
     _ZETOPT_VALIDATOR_ERRMSG=
     _ZETOPT_PARSED=
     _ZETOPT_DATA=()
+    _ZETOPT_DEFAULTS=()
     _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
 
@@ -363,7 +363,7 @@ _zetopt::def::reset()
                     else
                         dfnum=$INIT_IDX
                     fi
-                    df=${_ZETOPT_DATA[$dfnum]}
+                    df=${_ZETOPT_DEFAULTS[$dfnum]}
                     if [[ $arg =~ [.]{3,3} ]]; then
                         eval $var'=("$df")'
                     else
@@ -391,8 +391,7 @@ _zetopt::def::define()
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
         _ZETOPT_OPTHELPS=("")
-        _ZETOPT_DATA=("$ZETOPT_CFG_VARIABLE_DEFAULT")
-        _ZETOPT_DEFAULT_COUNT=1
+        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_VARIABLE_DEFAULT")
     fi
 
     if [[ -z $@ ]]; then
@@ -709,8 +708,8 @@ _zetopt::def::define()
             var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
             if [[ -n $param_default ]]; then
                 var_param_default=$param_default
-                _ZETOPT_DATA+=("$param_default")
-                param_default_idx=$((${#_ZETOPT_DATA[@]} - 1 + INIT_IDX))
+                _ZETOPT_DEFAULTS+=("$param_default")
+                param_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
                 default_is_set=true
             elif [[ $default_is_set == true ]]; then
                 _ZETOPT_DEF_ERROR=true
@@ -735,7 +734,6 @@ _zetopt::def::define()
         done
         IFS=$' '
         param_def="${params[*]}"
-        _ZETOPT_DEFAULT_COUNT=${#_ZETOPT_DATA[@]}
 
     # Flag option
     else
@@ -1895,12 +1893,7 @@ _zetopt::data::init()
         set -- $line
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
-    if [[ $_ZETOPT_DEFAULT_COUNT -ne 0 ]]; then
-        # remove data other than default values
-        _ZETOPT_DATA=("${_ZETOPT_DATA[@]:0:$_ZETOPT_DEFAULT_COUNT}")
-    else
-        _ZETOPT_DATA=()
-    fi
+    _ZETOPT_DATA=("${_ZETOPT_DEFAULTS[@]}")
     _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
 }
@@ -2295,7 +2288,7 @@ _zetopt::data::print()
 
         # merge parsed data with default data if parsed is short
         if [[ ${#__data[@]} -lt ${#__default_data[@]} ]]; then
-            __data=$(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}")
+            __data=($(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}"))
         fi
     fi
 

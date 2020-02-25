@@ -17,12 +17,7 @@ _zetopt::data::init()
         set -- $line
         _ZETOPT_PARSED+="$1::::::0$LF"
     done
-    if [[ $_ZETOPT_DEFAULT_COUNT -ne 0 ]]; then
-        # remove data other than default values
-        _ZETOPT_DATA=("${_ZETOPT_DATA[@]:0:$_ZETOPT_DEFAULT_COUNT}")
-    else
-        _ZETOPT_DATA=()
-    fi
+    _ZETOPT_DATA=("${_ZETOPT_DEFAULTS[@]}")
     _ZETOPT_TEMP_ARGV=()
     _ZETOPT_EXTRA_ARGV=()
 }
@@ -417,7 +412,7 @@ _zetopt::data::print()
 
         # merge parsed data with default data if parsed is short
         if [[ ${#__data[@]} -lt ${#__default_data[@]} ]]; then
-            __data=$(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}")
+            __data=($(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}"))
         fi
     fi
 

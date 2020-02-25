@@ -122,13 +122,13 @@ test_def_Help_Only() {
 #
 
 test_def_Sub_Cmd() {
-    zetopt def /remote/ "#Help Message"
-    assertTrue "[def] Sub-Cmd: def /remote/" $?
+    zetopt def /remote "#Help Message"
+    assertTrue "[def] Sub-Cmd: def /remote" $?
 }
 
 test_def_Sub_Sub_Cmd() {
-    zetopt def /remote/add/ "#Help Message"
-    assertTrue "[def] Sub-Sub-Cmd: def /remote/add/" $?
+    zetopt def /remote/add "#Help Message"
+    assertTrue "[def] Sub-Sub-Cmd: def /remote/add" $?
 }
 
 test_def_Sub_Cmd_without_Slash() {
@@ -142,13 +142,13 @@ test_def_Sub_Cmd_Name_Only() {
 }
 
 test_def_Sub_Cmd_with_Hyphenate_Name() {
-    zetopt def /remote-add/ "#Help Message"
-    assertTrue "[def] Sub-Cmd with Hyphenate Name: def /remote-add/" $?
+    zetopt def /remote-add "#Help Message"
+    assertTrue "[def] Sub-Cmd with Hyphenate Name: def /remote-add" $?
 }
 
 test_def_Sub_Cmd_with_Arguments() {
-    zetopt def /remote/add/ @NAME @URL "#Help Message"
-    assertTrue "[def] Sub-Cmd with Arguments: def /remote/add/ @NAME @URL" $?
+    zetopt def /remote/add @NAME @URL "#Help Message"
+    assertTrue "[def] Sub-Cmd with Arguments: def /remote/add @NAME @URL" $?
 }
 
 test_def_Sub_Cmd_Option() {
@@ -168,9 +168,9 @@ test_def_Sub_Cmd_Override_Parent_Global_Option() {
 }
 
 test_def_Sub_Cmd_Help_Only() {
-    zetopt def /remote/add/ @ @ "#Help Message"
-    zetopt def /remote/add/     "#Help Message"
-    assertTrue "[def] Sub-Cmd Help Only: def /remote/add/ \"#Help Message\"" $?
+    zetopt def /remote/add @ @ "#Help Message"
+    zetopt def /remote/add     "#Help Message"
+    assertTrue "[def] Sub-Cmd Help Only: def /remote/add \"#Help Message\"" $?
 }
 
 #------------------------------------------------
@@ -306,7 +306,7 @@ test_parse_Shortened_long() {
 }
 
 test_parse_Sub_Command() {
-    zetopt def /remote/add/ @NAME @URL  "#Help Message"
+    zetopt def /remote/add @NAME @URL  "#Help Message"
     zetopt parse remote add -- FOO http://example.com/ 
     assertTrue "[parse] Sub-Command: parse add remote NAME URL" $?
 }
@@ -525,6 +525,7 @@ test_def_validator_ERR_undefined() {
 #------------------------------------------------
 test_default() {
     zetopt def val:v @FOO %BAR=bar %BAZ...3=baz
+    zetopt parse
     local v="$(zetopt default val)"
     assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT bar baz" "$v"
     v=$(zetopt default val BAZ,^)
