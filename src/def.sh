@@ -159,7 +159,7 @@ _zetopt::def::define()
     [[ $id != / ]] && id=${id%/} ||:
 
     if [[ $id =~ [+]$ ]]; then
-        global=+
+        flags+="g"
         id=${id//+/}
     fi
 
@@ -185,13 +185,13 @@ _zetopt::def::define()
     
     # namespace(subcommand) definition
     if [[ $deftype == c ]]; then
-        if [[ -n $global ]]; then
+        if [[ $flags =~ g ]]; then
             _ZETOPT_DEF_ERROR=true
             _zetopt::msg::script_error "Command Difinition with Global Option Flag +"
             return 1
         fi
 
-        if [[ -n $flags ]]; then
+        if [[ $flags =~ x ]]; then
             _ZETOPT_DEF_ERROR=true
             _zetopt::msg::script_error "Command Difinition with Exclusive Flag ^"
             return 1
@@ -231,7 +231,7 @@ _zetopt::def::define()
         fi
     fi
     
-    if [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]; then
+    if [[ $LF$_ZETOPT_DEFINED =~ $LF${id}: ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Duplicate Identifier:" "$id"
         return 1
@@ -265,7 +265,7 @@ _zetopt::def::define()
                 fi
                 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:o:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:$1: ]]; then
                     _ZETOPT_DEF_ERROR=true
                     _zetopt::msg::script_error "Already Defined:" "-$1"
                     return 1
@@ -287,7 +287,7 @@ _zetopt::def::define()
                 fi
 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:o:[^:]?:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:[^:]?:$1: ]]; then
                     _ZETOPT_DEF_ERROR=true
                     _zetopt::msg::script_error "Already Defined:" "--$1"
                     return 1
@@ -439,7 +439,7 @@ _zetopt::def::define()
     fi
 
     # store definition data as a string line
-    _ZETOPT_DEFINED+="$id$global:$deftype:$short:$long:$param_def:$var_name_list:$flags:$helpidx$LF"
+    _ZETOPT_DEFINED+="$id:$deftype:$short:$long:$param_def:$var_name_list:$flags:$helpidx$LF"
 
     # defines parent subcommands automatically
     IFS=$' '
@@ -478,7 +478,7 @@ _zetopt::def::field()
         return 1
     fi
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
-    if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id)[+]?:([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
+    if [[ ! $LF$_ZETOPT_DEFINED$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     local field="${2:-$ZETOPT_DEFID_ALL}"
@@ -507,7 +507,7 @@ _zetopt::def::exists()
     fi
     local id="$1"
     [[ ! $id =~ ^/ ]] && id=/$id ||:
-    [[ $LF$_ZETOPT_DEFINED =~ $LF${id}[+]?: ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${id}: ]]
 }
 
 # has_subcmd(): Check if the current namespace has subcommands
@@ -536,7 +536,7 @@ _zetopt::def::has_options()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/
-    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+[+]?:o: ]]
+    [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+:o: ]]
 }
 
 # has_arguments(): Check if the current namespace has arguments
@@ -564,7 +564,7 @@ _zetopt::def::options()
     fi
     local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
     [[ ! $ns =~ /$ ]] && ns=$ns/ ||:
-    <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+[+]?:o:"
+    <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+:o:"
 }
 
 # is_cmd(): Check if ID is command
@@ -606,12 +606,12 @@ _zetopt::def::opt2id()
 
     [[ $ns != / && ! $ns =~ /$ ]] && ns=$ns/ ||:
 
-    local regex= global="[+]?" tmpid=
+    local regex= flags='[^:]*' tmpid=
     while :
     do
         # short
         if [[ $is_short == true ]]; then
-            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:$opt: ]]; then
+            if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+):o:$opt:[^:]*:[^:]*:[^:]*:${flags}: ]]; then
                 printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
                 return 0
             fi
@@ -619,18 +619,18 @@ _zetopt::def::opt2id()
         # long
         else
             if [[ $ZETOPT_CFG_ABBREVIATED_LONG == true ]]; then
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:[^:]?:${opt}[^:]*:[^$LF]+$LF(.*) ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+):o:[^:]?:${opt}[^:]*:[^:]*:[^:]*:${flags}:[^$LF]+$LF(.*) ]]; then
                     tmpid=${BASH_REMATCH[$((1 + $INIT_IDX))]}
 
                     # reject ambiguous name
-                    if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:[^:]?:${opt}[^:]*: ]]; then
+                    if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+):o:[^:]?:${opt}[^:]*:[^:]*:[^:]*:${flags}: ]]; then
                         return 2
                     fi
                     printf -- "%s" "$tmpid"
                     return 0
                 fi
             else
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:[^:]?:${opt}: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+):o:[^:]?:${opt}:[^:]*:[^:]*:${flags}: ]]; then
                     printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
                     return 0
                 fi
@@ -642,7 +642,7 @@ _zetopt::def::opt2id()
         fi
         ns=${ns%/*}  # remove the last /
         ns=${ns%/*}/ # parent ns
-        global="[+]"
+        flags="[^g:]*g[^g:]*"
     done
     return 1
 }
