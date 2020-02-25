@@ -9,9 +9,9 @@ _zetopt::utils::funcname()
     fi
 
     if [[ -n ${BASH_VERSION-} ]]; then
-        \printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
+        printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
     elif [[ -n ${ZSH_VERSION-} ]]; then
-        \printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $INIT_IDX))]}"
+        printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $INIT_IDX))]}"
     fi
 }
 
@@ -32,14 +32,14 @@ _zetopt::utils::stack_trace()
         funcs[$((${#funcs[@]} - 1))]=$ZETOPT_CALLER_NAME
         lines=("${BASH_LINENO[@]:$lines_start_idx}")
     elif [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions KSH_ARRAYS
+        setopt localoptions KSH_ARRAYS
         funcs=("${funcstack[@]:$funcs_start_idx}" "$ZETOPT_CALLER_NAME")
         lines=("${funcfiletrace[@]:$lines_start_idx}")
         lines=("${lines[@]##*:}")
     fi
     for ((i=0; i<${#funcs[@]}; i++))
     do
-        \printf -- "%s (%s)\n" "${funcs[$i]}" "${lines[$i]}"
+        printf -- "%s (%s)\n" "${funcs[$i]}" "${lines[$i]}"
     done
 }
 
@@ -89,7 +89,7 @@ _zetopt::utils::repeat()
     fi
     local IFS=$' '
     local repstr="${2//\//\\/}"
-    \printf -- "%0*d" $1 | \sed -e "s/0/$repstr/g"
+    printf -- "%0*d" $1 | \sed -e "s/0/$repstr/g"
 }
 
 _zetopt::utils::seq()
@@ -128,9 +128,9 @@ _zetopt::utils::seq()
     fi
 
     if [[ $custom_delim == true ]]; then
-        \eval "echo {$start..$end}" | \sed -e "s/ /$delim/g"
+        eval "echo {$start..$end}" | \sed -e "s/ /$delim/g"
     else
-        \eval "echo {$start..$end}"
+        eval "echo {$start..$end}"
     fi
 }
 
@@ -138,8 +138,8 @@ _zetopt::utils::isLangCJK()
 {
     return $(
         [[ -n ${ZSH_VERSION-} ]] \
-        && \setopt localoptions NOCASEMATCH \
-        || \shopt -s nocasematch
+        && setopt localoptions NOCASEMATCH \
+        || shopt -s nocasematch
         [[ ${1-} =~ ^(zh_|ja_|ko_) ]] && echo 0 || echo 1
     )
 }
@@ -206,9 +206,9 @@ _zetopt::utils::fold()
         indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")
     fi
 
-    tab_spaces=$(\printf "%${tab_cnt}s" " ")
+    tab_spaces=$(printf "%${tab_cnt}s" " ")
 
-    while <&0 \read -r line || [[ -n $line ]]
+    while <&0 read -r line || [[ -n $line ]]
     do
         line=${line//$'\t'/$tab_spaces} # convert tabs to 4 sapces
         line_len=${#line}
@@ -275,7 +275,7 @@ _zetopt::utils::quote()
         arr+=("'${str//$q/$q$qq$q$qq$q}'")
     done
     local IFS=$' '
-    \printf -- "%s\n" "${arr[*]}"
+    printf -- "%s\n" "${arr[*]}"
 }
 
 _zetopt::utils::max()
@@ -284,8 +284,8 @@ _zetopt::utils::max()
         return 1
     fi
     [[ $1 -ge $2 ]] \
-    && \printf -- "%s\n" "$1" \
-    || \printf -- "%s\n" "$2"
+    && printf -- "%s\n" "$1" \
+    || printf -- "%s\n" "$2"
 }
 
 _zetopt::utils::min()
@@ -294,6 +294,6 @@ _zetopt::utils::min()
         return 1
     fi
     [[ $1 -le $2 ]] \
-    && \printf -- "%s\n" "$1" \
-    || \printf -- "%s\n" "$2"
+    && printf -- "%s\n" "$1" \
+    || printf -- "%s\n" "$2"
 }

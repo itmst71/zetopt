@@ -112,7 +112,7 @@ _zetopt::validator::validate()
     fi
 
     local IFS=,
-    \set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
+    set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
     IFS=$' \t\n'
 
     while [[ $# -ne 0 ]]
@@ -134,8 +134,8 @@ _zetopt::validator::validate()
             # set ignore case option temporally
             if [[ $validator_flags =~ i ]]; then
                 [[ -n ${ZSH_VERSION-} ]] \
-                && \setopt localoptions NOCASEMATCH \
-                || \shopt -s nocasematch
+                && setopt localoptions NOCASEMATCH \
+                || shopt -s nocasematch
             fi
 
             # r: regexp

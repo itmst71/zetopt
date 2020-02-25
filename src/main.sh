@@ -18,12 +18,12 @@ zetopt()
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
-        \setopt localoptions SH_WORD_SPLIT
-        \setopt localoptions BSD_ECHO
-        \setopt localoptions NO_NOMATCH
-        \setopt localoptions NO_GLOB_SUBST
-        \setopt localoptions NO_EXTENDED_GLOB
-        \setopt localoptions BASH_REMATCH
+        setopt localoptions SH_WORD_SPLIT
+        setopt localoptions BSD_ECHO
+        setopt localoptions NO_NOMATCH
+        setopt localoptions NO_GLOB_SUBST
+        setopt localoptions NO_EXTENDED_GLOB
+        setopt localoptions BASH_REMATCH
     fi
 
     # save whether the stdin/out/err of the main function is TTY or not.
@@ -55,7 +55,7 @@ zetopt()
     case "$subcmd" in
         # options
         -v | --version)
-            \echo $ZETOPT_APPNAME $ZETOPT_VERSION;;
+            echo $ZETOPT_APPNAME $ZETOPT_VERSION;;
         -h | --help)
             _zetopt::man::show;;
 

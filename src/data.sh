@@ -34,7 +34,7 @@ _zetopt::data::init()
 _zetopt::data::parsed()
 {
     if [[ -z ${1-} ]]; then
-        \echo "${_ZETOPT_PARSED-}"
+        echo "${_ZETOPT_PARSED-}"
         return 0
     fi
     _zetopt::data::field "$1" $ZETOPT_DATAID_ALL
@@ -56,7 +56,7 @@ _zetopt::data::field()
         if ! _zetopt::def::exists $id; then
             return 1
         fi
-        \printf -- "%s\n" "$(_zetopt::def::default $id)"
+        printf -- "%s\n" "$(_zetopt::def::default $id)"
         return 0
     fi
 
@@ -64,15 +64,15 @@ _zetopt::data::field()
         return 1
     fi
     case "$field" in
-        $ZETOPT_DATAID_ALL)    \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
-        $ZETOPT_DATAID_ID)     \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
-        $ZETOPT_DATAID_ARGV)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
-        $ZETOPT_DATAID_ARGC)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
-        $ZETOPT_DATAID_TYPE)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
-        $ZETOPT_DATAID_PSEUDO) \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
-        $ZETOPT_DATAID_STATUS) \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
-        $ZETOPT_DATAID_COUNT)  \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
-        $ZETOPT_DATAID_EXTRA_ARGV) \printf -- "%s\n" "$(_zetopt::data::extra_field $id)";;
+        $ZETOPT_DATAID_ALL)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
+        $ZETOPT_DATAID_ID)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
+        $ZETOPT_DATAID_ARGV)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
+        $ZETOPT_DATAID_ARGC)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
+        $ZETOPT_DATAID_TYPE)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
+        $ZETOPT_DATAID_PSEUDO) printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
+        $ZETOPT_DATAID_STATUS) printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
+        $ZETOPT_DATAID_COUNT)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
+        $ZETOPT_DATAID_EXTRA_ARGV) printf -- "%s\n" "$(_zetopt::data::extra_field $id)";;
         *) return 1;;
     esac
 }
@@ -87,7 +87,7 @@ _zetopt::data::extra_field()
     [[ ! $id =~ /$ ]] && id=$id/ ||:
     
     if [[ $ZETOPT_LAST_COMMAND == $id ]]; then
-        \echo "${_ZETOPT_EXTRA_ARGV[@]-}"
+        echo "${_ZETOPT_EXTRA_ARGV[@]-}"
     fi
 }
 
@@ -262,7 +262,7 @@ _zetopt::data::pickup()
 
             local list_idx= val_idx= maxidx= val_start_idx= val_end_idx=
             tmp_list=()
-            for list_idx in $(\eval "echo {$list_start_idx..$list_end_idx}")
+            for list_idx in $(eval "echo {$list_start_idx..$list_end_idx}")
             do 
                 tmp_list=(${lists[$list_idx]})
                 if [[ ${#tmp_list[@]} -eq 0 ]]; then
@@ -301,14 +301,14 @@ _zetopt::data::pickup()
                     return 1
                 fi
 
-                for val_idx in $(\eval "\echo {$val_start_idx..$val_end_idx}")
+                for val_idx in $(eval "echo {$val_start_idx..$val_end_idx}")
                 do
                     output_list+=(${tmp_list[$val_idx]})
                 done
             done
         done
     fi
-    \printf -- "%s\n" "${output_list[*]}"
+    printf -- "%s\n" "${output_list[*]}"
 }
 
 
@@ -389,8 +389,8 @@ _zetopt::data::print()
             return 1
         fi
         case $__out_mode in
-            array) \eval "$__var_name=()";;
-            variable) \eval "$__var_name=";;
+            array) eval "$__var_name=()";;
+            variable) eval "$__var_name=";;
         esac
     fi
 
@@ -444,7 +444,7 @@ _zetopt::data::print()
     fi
 
     declare -i __idx= __i=$INIT_IDX
-    \set -- $__list_str
+    set -- $__list_str
     local __max=$(($# + INIT_IDX - 1))
     local __nl=
 
@@ -454,7 +454,7 @@ _zetopt::data::print()
         do
             # store data in user specified array
             if [[ $__out_mode == array ]]; then
-                \eval $__var_name'[$__i]=${_ZETOPT_DATA[$__idx]}'
+                eval $__var_name'[$__i]=${_ZETOPT_DATA[$__idx]}'
             else
                 if [[ $__i -eq $__max ]]; then
                     __ifs= __nl=$__newline
@@ -462,11 +462,11 @@ _zetopt::data::print()
                 
                 # print to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "${_ZETOPT_DATA[$__idx]}"
+                    printf -- "%s$__ifs$__nl" "${_ZETOPT_DATA[$__idx]}"
 
                 # store data in user specified variable
                 else
-                    \eval $__var_name'="$'$__var_name'${_ZETOPT_DATA[$__idx]}$__ifs"'
+                    eval $__var_name'="$'$__var_name'${_ZETOPT_DATA[$__idx]}$__ifs"'
                 fi
             fi
             __i+=1
@@ -478,7 +478,7 @@ _zetopt::data::print()
         do
             # store data in user specified array
             if [[ $__out_mode == array ]]; then
-                \eval $__var_name'[$__i]=$__idx'
+                eval $__var_name'[$__i]=$__idx'
             else
                 if [[ $__i -eq $__max ]]; then
                     __ifs= __nl=$__newline
@@ -486,11 +486,11 @@ _zetopt::data::print()
 
                 # output to STDOUT
                 if [[ $__out_mode == stdout ]]; then
-                    \printf -- "%s$__ifs$__nl" "$__idx"
+                    printf -- "%s$__ifs$__nl" "$__idx"
                     
                 # store data in user specified variable
                 else
-                    \eval $__var_name'="$'$__var_name'$__idx$__ifs"'
+                    eval $__var_name'="$'$__var_name'$__idx$__ifs"'
                 fi
             fi
             __i+=1

@@ -3,21 +3,21 @@
 #------------------------------------------------------------
 # Global Constant Variables
 # bash
-if [[ -n ${BASH_VERSION-} ]]; then
+if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_SOURCE_FILE_PATH="${BASH_SOURCE:-$0}"
     readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
     readonly ZETOPT_CALLER_FILE_PATH="$0"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
-    readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && \echo true || \echo false)"
+    readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)"
     readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
-elif [[ -n ${ZSH_VERSION-} ]]; then
+elif [ -n "${ZSH_VERSION-}" ]; then
     readonly ZETOPT_SOURCE_FILE_PATH="$0"
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
     readonly ZETOPT_OLDBASH=false
-    readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(\setopt) =~ $'\n'ksharrays ]] && \echo 0 || \echo 1)"
+    readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(setopt) =~ $'\n'ksharrays ]] && echo 0 || echo 1)"
 else
     echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
     return 1
@@ -144,7 +144,7 @@ _zetopt::init::unset_user_vars()
     if [[ -z ${_ZETOPT_VARIABLE_NAMES-} ]]; then
         return 0
     fi
-    \unset "${_ZETOPT_VARIABLE_NAMES[@]}" ||:
+    unset "${_ZETOPT_VARIABLE_NAMES[@]}" ||:
 }
 
 # reset(): reset parse data only

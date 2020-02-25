@@ -30,7 +30,7 @@ _zetopt::def::reset()
             do
                 var=${vars[$idx]}
                 if [[ ${#args[@]} -eq 0 ]]; then
-                    \eval $var'=$ZETOPT_CFG_VARIABLE_DEFAULT'
+                    eval $var'=$ZETOPT_CFG_VARIABLE_DEFAULT'
                 else
                     arg=${args[$idx]}
                     if [[ $arg =~ \=([1-9][0-9]*) ]]; then
@@ -40,9 +40,9 @@ _zetopt::def::reset()
                     fi
                     df=${_ZETOPT_DATA[$dfnum]}
                     if [[ $arg =~ [.]{3,3} ]]; then
-                        \eval $var'=("$df")'
+                        eval $var'=("$df")'
                     else
-                        \eval $var'=$df'
+                        eval $var'=$df'
                     fi
                 fi
             done
@@ -266,7 +266,7 @@ _zetopt::def::define()
                 fi
                 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:[o]:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:o:$1: ]]; then
                     _ZETOPT_DEF_ERROR=true
                     _zetopt::msg::script_error "Already Defined:" "-$1"
                     return 1
@@ -288,7 +288,7 @@ _zetopt::def::define()
                 fi
 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:[o]:[^:]?:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*[+]?:o:[^:]?:$1: ]]; then
                     _ZETOPT_DEF_ERROR=true
                     _zetopt::msg::script_error "Already Defined:" "--$1"
                     return 1
@@ -402,9 +402,9 @@ _zetopt::def::define()
                 var_name=$var_base_name$([[ $deftype == c && $id != / ]] && echo _ ||:)$var_param_name
             fi
             if [[ -n $param_varlen ]]; then
-                \eval $var_name'=("$var_param_default")'
+                eval $var_name'=("$var_param_default")'
             else
-                \eval $var_name'=$var_param_default'
+                eval $var_name'=$var_param_default'
             fi
             var_name_list+="$var_name "
         done
@@ -422,7 +422,7 @@ _zetopt::def::define()
             _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
             return 1
         fi
-        \eval $var_name'=$ZETOPT_CFG_VARIABLE_DEFAULT'
+        eval $var_name'=$ZETOPT_CFG_VARIABLE_DEFAULT'
         var_name_list=$var_name
     fi
     var_name_list=${var_name_list% }
@@ -440,7 +440,7 @@ _zetopt::def::define()
         fi
     fi
 
-    [[ $id != / ]] && id=${id%/} ||:
+    # store definition data as a string line
     _ZETOPT_DEFINED+="$id$global:$deftype:$short:$long:$param_def:$var_name_list:$flags:$helpidx$LF"
 
     # defines parent subcommands automatically
@@ -464,7 +464,7 @@ _zetopt::def::defined()
         _ZETOPT_DEFINED="/:c:::%.0~0...=0::0 0$LF"
     fi
     if [[ -z ${1-} ]]; then
-        \printf -- "%s" "$_ZETOPT_DEFINED"
+        printf -- "%s" "$_ZETOPT_DEFINED"
         return 0
     fi
     _zetopt::def::field "$1" $ZETOPT_DEFID_ALL
@@ -485,15 +485,15 @@ _zetopt::def::field()
     fi
     local field="${2:-$ZETOPT_DEFID_ALL}"
     case "$field" in
-        $ZETOPT_DEFID_ALL)      \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ALL))]}";;
-        $ZETOPT_DEFID_ID)       \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ID))]}";;
-        $ZETOPT_DEFID_TYPE)     \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_TYPE))]}";;
-        $ZETOPT_DEFID_SHORT)    \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_SHORT))]}";;
-        $ZETOPT_DEFID_LONG)     \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_LONG))]}";;
-        $ZETOPT_DEFID_ARG)      \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ARG))]}";;
-        $ZETOPT_DEFID_VARNAME)  \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_VARNAME))]}";;
-        $ZETOPT_DEFID_FLAGS)    \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_FLAGS))]}";;
-        $ZETOPT_DEFID_HELP)     \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_HELP))]}";;
+        $ZETOPT_DEFID_ALL)      printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ALL))]}";;
+        $ZETOPT_DEFID_ID)       printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ID))]}";;
+        $ZETOPT_DEFID_TYPE)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_TYPE))]}";;
+        $ZETOPT_DEFID_SHORT)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_SHORT))]}";;
+        $ZETOPT_DEFID_LONG)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_LONG))]}";;
+        $ZETOPT_DEFID_ARG)      printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_ARG))]}";;
+        $ZETOPT_DEFID_VARNAME)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_VARNAME))]}";;
+        $ZETOPT_DEFID_FLAGS)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_FLAGS))]}";;
+        $ZETOPT_DEFID_HELP)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DEFID_HELP))]}";;
         *) return 1;;
     esac
 }
@@ -514,7 +514,7 @@ _zetopt::def::exists()
 
 # has_subcmd(): Check if the current namespace has subcommands
 # def.) _zetopt::def::has_subcmd {NAMESPACE}
-# e.g.) _zetopt::def::has_subcmd /sub/
+# e.g.) _zetopt::def::has_subcmd /sub
 # STDOUT: NONE
 _zetopt::def::has_subcmd()
 {
@@ -529,7 +529,7 @@ _zetopt::def::has_subcmd()
 
 # has_options(): Check if the current namespace has options
 # def.) _zetopt::def::has_options {NAMESPACE}
-# e.g.) _zetopt::def::has_options /sub/
+# e.g.) _zetopt::def::has_options /sub
 # STDOUT: NONE
 _zetopt::def::has_options()
 {
@@ -543,7 +543,7 @@ _zetopt::def::has_options()
 
 # has_arguments(): Check if the current namespace has arguments
 # def.) _zetopt::def::has_arguments {NAMESPACE}
-# e.g.) _zetopt::def::has_arguments /sub/
+# e.g.) _zetopt::def::has_arguments /sub
 # STDOUT: NONE
 _zetopt::def::has_arguments()
 {
@@ -571,7 +571,7 @@ _zetopt::def::options()
 
 # is_cmd(): Check if ID is command
 # def.) _zetopt::def::is_cmd {ID}
-# e.g.) _zetopt::def::is_cmd /sub/
+# e.g.) _zetopt::def::is_cmd /sub
 # STDOUT: NONE
 _zetopt::def::is_cmd()
 {
@@ -596,7 +596,7 @@ _zetopt::def::namespaces()
 # opt2id(): Print the identifier by searching with a namespace and a option name.
 # If not found in the current namespace, search a global option in parent namespaces.
 # def.) _zetopt::def::opt2id {NAMESPACE} {OPTION-NAME} {IS_SHORT}
-# e.g.) _zetopt::def::opt2id /remote/add/ version
+# e.g.) _zetopt::def::opt2id /remote/add version
 # STDOUT: an identifier
 # RETURN: 0:No Error, 1:Not Found, 2:Ambiguous Name
 _zetopt::def::opt2id()
@@ -614,7 +614,7 @@ _zetopt::def::opt2id()
         # short
         if [[ $is_short == true ]]; then
             if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:$opt: ]]; then
-                \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+                printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
                 return 0
             fi
         
@@ -628,12 +628,12 @@ _zetopt::def::opt2id()
                     if [[ $LF${BASH_REMATCH[$((2 + $INIT_IDX))]} =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:[^:]?:${opt}[^:]*: ]]; then
                         return 2
                     fi
-                    \printf -- "%s" "$tmpid"
+                    printf -- "%s" "$tmpid"
                     return 0
                 fi
             else
                 if [[ $LF$_ZETOPT_DEFINED =~ $LF(${ns}[a-zA-Z0-9_]+)${global}:o:[^:]?:${opt}: ]]; then
-                    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+                    printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
                     return 0
                 fi
             fi
@@ -667,7 +667,7 @@ _zetopt::def::paramidx()
         return 1
     fi
     if [[ $def_str =~ [@%]${2}[.]([0-9]+) ]]; then
-        \printf -- "%s" ${BASH_REMATCH[$((1 + INIT_IDX))]}
+        printf -- "%s" ${BASH_REMATCH[$((1 + INIT_IDX))]}
         return 0
     fi
     return 1
@@ -702,7 +702,7 @@ _zetopt::def::keyparams2idx()
             fi
         done
     fi
-    \printf -- "%s" "$key"
+    printf -- "%s" "$key"
 }
 
 # paramlen(): Print the length of parameters
@@ -713,11 +713,11 @@ _zetopt::def::paramlen()
 {
     local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
     if ! _zetopt::def::exists "$id"; then
-        \echo 0; return 1
+        echo 0; return 1
     fi
     local def="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -z $def ]]; then
-        \echo 0; return 0
+        echo 0; return 0
     fi
 
     declare -i reqcnt optcnt out
@@ -742,7 +742,7 @@ _zetopt::def::paramlen()
         "" | all) out=$reqcnt+$optcnt;;
         *)        out=$reqcnt+$optcnt;;
     esac
-    \echo $out
+    echo $out
 }
 
 # default(): Print default values
@@ -768,7 +768,7 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        \printf "%s\n" $INIT_IDX
+        printf "%s\n" $INIT_IDX
         return 0
     fi
     local defaults_idx_string="$(printf -- " %s " "${params[@]#*=}")"

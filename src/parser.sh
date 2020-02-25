@@ -230,7 +230,7 @@ _zetopt::parser::parse()
 # setsub(): Increment the set count of a sub-command. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::setsub {NAMESPACE}
-# e.g.) _zetopt::parser::setsub /sub/
+# e.g.) _zetopt::parser::setsub /sub
 # STDOUT: NONE
 _zetopt::parser::setsub()
 {
@@ -245,7 +245,7 @@ _zetopt::parser::setsub()
     local offset=2
 
     local IFS=:
-    \set -- ${BASH_REMATCH[$(($offset + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
+    set -- ${BASH_REMATCH[$(($offset + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
     local cnt=$(($7 + 1))
     local pseudoidx=$INIT_IDX
     _ZETOPT_PARSED=$head_lines$1:$2:$3:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
@@ -285,7 +285,7 @@ _zetopt::parser::setopt()
     local head_lines="${BASH_REMATCH[$((1 + $INIT_IDX))]:1}"
     local tail_lines="${BASH_REMATCH[$((10 + $INIT_IDX))]}"
     local IFS=:
-    \set -- ${BASH_REMATCH[$((2 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
+    set -- ${BASH_REMATCH[$((2 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
     local id="$1" refs_str="$2" argcs="$3" types="$4" pseudo_idexs="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
@@ -298,11 +298,11 @@ _zetopt::parser::setopt()
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
         [[ $opt_prefix =~ ^--?$ ]] \
-        && _ZETOPT_DATA+=("${ZETOPT_CFG_FLAGVAL_TRUE:-0}") \
-        || _ZETOPT_DATA+=("${ZETOPT_CFG_FLAGVAL_FALSE:-1}")
+        && _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_TRUE") \
+        || _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_FALSE")
         ref_arr=($optarg_idx)
         var_name=$var_names_str
-        \eval $var_name'=true'
+        eval $var_name'=true'
 
     # options requiring arguments
     else
@@ -344,13 +344,13 @@ _zetopt::parser::setopt()
                     if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
                         varlen_mode=true
                         arg_def_max=$(_zetopt::def::paramlen $id max)
-                        \eval $var_name'=()'
+                        eval $var_name'=()'
                     fi
 
                     _ZETOPT_DATA+=("$arg")
                     [[ $varlen_mode == true ]] \
-                    && \eval $var_name'+=("$arg")' \
-                    || \eval $var_name'=$arg'
+                    && eval $var_name'+=("$arg")' \
+                    || eval $var_name'=$arg'
 
                     ref_arr+=($optarg_idx)
                     arg_cnt+=1
@@ -404,7 +404,7 @@ _zetopt::parser::setopt()
                         arg=${_ZETOPT_DATA[$INIT_IDX]}
                         #ref_arr+=($INIT_IDX)
                     fi
-                    \eval $var_name'=$arg'
+                    eval $var_name'=$arg'
                     def_idx+=1
                 done
             fi
@@ -469,7 +469,7 @@ _zetopt::parser::assign_args()
 
     # enough
     if [[ $arg_len -ge $def_max_len ]]; then
-        ref_arr=($(\eval "\echo {$INIT_IDX..$((def_max_len - 1 + INIT_IDX))}"))
+        ref_arr=($(eval "echo {$INIT_IDX..$((def_max_len - 1 + INIT_IDX))}"))
         maxloop=$def_len+$INIT_IDX
         # explicit defined arguments
         for ((idx=INIT_IDX; idx<maxloop; idx++))
@@ -488,9 +488,9 @@ _zetopt::parser::assign_args()
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
             
             if [[ $def =~ [.]{3,3} ]]; then
-                \eval $var_name'=("$arg")'
+                eval $var_name'=("$arg")'
             else
-                \eval $var_name'=$arg'
+                eval $var_name'=$arg'
             fi
         done
         
@@ -500,7 +500,7 @@ _zetopt::parser::assign_args()
             arg=${_ZETOPT_TEMP_ARGV[ref_arr[idx]]}
             _ZETOPT_DATA+=("$arg")
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
-            \eval $var_name'+=("$arg")'
+            eval $var_name'+=("$arg")'
         done
 
         # too match arguments
@@ -508,7 +508,7 @@ _zetopt::parser::assign_args()
             local start_idx=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX + 1))
             _ZETOPT_DATA+=("${_ZETOPT_TEMP_ARGV[@]:$def_max_len}")
             local end_idx=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
-            _ZETOPT_EXTRA_ARGV=($(eval '\echo {'$start_idx'..'$end_idx'}'))
+            _ZETOPT_EXTRA_ARGV=($(eval 'echo {'$start_idx'..'$end_idx'}'))
             rtn=$((rtn | ZETOPT_STATUS_EXTRA_ARGS))
             ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
         fi
@@ -520,7 +520,7 @@ _zetopt::parser::assign_args()
         local varlen_mode=false
         if [[ $arg_len -ne 0 ]]; then
             ref_idx=$arg_len-1+$INIT_IDX
-            ref_arr=($(\eval "\echo {$INIT_IDX..$ref_idx}"))
+            ref_arr=($(eval "echo {$INIT_IDX..$ref_idx}"))
             ref_idx+=1
 
             maxloop=$arg_len+$INIT_IDX
@@ -547,12 +547,12 @@ _zetopt::parser::assign_args()
 
                 if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
                     varlen_mode=true
-                    \eval $var_name'=()'
+                    eval $var_name'=()'
                 fi
                 if [[ $def =~ [.]{3,3} ]]; then
-                    \eval $var_name'+=("$arg")'
+                    eval $var_name'+=("$arg")'
                 else
-                    \eval $var_name'=$arg'
+                    eval $var_name'=$arg'
                 fi
             done
         fi

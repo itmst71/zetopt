@@ -16,7 +16,7 @@ _zetopt::msg::user_error()
 
     # plain text message
     if ! _zetopt::msg::should_decorate $FD_STDERR; then
-        \printf >&2 "%b\n" "$ZETOPT_APPNAME: $title: $text$value"
+        printf >&2 "%b\n" "$ZETOPT_APPNAME: $title: $text$value"
         return 0
     fi
 
@@ -28,7 +28,7 @@ _zetopt::msg::user_error()
     esac
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local appname="${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}"
-    \printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
+    printf >&2 "\e[${col}m%b\e[0m \e[${textcol}m%b\e[0m \e[${col}m%b\e[0m\n" "$appname: $title:" "$text" "$value"
 }
 
 # debug(): Print definition-error message for script programmer
@@ -58,11 +58,11 @@ _zetopt::msg::script_error()
         || local caller_lineno=0
     fi
     {
-        \printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"
-        \printf -- " %b %b\n" "$text" "$value"
+        printf "\e[${col}m%b\e[0m\n" "$appname: $title: $filename: $funcname ($src_lineno)"
+        printf -- " %b %b\n" "$text" "$value"
         if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
-            \printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
-            \printf -- " -> %b\n" ${stack[@]}
+            printf -- "\n\e[1;${col}mStack Trace:\e[m\n"
+            printf -- " -> %b\n" ${stack[@]}
             _zetopt::utils::viewfile "$ZETOPT_CALLER_FILE_PATH" -B $before -A $after -L $caller_lineno \
                 | \sed -e 's/^\(0*'$caller_lineno'.*\)/'$'\e['${col}'m\1'$'\e[m/' -e 's/^/    /'
         fi
@@ -85,8 +85,8 @@ _zetopt::msg::should_decorate()
     local colmode="${ZETOPT_CFG_ERRMSG_COL_MODE:-auto}"
     return $(
         [[ -n ${ZSH_VERSION-} ]] \
-        && \setopt localoptions NOCASEMATCH \
-        || \shopt -s nocasematch
+        && setopt localoptions NOCASEMATCH \
+        || shopt -s nocasematch
         if [[ $colmode == auto ]]; then
             if [[ $fd == $FD_STDOUT ]]; then
                 echo $TTY_STDOUT
