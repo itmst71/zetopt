@@ -26,12 +26,13 @@ fi
 # field numbers for definition
 readonly ZETOPT_DEFID_ALL=0
 readonly ZETOPT_DEFID_ID=1
-readonly ZETOPT_DEFID_SHORT=2
-readonly ZETOPT_DEFID_LONG=3
-readonly ZETOPT_DEFID_ARG=4
-readonly ZETOPT_DEFID_VARNAME=5
-readonly ZETOPT_DEFID_FLAGS=6
-readonly ZETOPT_DEFID_HELP=7
+readonly ZETOPT_DEFID_TYPE=2
+readonly ZETOPT_DEFID_SHORT=3
+readonly ZETOPT_DEFID_LONG=4
+readonly ZETOPT_DEFID_ARG=5
+readonly ZETOPT_DEFID_VARNAME=6
+readonly ZETOPT_DEFID_FLAGS=7
+readonly ZETOPT_DEFID_HELP=8
 
 # field numbers for parsed data
 readonly ZETOPT_DATAID_ALL=0

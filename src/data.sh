@@ -49,30 +49,30 @@ _zetopt::data::field()
     if [[ -z ${1-} ]]; then
         return 1
     fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local field="${2:-$ZETOPT_DATAID_ALL}"
 
     if [[ $field == $ZETOPT_DATAID_DEFAULT ]]; then
         if ! _zetopt::def::exists $id; then
             return 1
         fi
-        \printf -- "%s" "$(_zetopt::def::default $id)"
+        \printf -- "%s\n" "$(_zetopt::def::default $id)"
         return 0
     fi
 
-    if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
+    if [[ ! $LF${_ZETOPT_PARSED-}$LF =~ .*$LF((${id}[+/]?):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))$LF.* ]]; then
         return 1
     fi
     case "$field" in
-        $ZETOPT_DATAID_ALL)    \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
-        $ZETOPT_DATAID_ID)     \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
-        $ZETOPT_DATAID_ARGV)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
-        $ZETOPT_DATAID_ARGC)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
-        $ZETOPT_DATAID_TYPE)   \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
-        $ZETOPT_DATAID_PSEUDO) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
-        $ZETOPT_DATAID_STATUS) \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
-        $ZETOPT_DATAID_COUNT)  \printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
-        $ZETOPT_DATAID_EXTRA_ARGV) \printf -- "%s" "$(_zetopt::data::extra_field $id)";;
+        $ZETOPT_DATAID_ALL)    \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
+        $ZETOPT_DATAID_ID)     \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ID))]}";;
+        $ZETOPT_DATAID_ARGV)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
+        $ZETOPT_DATAID_ARGC)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
+        $ZETOPT_DATAID_TYPE)   \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
+        $ZETOPT_DATAID_PSEUDO) \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
+        $ZETOPT_DATAID_STATUS) \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
+        $ZETOPT_DATAID_COUNT)  \printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
+        $ZETOPT_DATAID_EXTRA_ARGV) \printf -- "%s\n" "$(_zetopt::data::extra_field $id)";;
         *) return 1;;
     esac
 }
@@ -104,7 +104,7 @@ _zetopt::data::isset()
     do
         [[ -z $id ]] && return 1 ||:
         [[ ! $id =~ ^/ ]] && id="/$id" ||:
-        [[ $LF${_ZETOPT_PARSED-} =~ $LF$id && ! $LF${_ZETOPT_PARSED-} =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]] && continue ||:
+        [[ $LF${_ZETOPT_PARSED-} =~ $LF$id && ! $LF${_ZETOPT_PARSED-} =~ $LF${id}[+/]?:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]] && continue ||:
         return 1
     done
     return 0
@@ -119,11 +119,11 @@ _zetopt::data::isvalid()
     if [[ -z ${_ZETOPT_PARSED:-} || -z ${1-} ]]; then
         return 1
     fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id" ||:
     if ! _zetopt::def::exists "$id"; then
         return 1
     fi
-    if [[ $LF$_ZETOPT_PARSED =~ $LF$id:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]; then
+    if [[ $LF$_ZETOPT_PARSED =~ $LF${id}[+/]?:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:0 ]]; then
         return 1
     fi
 

@@ -37,14 +37,14 @@ _zetopt::parser::parse()
     fi
 
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:::%.0~0...=0:::0 0$LF"
+        _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
     fi
     _zetopt::parser::init
     _zetopt::data::init
     
     local optname= optnames_len= optarg= idx= opt_prefix= pseudoname=
     local additional_args_count=0 consumed_args_count= args
-    local namespace=/ ns= check_subcmd=true error_subcmd_name=
+    local namespace=/ ns=/ check_subcmd=true error_subcmd_name=
     
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
@@ -151,7 +151,7 @@ _zetopt::parser::parse()
         else
             # Subcommand
             if [[ $check_subcmd == true ]] && _zetopt::def::has_subcmd "$namespace"; then
-                ns="${namespace%/*}/$1/"
+                ns="${namespace%/}/$1"
                 if ! _zetopt::def::exists "$ns"; then
                     check_subcmd=false
                     if [[ $ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR == true ]]; then
@@ -168,7 +168,7 @@ _zetopt::parser::parse()
                 # Change namespace
                 if _zetopt::parser::setsub $ns; then
                     namespace=$ns
-                    ZETOPT_LAST_COMMAND=$ns
+                    ZETOPT_LAST_COMMAND=$namespace
                 fi
                 shift
                 continue
@@ -240,12 +240,12 @@ _zetopt::parser::setsub()
         return $ZETOPT_STATUS_UNDEFINED_SUBCMD
     fi
 
-    local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
-    local tail_lines="${BASH_REMATCH[$((10 + INIT_IDX))]}"
+    local head_lines="${BASH_REMATCH[$((1 + $INIT_IDX))]:1}"
+    local tail_lines="${BASH_REMATCH[$((10 + $INIT_IDX))]}"
     local offset=2
 
     local IFS=:
-    \set -- ${BASH_REMATCH[$((offset + INIT_IDX + ZETOPT_DATAID_ALL))]}
+    \set -- ${BASH_REMATCH[$(($offset + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
     local cnt=$(($7 + 1))
     local pseudoidx=$INIT_IDX
     _ZETOPT_PARSED=$head_lines$1:$2:$3:$ZETOPT_TYPE_CMD:$pseudoidx:$ZETOPT_STATUS_NORMAL:$cnt$tail_lines
@@ -282,10 +282,10 @@ _zetopt::parser::setopt()
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         return 1
     fi
-    local head_lines="${BASH_REMATCH[$((1 + INIT_IDX))]:1}"
-    local tail_lines="${BASH_REMATCH[$((10 + INIT_IDX))]}"
+    local head_lines="${BASH_REMATCH[$((1 + $INIT_IDX))]:1}"
+    local tail_lines="${BASH_REMATCH[$((10 + $INIT_IDX))]}"
     local IFS=:
-    \set -- ${BASH_REMATCH[$((2 + INIT_IDX + ZETOPT_DATAID_ALL))]}
+    \set -- ${BASH_REMATCH[$((2 + $INIT_IDX + $ZETOPT_DATAID_ALL))]}
     local id="$1" refs_str="$2" argcs="$3" types="$4" pseudo_idexs="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 

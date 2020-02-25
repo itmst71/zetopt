@@ -360,11 +360,11 @@ _zetopt::help::fmtcmdopt()
             arghelpidx=0
 
             # sub-command
-            if [[ $id =~ /$ ]]; then
+            if [[ $helpidx =~ [0-9]+\ [0-9]+ ]]; then
                 cmdhelpidx=${helpidx% *}
                 arghelpidx=${helpidx#* }
                 helpidx=$arghelpidx
-                cmd="${id:1:$((${#id}-2))}"
+                cmd="${id:1:$((${#id}-1))}"
                 cmd="${cmd//\// }"
                 cmdcol=$((${#cmd} + 1))
             fi
@@ -440,7 +440,7 @@ _zetopt::help::fmtcmdopt()
 
 _zetopt::help::format()
 {
-    local id short long args dummy opt optargs default_argname
+    local id deftype short long args dummy opt optargs default_argname
     local sep=", " synopsis=false
     if [[ ${1-} == "--synopsis" ]]; then
         synopsis=true
@@ -450,12 +450,13 @@ _zetopt::help::format()
     local IFS=:
     \set -- ${1-}
     id=${1-}
-    short=${2-}
-    long=${3-}
-    args=${4-}
+    deftype=${2-}
+    short=${3-}
+    long=${4-}
+    args=${5-}
     IFS=$LF
     
-    if [[ $id =~ /$ ]]; then
+    if [[ $deftype == c ]]; then
         default_argname=ARG_
     else
         default_argname=OPTARG_

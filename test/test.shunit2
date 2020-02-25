@@ -668,10 +668,10 @@ test_argc_notset() {
 #------------------------------------------------
 test_type() {
     ZETOPT_CFG_OPTTYPE_PLUS=true
-    zetopt def /sub/ %FOO
+    zetopt def /sub %FOO
     zetopt def verbose:v:verbose
     zetopt parse sub foo
-    assertEquals $ZETOPT_TYPE_CMD "$(zetopt type /sub/)"
+    assertEquals $ZETOPT_TYPE_CMD "$(zetopt type /sub)"
     zetopt reset
     zetopt parse -v --verbose +v
     assertEquals $ZETOPT_TYPE_SHORT "$(zetopt type verbose ^)"

@@ -74,7 +74,6 @@ zetopt()
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
-
         defined)
             _zetopt::def::defined "$@";;
 
