@@ -297,3 +297,46 @@ _zetopt::utils::min()
     && printf -- "%s\n" "$1" \
     || printf -- "%s\n" "$2"
 }
+
+_zetopt::utils::lowercase()
+{
+    if [[ $# -eq 0 ]]; then
+        return 0
+    fi
+
+    # bash4
+    if $ZETOPT_BASH && ! $ZETOPT_OLDBASH; then
+        printf -- "%s" "${1,,}"
+        return 0
+    fi
+    
+    # zsh
+    if $ZETOPT_ZSH; then
+        printf -- "%s" $1:l
+        return 0
+    fi
+
+    # bash3
+    declare -i len=${#1}
+
+    # use tr if it's long
+    if [[ $len -gt 500 ]]; then
+        <<< "$1" tr '[A-Z]' '[a-z]'
+        return 0
+    fi
+
+    declare -i idx ascii_code
+    local char
+    for (( idx=0; idx<len; idx++ ))
+    do
+        char=${1:$idx:1}
+        case "$char" in
+            [A-Z])
+                ascii_code=$(printf "%d" "'$char")
+                ascii_code+=32
+                printf -- "%o" $ascii_code
+                ;;
+            *) printf -- "%s" "$char";;
+        esac
+    done
+}

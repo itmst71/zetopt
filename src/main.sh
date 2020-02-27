@@ -68,7 +68,7 @@ zetopt()
         # def
         define | def)
             _zetopt::def::define "$@";;
-        def-validator | define-validator)
+        def-validator | define-validator | validator)
             _zetopt::validator::def "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;

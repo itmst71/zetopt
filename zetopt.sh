@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-02-26 04:30)
+# Version     : 1.2.0a (2020-02-27 14:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-02-26 04:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-02-27 14:00)"
 
 
 #------------------------------------------------------------
@@ -44,6 +44,8 @@ if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
     readonly ZETOPT_CALLER_FILE_PATH="$0"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_BASH=true
+    readonly ZETOPT_ZSH=false
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)"
     readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
@@ -52,6 +54,8 @@ elif [ -n "${ZSH_VERSION-}" ]; then
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_BASH=false
+    readonly ZETOPT_ZSH=true
     readonly ZETOPT_OLDBASH=false
     readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(setopt) =~ $'\n'ksharrays ]] && echo 0 || echo 1)"
 else
@@ -177,7 +181,7 @@ _zetopt::init::init_config()
 # STDOUT: NONE
 _zetopt::init::unset_user_vars()
 {
-    if [[ -z ${_ZETOPT_VARIABLE_NAMES-} ]]; then
+    if [[ -z ${_ZETOPT_VARIABLE_NAMES[@]-} ]]; then
         return 0
     fi
     unset "${_ZETOPT_VARIABLE_NAMES[@]}" ||:
@@ -268,7 +272,7 @@ zetopt()
         # def
         define | def)
             _zetopt::def::define "$@";;
-        def-validator | define-validator)
+        def-validator | define-validator | validator)
             _zetopt::validator::def "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;
@@ -500,13 +504,6 @@ _zetopt::def::define()
         _zetopt::msg::script_error "Invalid Identifier:" "$id"
         return 1
     fi
-
-    # define variable for storing the last value
-    local var_name var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1} var_name_list=
-    var_base_name=${var_base_name//[\/\-]/_}
-    if [[ -z $var_base_name ]]; then
-        var_base_name=_
-    fi
     
     # namespace(subcommand) definition
     if [[ $deftype == c ]]; then
@@ -622,12 +619,22 @@ _zetopt::def::define()
             shift
         done
 
-        # no short nor long
+        # Not short option nor long option
         if [[ -z $short$long ]]; then
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Invalid Definition"
             return 1
         fi
     fi
     
+    # build base name of variable to store the last value
+    local var_name var_name_list=
+    local var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    var_base_name=${var_base_name//[\/\-]/_}
+    if [[ -z $var_base_name ]]; then
+        var_base_name=_
+    fi
+
     # parameters
     local param_def=
     if [[ $has_param == true ]]; then
@@ -689,7 +696,7 @@ _zetopt::def::define()
                 param_validator_separator=
                 param_validator_idxs=
                 IFS=,
-                \set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
+                set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
                 while [[ $# -ne 0 ]]
                 do
                     param_validator_name=$1
@@ -719,12 +726,31 @@ _zetopt::def::define()
             params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
 
-            # define variable 
+            # build variable name
             if [[ $var_param_len == 1 ]]; then
-                var_name=$var_base_name$([[ $deftype == c ]] && echo $var_param_name ||:)
+                if [[ $deftype == c ]]; then
+                    var_name=$var_base_name$var_param_name
+                else
+                    var_name=$var_base_name
+                fi
             else
-                var_name=$var_base_name$([[ $deftype == c && $id != / ]] && echo _ ||:)$var_param_name
+                if [[ $deftype == c ]]; then
+                    var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name
+                else
+                    var_name=${var_base_name}_$var_param_name
+                fi
             fi
+            #var_name=$(_zetopt::utils::lowercase "$var_name")
+
+            # check variable name conflict
+            if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
+                return 1
+            fi
+            _ZETOPT_VARIABLE_NAMES+=($var_name)
+
+            # subsititue default value to variable
             if [[ -n $param_varlen ]]; then
                 eval $var_name'=("$var_param_default")'
             else
@@ -738,6 +764,7 @@ _zetopt::def::define()
     # Flag option
     else
         var_name="$var_base_name"
+        #var_name=$(_zetopt::utils::lowercase "$var_name")
 
         # check variable name conflict
         if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
@@ -745,13 +772,11 @@ _zetopt::def::define()
             _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
             return 1
         fi
+        _ZETOPT_VARIABLE_NAMES+=($var_name)
         eval $var_name'=$ZETOPT_CFG_VARIABLE_DEFAULT'
         var_name_list=$var_name
     fi
     var_name_list=${var_name_list% }
-
-    IFS=$' '
-    _ZETOPT_VARIABLE_NAMES+=($var_name_list)
 
     if [[ -n "$helpdef" ]]; then
         _ZETOPT_OPTHELPS+=("$helpdef")
@@ -1465,6 +1490,7 @@ _zetopt::parser::parse()
     if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
         IFS=$' \t\n'
         local subcmdstr="${namespace//\// }" msg=
+        subcmdstr=${subcmdstr# }
 
         # Undefined Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_UNDEFINED_OPTION)) -ne 0 ]]; then
@@ -1492,8 +1518,8 @@ _zetopt::parser::parse()
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_EXTRA_ARGS)) -ne 0 ]]; then
-            msg=($subcmdstr "${#_ZETOPT_TEMP_ARGV[@]} Arguments Given (Up To "$(_zetopt::def::paramlen $namespace max)")")
-            _zetopt::msg::user_error Error "Too Match Arguments:" "${msg[*]}"
+            msg=("\"$subcmdstr\" can take up to $(_zetopt::def::paramlen $namespace max) arguments. But ${#_ZETOPT_TEMP_ARGV[@]} given")
+            _zetopt::msg::user_error Warning "Too Match Arguments:" "${msg[*]}"
         fi
     fi
 
@@ -3032,6 +3058,49 @@ _zetopt::utils::min()
     [[ $1 -le $2 ]] \
     && printf -- "%s\n" "$1" \
     || printf -- "%s\n" "$2"
+}
+
+_zetopt::utils::lowercase()
+{
+    if [[ $# -eq 0 ]]; then
+        return 0
+    fi
+
+    # bash4
+    if $ZETOPT_BASH && ! $ZETOPT_OLDBASH; then
+        printf -- "%s" "${1,,}"
+        return 0
+    fi
+    
+    # zsh
+    if $ZETOPT_ZSH; then
+        printf -- "%s" $1:l
+        return 0
+    fi
+
+    # bash3
+    declare -i len=${#1}
+
+    # use tr if it's long
+    if [[ $len -gt 500 ]]; then
+        <<< "$1" tr '[A-Z]' '[a-z]'
+        return 0
+    fi
+
+    declare -i idx ascii_code
+    local char
+    for (( idx=0; idx<len; idx++ ))
+    do
+        char=${1:$idx:1}
+        case "$char" in
+            [A-Z])
+                ascii_code=$(printf "%d" "'$char")
+                ascii_code+=32
+                printf -- "%o" $ascii_code
+                ;;
+            *) printf -- "%s" "$char";;
+        esac
+    done
 }
 
 

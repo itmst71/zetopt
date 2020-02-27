@@ -8,6 +8,8 @@ if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_ROOT="$(builtin cd "$(dirname "$ZETOPT_SOURCE_FILE_PATH")" && pwd)"
     readonly ZETOPT_CALLER_FILE_PATH="$0"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_BASH=true
+    readonly ZETOPT_ZSH=false
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)"
     readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
@@ -16,6 +18,8 @@ elif [ -n "${ZSH_VERSION-}" ]; then
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
     readonly ZETOPT_CALLER_NAME="${ZETOPT_CALLER_FILE_PATH##*/}"
+    readonly ZETOPT_BASH=false
+    readonly ZETOPT_ZSH=true
     readonly ZETOPT_OLDBASH=false
     readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(setopt) =~ $'\n'ksharrays ]] && echo 0 || echo 1)"
 else
@@ -141,7 +145,7 @@ _zetopt::init::init_config()
 # STDOUT: NONE
 _zetopt::init::unset_user_vars()
 {
-    if [[ -z ${_ZETOPT_VARIABLE_NAMES-} ]]; then
+    if [[ -z ${_ZETOPT_VARIABLE_NAMES[@]-} ]]; then
         return 0
     fi
     unset "${_ZETOPT_VARIABLE_NAMES[@]}" ||:
