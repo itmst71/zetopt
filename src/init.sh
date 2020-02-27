@@ -115,9 +115,14 @@ _zetopt::init::init()
 # STDOUT: NONE
 _zetopt::init::init_config()
 {
-    ZETOPT_CFG_VARIABLE_PREFIX=zv_
-    ZETOPT_CFG_VARIABLE_DEFAULT=__NULL
-    ZETOPT_CFG_VALUE_IFS=" "
+    # Autovar related configs: Set before "def"
+    ZETOPT_CFG_AUTOVAR=true
+    ZETOPT_CFG_AUTOVAR_PREFIX=zv_
+    ZETOPT_CFG_AUTOVAR_DEFAULT=__NULL
+
+    # Parser related configs: Set before "parse"
+    ZETOPT_CFG_FLAGVAL_TRUE=true
+    ZETOPT_CFG_FLAGVAL_FALSE=false
     ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
     ZETOPT_CFG_SINGLE_PREFIX_LONG=false
     ZETOPT_CFG_PSEUDO_OPTION=false
@@ -126,8 +131,11 @@ _zetopt::init::init_config()
     ZETOPT_CFG_IGNORE_BLANK_STRING=false
     ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
     ZETOPT_CFG_OPTTYPE_PLUS=false
-    ZETOPT_CFG_FLAGVAL_TRUE=true
-    ZETOPT_CFG_FLAGVAL_FALSE=false
+
+    # Parsed data related configs: Set before refering parsed data
+    ZETOPT_CFG_VALUE_IFS=" "
+
+    # Warning/Error message related configs: Set right after .(source)
     ZETOPT_CFG_ERRMSG_USER_ERROR=true
     ZETOPT_CFG_ERRMSG_SCRIPT_ERROR=true
     ZETOPT_CFG_ERRMSG_STACKTRACE=true

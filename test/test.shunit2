@@ -17,6 +17,7 @@ __index__=1
 setUp() {
     printf "%2s: " $((__index__++))
     zetopt init
+    ZETOPT_CFG_AUTOVAR=true
     ZETOPT_CFG_ERRMSG_SCRIPT_ERROR=false
     ZETOPT_CFG_ERRMSG_USER_ERROR=false
     ZETOPT_CFG_ERRMSG_STACKTRACE=false
@@ -527,9 +528,9 @@ test_default() {
     zetopt def val:v @FOO %BAR=bar %BAZ...3=baz
     zetopt parse
     local v="$(zetopt default val)"
-    assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT bar baz" "$v"
+    assertEquals "$ZETOPT_CFG_AUTOVAR_DEFAULT bar baz" "$v"
     v=$(zetopt default val BAZ,^)
-    assertEquals "baz bar $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
+    assertEquals "baz bar $ZETOPT_CFG_AUTOVAR_DEFAULT" "$v"
 }
 
 test_default_ERR_def() {
@@ -548,14 +549,14 @@ test_default_1arg_for_3defs() {
     zetopt def val:v % % %=bar
     zetopt parse -v foo
     local v="$(zetopt argv val)"
-    assertEquals "foo $ZETOPT_CFG_VARIABLE_DEFAULT bar" "$v"
+    assertEquals "foo $ZETOPT_CFG_AUTOVAR_DEFAULT bar" "$v"
 }
 
 test_default_noarg3() {
     zetopt def val:v % %...5
     zetopt parse -v
     local v="$(zetopt argv val)"
-    assertEquals "$ZETOPT_CFG_VARIABLE_DEFAULT $ZETOPT_CFG_VARIABLE_DEFAULT" "$v"
+    assertEquals "$ZETOPT_CFG_AUTOVAR_DEFAULT $ZETOPT_CFG_AUTOVAR_DEFAULT" "$v"
 }
 
 test_default_nouse() {

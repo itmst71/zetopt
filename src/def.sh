@@ -30,7 +30,7 @@ _zetopt::def::reset()
             do
                 var=${vars[$idx]}
                 if [[ ${#args[@]} -eq 0 ]]; then
-                    eval $var'=$ZETOPT_CFG_VARIABLE_DEFAULT'
+                    eval $var'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
                 else
                     arg=${args[$idx]}
                     if [[ $arg =~ \=([1-9][0-9]*) ]]; then
@@ -57,16 +57,18 @@ _zetopt::def::reset()
 # STDOUT: NONE
 _zetopt::def::define()
 {
-    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_VARIABLE_PREFIX == _ ]]; then
-        _ZETOPT_DEF_ERROR=true
-        _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
-        return 1
+    if $ZETOPT_CFG_AUTOVAR; then
+        if [[ -z $ZETOPT_CFG_AUTOVAR_PREFIX || ! $ZETOPT_CFG_AUTOVAR_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_AUTOVAR_PREFIX == _ ]]; then
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Invalid Variable Name Prefix:" "ZETOPT_CFG_AUTOVAR_PREFIX=$ZETOPT_CFG_AUTOVAR_PREFIX"
+            return 1
+        fi
     fi
 
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
         _ZETOPT_OPTHELPS=("")
-        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_VARIABLE_DEFAULT")
+        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_AUTOVAR_DEFAULT")
     fi
 
     if [[ -z $@ ]]; then
@@ -300,7 +302,7 @@ _zetopt::def::define()
     
     # build base name of variable to store the last value
     local var_name var_name_list=
-    local var_base_name=${ZETOPT_CFG_VARIABLE_PREFIX}${id:1}
+    local var_base_name=${ZETOPT_CFG_AUTOVAR_PREFIX}${id:1}
     var_base_name=${var_base_name//[\/\-]/_}
     if [[ -z $var_base_name ]]; then
         var_base_name=_
@@ -383,7 +385,7 @@ _zetopt::def::define()
             fi
 
             # save default value
-            var_param_default=$ZETOPT_CFG_VARIABLE_DEFAULT
+            var_param_default=$ZETOPT_CFG_AUTOVAR_DEFAULT
             if [[ -n $param_default ]]; then
                 var_param_default=$param_default
                 _ZETOPT_DEFAULTS+=("$param_default")
@@ -397,20 +399,50 @@ _zetopt::def::define()
             params+=("$param_hyphens$param_type$param_name.$param_idx~$param_validator_idxs$param_varlen=$param_default_idx")
             param_idx+=1
 
-            # build variable name
-            if [[ $var_param_len == 1 ]]; then
-                if [[ $deftype == c ]]; then
-                    var_name=$var_base_name$var_param_name
+            # autovar
+            if $ZETOPT_CFG_AUTOVAR; then
+                # build variable name
+                if [[ $var_param_len == 1 ]]; then
+                    if [[ $deftype == c ]]; then
+                        var_name=$var_base_name$var_param_name
+                    else
+                        var_name=$var_base_name
+                    fi
                 else
-                    var_name=$var_base_name
+                    if [[ $deftype == c ]]; then
+                        var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name
+                    else
+                        var_name=${var_base_name}_$var_param_name
+                    fi
                 fi
-            else
-                if [[ $deftype == c ]]; then
-                    var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name
+                #var_name=$(_zetopt::utils::lowercase "$var_name")
+
+                # check variable name conflict
+                if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
+                    return 1
+                fi
+                _ZETOPT_VARIABLE_NAMES+=($var_name)
+
+                # subsititue default value to variable
+                if [[ -n $param_varlen ]]; then
+                    eval $var_name'=("$var_param_default")'
                 else
-                    var_name=${var_base_name}_$var_param_name
+                    eval $var_name'=$var_param_default'
                 fi
+                var_name_list+="$var_name "
             fi
+        done
+        IFS=$' '
+        param_def="${params[*]}"
+        var_name_list=${var_name_list% }
+
+    # Flag option
+    else
+        # autovar
+        if $ZETOPT_CFG_AUTOVAR; then
+            var_name="$var_base_name"
             #var_name=$(_zetopt::utils::lowercase "$var_name")
 
             # check variable name conflict
@@ -420,34 +452,10 @@ _zetopt::def::define()
                 return 1
             fi
             _ZETOPT_VARIABLE_NAMES+=($var_name)
-
-            # subsititue default value to variable
-            if [[ -n $param_varlen ]]; then
-                eval $var_name'=("$var_param_default")'
-            else
-                eval $var_name'=$var_param_default'
-            fi
-            var_name_list+="$var_name "
-        done
-        IFS=$' '
-        param_def="${params[*]}"
-
-    # Flag option
-    else
-        var_name="$var_base_name"
-        #var_name=$(_zetopt::utils::lowercase "$var_name")
-
-        # check variable name conflict
-        if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "Variable name \"$var_name\" is already in use"
-            return 1
+            eval $var_name'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
+            var_name_list=$var_name
         fi
-        _ZETOPT_VARIABLE_NAMES+=($var_name)
-        eval $var_name'=$ZETOPT_CFG_VARIABLE_DEFAULT'
-        var_name_list=$var_name
     fi
-    var_name_list=${var_name_list% }
 
     if [[ -n "$helpdef" ]]; then
         _ZETOPT_OPTHELPS+=("$helpdef")

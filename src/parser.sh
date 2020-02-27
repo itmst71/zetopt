@@ -25,10 +25,12 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if [[ -z $ZETOPT_CFG_VARIABLE_PREFIX || ! $ZETOPT_CFG_VARIABLE_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_VARIABLE_PREFIX == _ ]]; then
-        _ZETOPT_DEF_ERROR=true
-        _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_VARIABLE_PREFIX=$ZETOPT_CFG_VARIABLE_PREFIX"
-        return 1
+    if $ZETOPT_CFG_AUTOVAR; then
+        if [[ -z $ZETOPT_CFG_AUTOVAR_PREFIX || ! $ZETOPT_CFG_AUTOVAR_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_AUTOVAR_PREFIX == _ ]]; then
+            _ZETOPT_DEF_ERROR=true
+            _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_AUTOVAR_PREFIX=$ZETOPT_CFG_AUTOVAR_PREFIX"
+            return 1
+        fi
     fi
 
     if [[ $_ZETOPT_DEF_ERROR == true ]]; then
@@ -291,10 +293,13 @@ _zetopt::parser::setopt()
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
     local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
-    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
     declare -i optarg_idx=$((${#_ZETOPT_DATA[@]} + $INIT_IDX))
     declare -i arg_cnt=0
     ref_arr=()
+
+    if $ZETOPT_CFG_AUTOVAR; then
+        local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
+    fi
 
     # options requiring NO argument
     if [[ -z $paramdef_str ]]; then
@@ -302,8 +307,12 @@ _zetopt::parser::setopt()
         && _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_TRUE") \
         || _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_FALSE")
         ref_arr=($optarg_idx)
-        var_name=$var_names_str
-        eval $var_name'=true'
+
+        # autovar
+        if $ZETOPT_CFG_AUTOVAR; then
+            var_name=$var_names_str
+            eval $var_name'=true'
+        fi
 
     # options requiring arguments
     else
@@ -312,12 +321,20 @@ _zetopt::parser::setopt()
         def_arr=($paramdef_str)
         declare -i def_len=$((${#def_arr[@]} + INIT_IDX)) def_idx=$INIT_IDX
         declare -i arg_def_max arg_idx=$INIT_IDX arg_max_idx=$((${#args[@]} + $INIT_IDX))
-        var_names=($var_names_str)
+
+        # autovar
+        if $ZETOPT_CFG_AUTOVAR; then
+            var_names=($var_names_str)
+        fi
 
         while [[ $def_idx -lt $def_len ]]
         do
             def=${def_arr[$def_idx]}
-            var_name=${var_names[$def_idx]}
+
+            # autovar
+            if $ZETOPT_CFG_AUTOVAR; then
+                var_name=${var_names[$def_idx]}
+            fi
 
             # there are available args
             if [[ $arg_idx -lt $arg_max_idx ]]; then
@@ -345,13 +362,21 @@ _zetopt::parser::setopt()
                     if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
                         varlen_mode=true
                         arg_def_max=$(_zetopt::def::paramlen $id max)
-                        eval $var_name'=()'
+
+                        # autovar
+                        if $ZETOPT_CFG_AUTOVAR; then
+                            eval $var_name'=()'
+                        fi
                     fi
 
                     _ZETOPT_DATA+=("$arg")
-                    [[ $varlen_mode == true ]] \
-                    && eval $var_name'+=("$arg")' \
-                    || eval $var_name'=$arg'
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        [[ $varlen_mode == true ]] \
+                        && eval $var_name'+=("$arg")' \
+                        || eval $var_name'=$arg'
+                    fi
 
                     ref_arr+=($optarg_idx)
                     arg_cnt+=1
@@ -395,7 +420,11 @@ _zetopt::parser::setopt()
                 while [[ $def_idx -lt $def_len ]]
                 do
                     def=${def_arr[$def_idx]}
-                    var_name=${var_names[$def_idx]}
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        var_name=${var_names[$def_idx]}
+                    fi
 
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
@@ -405,7 +434,11 @@ _zetopt::parser::setopt()
                         arg=${_ZETOPT_DATA[$INIT_IDX]}
                         #ref_arr+=($INIT_IDX)
                     fi
-                    eval $var_name'=$arg'
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        eval $var_name'=$arg'
+                    fi
                     def_idx+=1
                 done
             fi
@@ -463,7 +496,7 @@ _zetopt::parser::assign_args()
     declare -i def_len=${#def_arr[@]} arg_len=${#_ZETOPT_TEMP_ARGV[@]} rtn=$ZETOPT_STATUS_NORMAL idx maxloop
     local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
     if [[ -z $var_names_str ]]; then
-        var_names_str=${ZETOPT_CFG_VARIABLE_PREFIX}${ZETOPT_LAST_COMMAND:1}
+        var_names_str=${ZETOPT_CFG_AUTOVAR_PREFIX}${ZETOPT_LAST_COMMAND:1}
         var_names_str=${var_names_str//[\/\-]/_}$INIT_IDX
     fi
     var_names=($var_names_str)
@@ -477,8 +510,7 @@ _zetopt::parser::assign_args()
         do
             def=${def_arr[idx]}
             arg=${_ZETOPT_TEMP_ARGV[ref_arr[idx]]}
-            var_name=${var_names[idx]}
-
+            
             # validate
             if ! _zetopt::validator::validate "$def" "$arg"; then
                 rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
@@ -488,10 +520,14 @@ _zetopt::parser::assign_args()
             _ZETOPT_DATA+=("$arg")
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
             
-            if [[ $def =~ [.]{3,3} ]]; then
-                eval $var_name'=("$arg")'
-            else
-                eval $var_name'=$arg'
+            # autovar
+            if $ZETOPT_CFG_AUTOVAR; then
+                var_name=${var_names[idx]}
+                if [[ $def =~ [.]{3,3} ]]; then
+                    eval $var_name'=("$arg")'
+                else
+                    eval $var_name'=$arg'
+                fi
             fi
         done
         
@@ -501,7 +537,11 @@ _zetopt::parser::assign_args()
             arg=${_ZETOPT_TEMP_ARGV[ref_arr[idx]]}
             _ZETOPT_DATA+=("$arg")
             ref_arr[$idx]=$((${#_ZETOPT_DATA[@]} - 1 + $INIT_IDX))
-            eval $var_name'+=("$arg")'
+
+            # autovar
+            if $ZETOPT_CFG_AUTOVAR; then
+                eval $var_name'+=("$arg")'
+            fi
         done
 
         # too match arguments
@@ -531,10 +571,18 @@ _zetopt::parser::assign_args()
                 # validate
                 if [[ $idx -lt $((${#def_arr[@]} + INIT_IDX)) ]]; then
                     def=${def_arr[idx]}
-                    var_name=${var_names[idx]}
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        var_name=${var_names[idx]}
+                    fi
                 else
                     def=${def_arr[$((${#def_arr[@]} - 1 + $INIT_IDX))]}
-                    var_name=${var_names[$((${#def_arr[@]} - 1 + $INIT_IDX))]}
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        var_name=${var_names[$((${#def_arr[@]} - 1 + $INIT_IDX))]}
+                    fi
                 fi
                 
                 arg=${_ZETOPT_TEMP_ARGV[ref_arr[idx]]}
@@ -548,12 +596,20 @@ _zetopt::parser::assign_args()
 
                 if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
                     varlen_mode=true
-                    eval $var_name'=()'
+
+                    # autovar
+                    if $ZETOPT_CFG_AUTOVAR; then
+                        eval $var_name'=()'
+                    fi
                 fi
-                if [[ $def =~ [.]{3,3} ]]; then
-                    eval $var_name'+=("$arg")'
-                else
-                    eval $var_name'=$arg'
+
+                # autovar
+                if $ZETOPT_CFG_AUTOVAR; then
+                    if [[ $def =~ [.]{3,3} ]]; then
+                        eval $var_name'+=("$arg")'
+                    else
+                        eval $var_name'=$arg'
+                    fi
                 fi
             done
         fi
