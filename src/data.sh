@@ -748,5 +748,14 @@ _zetopt::data::iterate()
 # STDOUT: string separated with \n
 _zetopt::data::setids()
 {
-    <<< "$_ZETOPT_PARSED" \grep -E ':[1-9][0-9]*$' | \sed -e 's/:.*//'
+    local lines="$_ZETOPT_PARSED"
+    while :
+    do
+        if [[ $LF$lines =~ $LF([^:]+):[^$LF]+:[1-9][0-9]*$LF(.*) ]]; then
+            printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+            lines=${BASH_REMATCH[$((2 + $INIT_IDX))]}
+        else
+            break
+        fi
+    done
 }

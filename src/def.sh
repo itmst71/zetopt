@@ -563,8 +563,9 @@ _zetopt::def::has_options()
     if [[ -z ${1-} ]]; then
         return 1
     fi
-    local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
-    [[ ! $ns =~ /$ ]] && ns=$ns/
+    local ns="$1"
+    [[ ! $ns =~ ^/ ]] && ns=/$ns ||:
+    [[ ! $ns =~ /$ ]] && ns=$ns/ ||:
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}[a-zA-Z0-9_]+:o: ]]
 }
 
@@ -577,23 +578,34 @@ _zetopt::def::has_arguments()
     if [[ -z ${1-} ]]; then
         return 1
     fi
-    local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
+    local ns="$1"
+    [[ ! $ns =~ ^/ ]] && ns=/$ns ||:
     [[ $ns != / ]] && ns=${ns%/} ||:
     [[ $LF$_ZETOPT_DEFINED =~ $LF${ns}:c:::-?[@%] ]]
 }
 
 # options(): Print option definition
-# def.) _zetopt::def::options
-# e.g.) _zetopt::def::options
+# def.) _zetopt::def::options {NS}
+# e.g.) _zetopt::def::options /foo/bar
 # STDOUT: option definition
 _zetopt::def::options()
 {
     if [[ -z ${1-} ]]; then
         return 1
     fi
-    local ns="$1" && [[ ! $ns =~ ^/ ]] && ns=/$ns
+    local ns="$1"
+    [[ ! $ns =~ ^/ ]] && ns=/$ns ||:
     [[ ! $ns =~ /$ ]] && ns=$ns/ ||:
-    <<< "$_ZETOPT_DEFINED" \grep -E "^${ns}[a-zA-Z0-9_]+:o:"
+    local lines=$_ZETOPT_DEFINED
+    while :
+    do
+        if [[ $LF$lines =~ $LF(${ns}[a-zA-Z0-9_]+:o:[^$LF]+$LF)(.*) ]]; then
+            printf -- "%s" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+            lines=${BASH_REMATCH[$((2 + $INIT_IDX))]}
+        else
+            break
+        fi
+    done
 }
 
 # is_cmd(): Check if ID is command
@@ -617,7 +629,16 @@ _zetopt::def::is_cmd()
 # STDOUT: namespace definition
 _zetopt::def::namespaces()
 {
-    <<< "$_ZETOPT_DEFINED" \grep -E '^/([^:]+)?:c:' | \sed -e 's/:.*//'
+    local lines="$_ZETOPT_DEFINED"
+    while :
+    do
+        if [[ $LF$lines =~ $LF([^:]+):c:[^$LF]+$LF(.*) ]]; then
+            printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+            lines=${BASH_REMATCH[$((2 + $INIT_IDX))]}
+        else
+            break
+        fi
+    done
 }
 
 # opt2id(): Print the identifier by searching with a namespace and a option name.
@@ -688,7 +709,8 @@ _zetopt::def::paramidx()
     if [[ ! $2 =~ ^$REG_VNAME$ ]]; then
         return 1
     fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1"
+    [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local def_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -z $def_str ]]; then
         return 1
@@ -709,7 +731,8 @@ _zetopt::def::keyparams2idx()
     if [[ ! $# -eq 2 ]]; then
         return 1
     fi
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1"
+    [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local key="$2" head tail name
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     if [[ -n $def_args ]]; then
@@ -738,7 +761,8 @@ _zetopt::def::keyparams2idx()
 # STDOUT: an integer
 _zetopt::def::paramlen()
 {
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1"
+    [[ ! $id =~ ^/ ]] && id="/$id" ||:
     if ! _zetopt::def::exists "$id"; then
         echo 0; return 1
     fi
@@ -757,7 +781,7 @@ _zetopt::def::paramlen()
         required | @) out=$reqcnt;;
         optional | %) out=$optcnt;;
         max)
-            [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=[0-9]+$ ]] || :
+            [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=[0-9]+$ ]] ||:
             if [[ -n ${BASH_REMATCH[$((1 + INIT_IDX))]} ]]; then
                 [[ -n ${BASH_REMATCH[$((2 + INIT_IDX))]} ]] \
                 && out=$reqcnt+$optcnt+${BASH_REMATCH[$((2 + INIT_IDX))]}-1 \
@@ -783,7 +807,8 @@ _zetopt::def::default()
         return 1
     fi
 
-    local id="$1" && [[ ! $id =~ ^/ ]] && id="/$id"
+    local id="$1"
+    [[ ! $id =~ ^/ ]] && id="/$id" ||:
     if ! _zetopt::def::exists "$id"; then
         _zetopt::msg::script_error "No Such Indentifier:" "${1-}"
         return 1
