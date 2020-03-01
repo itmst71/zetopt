@@ -87,19 +87,19 @@ zetopt()
         setids)
             _zetopt::data::setids;;
         argv | value | val)
-            _zetopt::data::print $ZETOPT_DATAID_ARGV "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_ARGV "$@";;
         argc | length | len)
-            _zetopt::data::print $ZETOPT_DATAID_ARGC "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_ARGC "$@";;
         type)
-            _zetopt::data::print $ZETOPT_DATAID_TYPE "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_TYPE "$@";;
         pseudo)
-            _zetopt::data::print $ZETOPT_DATAID_PSEUDO "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_PSEUDO "$@";;
         status)
-            _zetopt::data::print $ZETOPT_DATAID_STATUS "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_STATUS "$@";;
         count)
-            _zetopt::data::print $ZETOPT_DATAID_COUNT "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_COUNT "$@";;
         default)
-            _zetopt::data::print $ZETOPT_DATAID_DEFAULT "$@";;
+            _zetopt::data::output $ZETOPT_DATAID_DEFAULT "$@";;
         hasarg | hasval)
             _zetopt::data::hasarg "$@";;
         isvalid | isok)

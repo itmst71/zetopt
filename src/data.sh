@@ -123,7 +123,7 @@ _zetopt::data::isvalid()
     fi
 
     shift
-    local status_list="$(_zetopt::data::print $ZETOPT_DATAID_STATUS "$id" "$@")"
+    local status_list="$(_zetopt::data::output $ZETOPT_DATAID_STATUS "$id" "$@")"
     if [[ -z $status_list ]]; then
         return 1
     fi
@@ -226,7 +226,7 @@ _zetopt::data::pickup()
                 [[ $list_start_idx == $list_end_idx ]] \
                 && local translated_idx=$list_start_idx \
                 || local translated_idx=$list_start_idx~$list_end_idx
-                _zetopt::msg::script_error "Session Index Out of Range ($INIT_IDX~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
+                _zetopt::msg::script_error "List Index Out of Range ($INIT_IDX~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -313,17 +313,17 @@ _zetopt::data::pickup()
 # STDOUT: NONE
 _zetopt::data::hasarg()
 {
-    local argc_str="$(_zetopt::data::print $ZETOPT_DATAID_ARGC "$@")"
+    local argc_str="$(_zetopt::data::output $ZETOPT_DATAID_ARGC "$@")"
     [[ -n "$argc_str" && ! "$argc_str" =~ ^[0\ ]+$ ]]
 }
 
 
 # print(): Print field data with keys.
 # -a/-v enables to store data in user specified array/variable.
-# def.) _zetopt::data::print {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-I,--IFS <IFS_VALUE>]
-# e.g.) _zetopt::data::print $ZETOPT_DATAID_ARGV /foo @:@ --array myarr
+# def.) _zetopt::data::output {FIELD_NUMBER} {ID} [1D/2D-KEY...] [-a,--array <ARRAY_NAME> | -v,--variable <VARIABLE_NAME>] [-I,--IFS <IFS_VALUE>]
+# e.g.) _zetopt::data::output $ZETOPT_DATAID_ARGV /foo @:@ --array myarr
 # STDOUT: data option names separated with $ZETOPT_CFG_VALUE_IFS or --IFS value
-_zetopt::data::print()
+_zetopt::data::output()
 {
     if [[ $# -eq 0 ]]; then
         return 1
@@ -497,8 +497,8 @@ _zetopt::data::print()
 _zetopt::data::iterate()
 {
     local __args__ __action__= __field__=$ZETOPT_DATAID_ARGV
-    local __user_value__=ZV_VALUE __user_index__= __user_last_index__= __user_array__= __user_count__=
-    local __itr_id__= __null_value__=NULL __null_index__=NULL
+    local __usrvar_value__=ZV_VALUE __usrvar_index__= __usrvar_last_index__= __usrvar_array__= __usrvar_count__=
+    local __itr_id__= __null_value__=NULL __null_index__=NULL __user_array__=
     __args__=()
     while [[ $# -ne 0 ]]
     do
@@ -509,7 +509,7 @@ _zetopt::data::iterate()
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-v, --value <VARIABLE_NAME_FOR_VALUE,...>"
                     return 1
                 fi
-                __user_value__=$1
+                __usrvar_value__=$1
                 shift;;
             -i | --index)
                 shift
@@ -517,15 +517,15 @@ _zetopt::data::iterate()
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-i, --index <VARIABLE_NAME_FOR_KEY,...>"
                     return 1
                 fi
-                __user_index__=$1
+                __usrvar_index__=$1
                 shift;;
-            -l | --last-key)
+            -l | --last-index)
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-l, --last-index <VARIABLE_NAME_FOR_LAST_KEY>"
                     return 1
                 fi
-                __user_last_index__=$1
+                __usrvar_last_index__=$1
                 shift;;
             -a | --array)
                 shift
@@ -533,7 +533,7 @@ _zetopt::data::iterate()
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-a, --array <VARIABLE_NAME_FOR_ARRAY>"
                     return 1
                 fi
-                __user_array__=$1
+                __usrvar_array__=$1
                 shift;;
             -c | --count)
                 shift
@@ -541,12 +541,12 @@ _zetopt::data::iterate()
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-c, --count <VARIABLE_NAME_FOR_COUNT>"
                     return 1
                 fi
-                __user_count__=$1
+                __usrvar_count__=$1
                 shift;;
             --nv | --null-value)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::script_error "Missing Required Option Argument:" "-V, --null-value <NULL_VALUE>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-nv, --null-value <NULL_VALUE>"
                     return 1
                 fi
                 __null_value__=$1
@@ -554,10 +554,18 @@ _zetopt::data::iterate()
             --ni | --null-index)
                 shift
                 if [[ $# -eq 0 ]]; then
-                    _zetopt::msg::script_error "Missing Required Option Argument:" "-K, --null-key <NULL_KEY>"
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "--ni, --null-index <NULL_INDEX>"
                     return 1
                 fi
                 __null_index__=$1
+                shift;;
+            -A | --with-array)
+                shift
+                if [[ $# -eq 0 ]]; then
+                    _zetopt::msg::script_error "Missing Required Option Argument:" "-A, --with-array <ARRAY_NAME>"
+                    return 1
+                fi
+                __user_array__=$1
                 shift;;
             --id)
                 shift
@@ -586,20 +594,36 @@ _zetopt::data::iterate()
             *)  __args__+=("$1"); shift;;
         esac
     done
-    
-    local __id__="${__args__[$((0 + $INIT_IDX))]=${ZETOPT_LAST_COMMAND}}"
-    local __complemented_id__=
-    if ! _zetopt::def::exists "$__id__"; then
-        # complement ID if the first arg looks a key
-        if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
-            __id__=$ZETOPT_LAST_COMMAND
-            __complemented_id__=$ZETOPT_LAST_COMMAND
-        else
-            _zetopt::msg::script_error "No Such ID:" "$__id__" 
+
+    local __id__= __complemented_id__=
+
+    # ID for user specified array
+    if [[ -n $__user_array__ ]]; then
+        if [[ ! $__user_array__ =~ $REG_VNAME ]]; then
+            _zetopt::msg::script_error "Invalid Variable Name:" "$__user_array__"
             return 1
         fi
+        if [[ ! -n $(eval 'echo ${'$__user_array__'+x}') ]]; then
+            _zetopt::msg::script_error "No Such Variable:" "$__user_array__"
+            return 1
+        fi
+        __id__=$__user_array__
+
+    # ID for getting parsed data array
+    else
+        __id__="${__args__[$((0 + $INIT_IDX))]=${ZETOPT_LAST_COMMAND}}"
+        if ! _zetopt::def::exists "$__id__"; then
+            # complement ID if the first arg looks a key
+            if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
+                __id__=$ZETOPT_LAST_COMMAND
+                __complemented_id__=$ZETOPT_LAST_COMMAND
+            else
+                _zetopt::msg::script_error "No Such ID:" "$__id__" 
+                return 1
+            fi
+        fi
+        [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
     fi
-    [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
 
     # make variable names based on ID, KEY or --id <ITERATOR_ID>
     local __var_id_suffix__
@@ -620,13 +644,13 @@ _zetopt::data::iterate()
     fi
     __var_id_suffix__=${__var_id_suffix__//[\/\-]/_}
     __var_id_suffix__=${__var_id_suffix__//[!a-zA-Z0-9_]/}
-    local __array__=_zetopt_iterator_array_$__var_id_suffix__
-    local __index__=_zetopt_iterator_index_$__var_id_suffix__
+    local __intlvar_array__=_zetopt_iterator_array_$__var_id_suffix__
+    local __intlvar_index__=_zetopt_iterator_index_$__var_id_suffix__
 
     # --has-next checks next item existence
     if [[ $__action__ == has-next ]]; then
-        if [[ -n $(eval 'echo ${'$__array__'+x}') && -n $(eval 'echo ${'$__index__'+x}') ]]; then
-            if [[ $__index__ -ge $(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))') ]]; then
+        if [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') && -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
+            if [[ $__intlvar_index__ -ge $(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))') ]]; then
                 return 1
             else
                 return 0
@@ -638,8 +662,8 @@ _zetopt::data::iterate()
 
     # --reset resets index
     if [[ $__action__ == reset ]]; then
-        if [[ -n $(eval 'echo ${'$__array__'+x}') && -n $(eval 'echo ${'$__index__'+x}') ]]; then
-            eval $__index__'=$INIT_IDX'
+        if [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') && -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
+            eval $__intlvar_index__'=$INIT_IDX'
             return 0
         else
             return 1
@@ -648,96 +672,116 @@ _zetopt::data::iterate()
 
     # --unset unsets array and index
     if [[ $__action__ == unset ]]; then
-        unset $__array__ ||:
-        unset $__index__ ||:
+        unset $__intlvar_array__ ||:
+        unset $__intlvar_index__ ||:
         return 0
     fi
 
     # check the user defined variable name before eval to avoid invalid characters and overwriting local variables
     local IFS=,
-    set -- $__user_value__ $__user_index__ $__user_last_index__ $__user_array__ $__user_count__
-    for __tmp_var_name__ in $@
+    set -- $__usrvar_value__ $__usrvar_index__ $__usrvar_last_index__ $__usrvar_array__ $__usrvar_count__
+    for __tmp_varname__ in $@
     do
-        [[ -z $__tmp_var_name__ ]] && continue ||:
-        if [[ ! $__tmp_var_name__ =~ ^$REG_VNAME$ ]] || [[ $__tmp_var_name__ =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*__$)|(^IFS$)) ]]; then
-            _zetopt::msg::script_error "Invalid Variable Name:" "$__tmp_var_name__"
+        [[ -z $__tmp_varname__ ]] && continue ||:
+        if [[ ! $__tmp_varname__ =~ ^$REG_VNAME$ ]] || [[ $__tmp_varname__ =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*__$)|(^IFS$)) ]]; then
+            _zetopt::msg::script_error "Invalid Variable Name:" "$__tmp_varname__"
             return 1
         fi
     done
-    local __user_value_names__ __user_index_names__
-    __user_value_names__=($__user_value__)
-    __user_index_names__=($__user_index__)
-    if [[ (-n $__user_value__ && -n $__user_index__) && (${#__user_value_names__[@]} -ne ${#__user_index_names__[@]}) ]]; then
-        _zetopt::msg::script_error "Number of Variables Mismatch :" "--value=$__user_value__ --key=$__user_index__"
+    local __usrvar_value_names__ __usrvar_index_names__
+    __usrvar_value_names__=($__usrvar_value__)
+    __usrvar_index_names__=($__usrvar_index__)
+    if [[ (-n $__usrvar_value__ && -n $__usrvar_index__) && (${#__usrvar_value_names__[@]} -ne ${#__usrvar_index_names__[@]}) ]]; then
+        _zetopt::msg::script_error "Number of Variables Mismatch :" "--value=$__usrvar_value__ --index=$__usrvar_index__"
         return 1
     fi
     IFS=$' \n\t'
 
     # initialize if unbound
-    if [[ ! -n $(eval 'echo ${'$__array__'+x}') || ! -n $(eval 'echo ${'$__index__'+x}') ]]; then
-        if _zetopt::data::print $__field__ $__complemented_id__ "${__args__[@]}" -a $__array__; then
-            eval $__index__'=$INIT_IDX'
+    if [[ ! -n $(eval 'echo ${'$__intlvar_array__'+x}') || ! -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
+        # use user specified array
+        if [[ -n $__user_array__ ]]; then
+            local __end__=$(($(eval 'echo ${#'$__user_array__'[@]}') - 1 + $INIT_IDX))
+            local __list_str__="$(_zetopt::data::pickup "$(eval 'echo {'$INIT_IDX'..'$__end__'}')" "${__args__[@]}")"
+            if [[ -z "$__list_str__" ]]; then
+                return 1
+            fi
+            declare -i __idx__= __i__=$INIT_IDX
+            eval $__intlvar_index__'=$INIT_IDX'
+            eval $__intlvar_array__'=()'
+            set -- $__list_str__
+            for __idx__ in "$@"
+            do
+                eval $__intlvar_array__'[$__i__]=${'$__user_array__'[$__idx__]}'
+                __i__+=1
+            done
 
-        # unset and return error if failed
+        # use parsed data array
         else
-            unset $__array__
-            unset $__index__
-            return 1
+            if _zetopt::data::output $__field__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__; then
+                eval $__intlvar_index__'=$INIT_IDX'
+
+            # unset and return error if failed
+            else
+                unset $__intlvar_array__
+                unset $__intlvar_index__
+                return 1
+            fi
         fi
     fi
 
     # has no next
-    local __max__=$(eval 'echo $((${#'$__array__'[@]} + INIT_IDX))')
-    if [[ $__index__ -ge $__max__ ]]; then
-        unset $__array__
-        unset $__index__
+    local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))')
+    if [[ $__intlvar_index__ -ge $__max__ ]]; then
+        unset $__intlvar_array__
+        unset $__intlvar_index__
         return 1
     fi
 
     # last-index / array / count
-    [[ -n $__user_last_index__ ]] && eval $__user_last_index__'=$((${#'$__array__'[@]} - 1 + $INIT_IDX))' ||:
-    [[ -n $__user_array__ ]] && eval $__user_array__'=("${'$__array__'[@]}")' ||:
-    [[ -n $__user_count__ ]] && eval $__user_count__'=${#'$__array__'[@]}' ||:
+    [[ -n $__usrvar_last_index__ ]] && eval $__usrvar_last_index__'=$((${#'$__intlvar_array__'[@]} - 1 + $INIT_IDX))' ||:
+    [[ -n $__usrvar_array__ ]] && eval $__usrvar_array__'=("${'$__intlvar_array__'[@]}")' ||:
+    [[ -n $__usrvar_count__ ]] && eval $__usrvar_count__'=${#'$__intlvar_array__'[@]}' ||:
 
     # value / index : Iterate with multiple values/indexs
-    if [[ -n $__user_value__ || -n $__user_index__ ]]; then
+    if [[ -n $__usrvar_value__ || -n $__usrvar_index__ ]]; then
         local __idx__=
-        local __max_idx__=$(($([[ -n $__user_value__ ]] && echo ${#__user_value_names__[@]} || echo ${#__user_index_names__[@]}) + $INIT_IDX))
+        local __max_idx__=$(($([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]}) + $INIT_IDX))
         for (( __idx__=INIT_IDX; __idx__<__max_idx__; __idx__++ ))
         do
             # value
-            if [[ -n $__user_value__ ]]; then
-                eval ${__user_value_names__[$__idx__]}'="${'$__array__'[$'$__index__']}"' ||:
+            if [[ -n $__usrvar_value__ ]]; then
+                eval ${__usrvar_value_names__[$__idx__]}'="${'$__intlvar_array__'[$'$__intlvar_index__']}"' ||:
             fi
 
             # index
-            if [[ -n $__user_index__ ]]; then
-                eval ${__user_index_names__[$__idx__]}'=$'$__index__ ||:
+            if [[ -n $__usrvar_index__ ]]; then
+                eval ${__usrvar_index_names__[$__idx__]}'=$'$__intlvar_index__ ||:
             fi
 
             # increment index
-            eval $__index__'=$(('$__index__' + 1))'
-            if [[ $__index__ -ge $__max__ ]]; then
+            eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
+            if [[ $__intlvar_index__ -ge $__max__ ]]; then
                 break
             fi
         done
 
-        # substitute NULL_VALUE/NULL_KEY if breaking the previous loop because of __array__ being short
+        # substitute NULL_VALUE/NULL_KEY if breaking the previous loop because of __intlvar_array__ being short
         for (( __idx__++; __idx__<__max_idx__; __idx__++ ))
         do
             # value
-            if [[ -n $__user_value__ ]]; then
-                eval ${__user_value_names__[$__idx__]}'=$__null_value__' ||:
+            if [[ -n $__usrvar_value__ ]]; then
+                eval ${__usrvar_value_names__[$__idx__]}'=$__null_value__' ||:
             fi
 
             # key
-            if [[ -n $__user_index__ ]]; then
-                eval ${__user_index_names__[$__idx__]}'=$__null_index__' ||:
+            if [[ -n $__usrvar_index__ ]]; then
+                eval ${__usrvar_index_names__[$__idx__]}'=$__null_index__' ||:
             fi
         done
     else
         # increment for using last-key / array / count only
-        eval $__index__'=$(('$__index__' + 1))'
+        eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
     fi
     return 0
 }
