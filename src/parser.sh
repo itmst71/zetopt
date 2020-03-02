@@ -193,8 +193,8 @@ _zetopt::parser::parse()
     # show errors
     if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
         IFS=$' \t\n'
-        local subcmdstr="${namespace//\// }" msg=
-        subcmdstr=${subcmdstr# }
+        local subcmdstr="$ZETOPT_CALLER_NAME${namespace//\// }" msg=
+        subcmdstr=${subcmdstr% }
 
         # Undefined Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_UNDEFINED_OPTION)) -ne 0 ]]; then
@@ -222,7 +222,7 @@ _zetopt::parser::parse()
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_EXTRA_ARGS)) -ne 0 ]]; then
-            msg=("\"$subcmdstr\" can take up to $(_zetopt::def::paramlen $namespace max) arguments. But ${#_ZETOPT_TEMP_ARGV[@]} given")
+            msg=("\"$subcmdstr\" can take up to $(_zetopt::def::paramlen $namespace max) arguments. But ${#_ZETOPT_TEMP_ARGV[@]} were given.")
             _zetopt::msg::user_error Warning "Too Match Arguments:" "${msg[*]}"
         fi
     fi

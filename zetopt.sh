@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-02 04:30)
+# Version     : 1.2.0a (2020-03-02 14:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-02 04:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-02 14:00)"
 
 
 #------------------------------------------------------------
@@ -1532,8 +1532,8 @@ _zetopt::parser::parse()
     # show errors
     if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
         IFS=$' \t\n'
-        local subcmdstr="${namespace//\// }" msg=
-        subcmdstr=${subcmdstr# }
+        local subcmdstr="$ZETOPT_CALLER_NAME${namespace//\// }" msg=
+        subcmdstr=${subcmdstr% }
 
         # Undefined Options
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_UNDEFINED_OPTION)) -ne 0 ]]; then
@@ -1561,7 +1561,7 @@ _zetopt::parser::parse()
 
         # Too Match Positional Arguments
         if [[ $(($ZETOPT_PARSE_ERRORS & $ZETOPT_STATUS_EXTRA_ARGS)) -ne 0 ]]; then
-            msg=("\"$subcmdstr\" can take up to $(_zetopt::def::paramlen $namespace max) arguments. But ${#_ZETOPT_TEMP_ARGV[@]} given")
+            msg=("\"$subcmdstr\" can take up to $(_zetopt::def::paramlen $namespace max) arguments. But ${#_ZETOPT_TEMP_ARGV[@]} were given.")
             _zetopt::msg::user_error Warning "Too Match Arguments:" "${msg[*]}"
         fi
     fi
@@ -2497,7 +2497,7 @@ _zetopt::data::iterate()
 {
     local __args__ __action__= __field__=$ZETOPT_DATAID_ARGV
     local __usrvar_value__=ZV_VALUE __usrvar_index__= __usrvar_last_index__= __usrvar_array__= __usrvar_count__=
-    local __itr_id__= __null_value__=NULL __null_index__=NULL __user_array__=
+    local __itr_id__= __null_value__=NULL __null_index__=NULL __user_array__= __no_fallback_option__=
     __args__=()
     while [[ $# -ne 0 ]]
     do
@@ -2574,6 +2574,9 @@ _zetopt::data::iterate()
                 fi
                 __itr_id__=_$1
                 shift;;
+            --init)
+                __action__=init
+                shift;;
             --reset)
                 __action__=reset
                 shift;;
@@ -2585,6 +2588,8 @@ _zetopt::data::iterate()
                 shift;;
             -E | --extra | --extra-argv)
                 __field__=$ZETOPT_DATAID_EXTRA_ARGV
+                shift;;
+            -N | --no-fallback) __no_fallback_option__=--no-fallback
                 shift;;
             --* | -[a-zA-Z])
                 _zetopt::msg::script_error "Undefined Option:" "$1"
@@ -2624,7 +2629,7 @@ _zetopt::data::iterate()
         [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
     fi
 
-    # make variable names based on ID, KEY or --id <ITERATOR_ID>
+    # build variable names based on ID, KEY or --id <ITERATOR_ID>
     local __var_id_suffix__
     if [[ -n $__itr_id__ ]]; then
         if [[ ! $__itr_id__ =~ ^[a-zA-Z0-9_]+$ ]]; then
@@ -2633,6 +2638,7 @@ _zetopt::data::iterate()
         fi
         __var_id_suffix__=$__itr_id__
     else
+        # replace invalid chars for variable name
         __var_id_suffix__="$__id__${__args__[@]}"
         __var_id_suffix__=${__var_id_suffix__//\ /_20}
         __var_id_suffix__=${__var_id_suffix__//\$/_24}
@@ -2691,7 +2697,7 @@ _zetopt::data::iterate()
     __usrvar_value_names__=($__usrvar_value__)
     __usrvar_index_names__=($__usrvar_index__)
     if [[ (-n $__usrvar_value__ && -n $__usrvar_index__) && (${#__usrvar_value_names__[@]} -ne ${#__usrvar_index_names__[@]}) ]]; then
-        _zetopt::msg::script_error "Number of Variables Mismatch :" "--value=$__usrvar_value__ --index=$__usrvar_index__"
+        _zetopt::msg::script_error "Number of Variables Mismatch:" "--value=$__usrvar_value__ --index=$__usrvar_index__"
         return 1
     fi
     IFS=$' \n\t'
@@ -2700,6 +2706,10 @@ _zetopt::data::iterate()
     if [[ ! -n $(eval 'echo ${'$__intlvar_array__'+x}') || ! -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
         # use user specified array
         if [[ -n $__user_array__ ]]; then
+            if [[ -n ${__args__[@]-} && ! "${__args__[*]}" =~ [0-9,:$^\ ] ]]; then
+                _zetopt::msg::script_error "Invalid Access Key:" "${__args__[*]}"
+                return 1
+            fi
             local __end__=$(($(eval 'echo ${#'$__user_array__'[@]}') - 1 + $INIT_IDX))
             local __list_str__="$(_zetopt::data::pickup "$(eval 'echo {'$INIT_IDX'..'$__end__'}')" "${__args__[@]}")"
             if [[ -z "$__list_str__" ]]; then
@@ -2717,23 +2727,28 @@ _zetopt::data::iterate()
 
         # use parsed data array
         else
-            if _zetopt::data::output $__field__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__; then
+            if _zetopt::data::output $__field__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__ $__no_fallback_option__; then
                 eval $__intlvar_index__'=$INIT_IDX'
 
             # unset and return error if failed
             else
-                unset $__intlvar_array__
-                unset $__intlvar_index__
+                unset $__intlvar_array__ ||:
+                unset $__intlvar_index__ ||:
                 return 1
             fi
         fi
     fi
 
+    # init returns at this point
+    if [[ $__action__ == init ]]; then
+        return 0
+    fi
+    
     # has no next
     local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))')
     if [[ $__intlvar_index__ -ge $__max__ ]]; then
-        unset $__intlvar_array__
-        unset $__intlvar_index__
+        unset $__intlvar_array__ ||:
+        unset $__intlvar_index__ ||:
         return 1
     fi
 
