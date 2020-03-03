@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-02 14:00)
+# Version     : 1.2.0a (2020-03-03 14:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-02 14:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-03 14:00)"
 
 
 #------------------------------------------------------------
@@ -2327,33 +2327,34 @@ _zetopt::data::output()
     if [[ $# -eq 0 ]]; then
         return 1
     fi
-    local __field=$1
+    local IFS=' '
+    local __dataid__=$1
     shift
-    local __out_mode=stdout __var_name= __newline=$LF __fallback=true
-    local __args __ifs=${ZETOPT_CFG_VALUE_IFS-$' '}
-    __args=()
+    local __out_mode__=stdout __usrvar_name__= __newline__=$LF __fallback__=true
+    local __args__ __ifs__=${ZETOPT_CFG_VALUE_IFS-$' '}
+    __args__=()
 
     while [[ $# -ne 0 ]]
     do
         case "$1" in
             -a | --array)
-                __out_mode=array
+                __out_mode__=array
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-a, --array <ARRAY_NAME>"
                     return 1
                 fi
-                __var_name=$1
+                __usrvar_name__=$1
                 shift
                 ;;
             -v | --variable)
-                __out_mode=variable
+                __out_mode__=variable
                 shift
                 if [[ $# -eq 0 ]]; then
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-v, --variable <VARIABLE_NAME>"
                     return 1
                 fi
-                __var_name=$1
+                __usrvar_name__=$1
                 shift
                 ;;
             -I | --IFS)
@@ -2362,132 +2363,148 @@ _zetopt::data::output()
                     _zetopt::msg::script_error "Missing Required Option Argument:" "-I, --IFS <IFS_VALUE>"
                     return 1
                 fi
-                __ifs=$1
+                __ifs__=$1
                 shift
                 ;;
-            -E | --extra) __field=$ZETOPT_DATAID_EXTRA_ARGV; shift;;
-            -N | --no-fallback) __fallback=false; shift;;
-            -n | --no-newline) __newline=; shift;;
-            --) shift; __args+=("$@"); break;;
+            -E | --extra) __dataid__=$ZETOPT_DATAID_EXTRA_ARGV; shift;;
+            -N | --no-fallback) __fallback__=false; shift;;
+            -n | --no-newline) __newline__=; shift;;
+            --) shift; __args__+=("$@"); break;;
             --*|-[a-zA-Z])
                 _zetopt::msg::script_error "Undefined Option:" "$1"
                 return 1;;
-            *)  __args+=("$1"); shift;;
+            *)  __args__+=("$1"); shift;;
         esac
     done
 
-    if [[ $__out_mode =~ ^(array|variable)$ ]]; then
-        # check the user defined variable name before eval to avoid overwriting local variables
-        if [[ ! $__var_name =~ ^$REG_VNAME$ ]] || [[ $__var_name =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*$)|(^IFS$)) ]]; then
-            _zetopt::msg::script_error "Invalid Variable Name:" "$__var_name"
+    # check the user defined variable name before eval to avoid invalid characters and overwriting local variables
+    local __usrvar_names__=
+    __usrvar_names__=()
+    if [[ $__out_mode__ =~ ^(array|variable)$ ]]; then
+        IFS=,
+        set -- $__usrvar_name__
+        IFS=' '
+        if [[ $__out_mode__ == array && $# -gt 1 ]]; then
+            _zetopt::msg::script_error "Multiple variables cannot be given in array mode:" "$__usrvar_name__"
             return 1
         fi
-        case $__out_mode in
-            array) eval "$__var_name=()";;
-            variable) eval "$__var_name=";;
-        esac
+
+        local __tmp_varname__
+        for __tmp_varname__ in $@
+        do
+            [[ -z $__tmp_varname__ ]] && continue ||:
+            if [[ ! $__tmp_varname__ =~ ^$REG_VNAME$ ]] || [[ $__tmp_varname__ =~ ((^_$)|(^__[a-zA-Z0-9][a-zA-Z0-9_]*__$)) ]]; then
+                _zetopt::msg::script_error "Invalid Variable Name:" "$__tmp_varname__"
+                return 1
+            fi
+        done
+        __usrvar_names__=($@)
     fi
 
-    local IFS=' '
-    local __id="${__args[$((0 + $INIT_IDX))]=$ZETOPT_LAST_COMMAND}"
-    if ! _zetopt::def::exists "$__id"; then
-        _zetopt::msg::script_error "No Such ID:" "$__id" 
+    local __id__="${__args__[$((0 + $INIT_IDX))]=$ZETOPT_LAST_COMMAND}"
+    if ! _zetopt::def::exists "$__id__"; then
+        # complement ID if the first arg looks a key
+        if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
+            __id__=$ZETOPT_LAST_COMMAND
+        else
+            _zetopt::msg::script_error "No Such ID:" "$__id__" 
+            return 1
+        fi
+    fi
+    [[ ! $__id__ =~ ^/ ]] && __id__="/$__id__" ||:
+
+    if [[ ! $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV-$ZETOPT_DATAID_DEFAULT]$ ]]; then
+        _zetopt::msg::script_error "Invalid Data ID:" "$__dataid__" 
         return 1
     fi
-    [[ ! $__id =~ ^/ ]] && __id="/$__id" ||:
 
-    if [[ ! $__field =~ ^[$ZETOPT_DATAID_ARGV-$ZETOPT_DATAID_DEFAULT]$ ]]; then
-        _zetopt::msg::script_error "Invalid Data ID:" "$__field" 
-        return 1
-    fi
-
-    local __data
-    __data=($(_zetopt::data::field "$__id" $__field))
+    local __data__
+    __data__=($(_zetopt::data::field "$__id__" $__dataid__))
 
     # argv fallback default
-    if [[ $__field == $ZETOPT_DATAID_ARGV && $__fallback == true ]]; then
-        local __default_data
-        __default_data=($(_zetopt::def::default $__id))
+    if [[ $__dataid__ == $ZETOPT_DATAID_ARGV && $__fallback__ == true ]]; then
+        local __default_data__
+        __default_data__=($(_zetopt::def::default $__id__))
 
         # merge parsed data with default data if parsed is short
-        if [[ ${#__data[@]} -lt ${#__default_data[@]} ]]; then
-            __data=($(echo "${__data[@]}" "${__default_data[@]:${#__data[@]}:$((${#__default_data[@]} - ${#__data[@]}))}"))
+        if [[ ${#__data__[@]} -lt ${#__default_data__[@]} ]]; then
+            __data__=($(echo "${__data__[@]}" "${__default_data__[@]:${#__data__[@]}:$((${#__default_data__[@]} - ${#__data__[@]}))}"))
         fi
     fi
 
-    if [[ -z ${__data[*]-} ]]; then
+    if [[ -z ${__data__[*]-} ]]; then
         _zetopt::msg::script_error "No Data"
         return 1
     fi
 
     # complement pickup-key
-    local __keys="${__args[@]:1}"
-    if [[ -z $__keys ]]; then
-        [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
-        && __keys=@ \
-        || __keys=$
+    local __keys__="${__args__[@]:1}"
+    if [[ -z $__keys__ ]]; then
+        [[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
+        && __keys__=@ \
+        || __keys__=$
     fi
 
     # translate param names in key to the numeric index
-    __keys=$(_zetopt::def::keyparams2idx $__id "$__keys")
+    __keys__=$(_zetopt::def::keyparams2idx $__id__ "$__keys__")
 
     # pickup data with pickup-keys
-    local __list_str="$(_zetopt::data::pickup "${__data[*]}" $__keys)"
-    if [[ -z "$__list_str" ]]; then
+    local __list_str__="$(_zetopt::data::pickup "${__data__[*]}" $__keys__)"
+    if [[ -z "$__list_str__" ]]; then
         return 1
     fi
 
-    declare -i __idx= __i=$INIT_IDX
-    set -- $__list_str
-    local __max=$(($# + INIT_IDX - 1))
-    local __nl=
+    # output
+    IFS=' '
+    set -- $__list_str__
+    declare -i __idx__= __i__=$INIT_IDX __max__=$(($# + INIT_IDX - 1))
+    declare -i __vi__=$INIT_IDX __vmax__=$((${#__usrvar_names__[@]} + INIT_IDX - 1))
+    local __varname__= __nl__=
+
+    if [[ $__out_mode__ == array ]]; then
+        __varname__=${__usrvar_names__[$INIT_IDX]}
+        eval "$__varname__=()"
+    fi
 
     # indexes to refer target data in array
-    if [[ $__field =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]]; then
-        for __idx in "$@"
-        do
-            # store data in user specified array
-            if [[ $__out_mode == array ]]; then
-                eval $__var_name'[$__i]=${_ZETOPT_DATA[$__idx]}'
-            else
-                if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
-                fi
-                
-                # print to STDOUT
-                if [[ $__out_mode == stdout ]]; then
-                    printf -- "%s$__ifs$__nl" "${_ZETOPT_DATA[$__idx]}"
-
-                # store data in user specified variable
-                else
-                    eval $__var_name'="$'$__var_name'${_ZETOPT_DATA[$__idx]}$__ifs"'
-                fi
+    local __refmode__=$([[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] && echo true || echo false)
+    for __idx__ in "$@"
+    do
+        case $__out_mode__ in
+        stdout)
+            if [[ $__i__ -eq $__max__ ]]; then
+                __ifs__= __nl__=$__newline__
             fi
-            __i+=1
-        done
-
-    # target data is itself
-    else
-        for __idx in "$@"
-        do
-            # store data in user specified array
-            if [[ $__out_mode == array ]]; then
-                eval $__var_name'[$__i]=$__idx'
+            [[ $__refmode__ == true ]] \
+            && printf -- "%s$__ifs__$__nl__" "${_ZETOPT_DATA[$__idx__]}" \
+            || printf -- "%s$__ifs__$__nl__" "$__idx__"
+            ;;
+        array)
+            [[ $__refmode__ == true ]] \
+            && eval $__varname__'[$__i__]=${_ZETOPT_DATA[$__idx__]}' \
+            || eval $__varname__'[$__i__]=$__idx__'
+            ;;
+        variable)
+            if [[ $__vmax__ -ge $__i__ ]]; then
+                __varname__=${__usrvar_names__[$__vi__]}
+                __vi__+=1
+                [[ $__refmode__ == true ]] \
+                && eval $__varname__'=${_ZETOPT_DATA[$__idx__]}' \
+                || eval $__varname__'=$__idx__'
             else
-                if [[ $__i -eq $__max ]]; then
-                    __ifs= __nl=$__newline
-                fi
-
-                # output to STDOUT
-                if [[ $__out_mode == stdout ]]; then
-                    printf -- "%s$__ifs$__nl" "$__idx"
-                    
-                # store data in user specified variable
-                else
-                    eval $__var_name'="$'$__var_name'$__idx$__ifs"'
-                fi
+                [[ $__refmode__ == true ]] \
+                && eval $__varname__'+=$__ifs__${_ZETOPT_DATA[$__idx__]}' \
+                || eval $__varname__'+=$__ifs__$__idx__'
             fi
-            __i+=1
+            ;;
+        esac
+        __i__+=1
+    done
+    if [[ $__out_mode__ == variable ]]; then
+        for (( ; $__vmax__ >= $__vi__; __vi__++ ))
+        do
+            __varname__=${__usrvar_names__[$__vi__]}
+            eval $__varname__'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
         done
     fi
 }
@@ -2495,7 +2512,7 @@ _zetopt::data::output()
 
 _zetopt::data::iterate()
 {
-    local __args__ __action__= __field__=$ZETOPT_DATAID_ARGV
+    local __args__ __action__=next __dataid__=$ZETOPT_DATAID_ARGV
     local __usrvar_value__=ZV_VALUE __usrvar_index__= __usrvar_last_index__= __usrvar_array__= __usrvar_count__=
     local __itr_id__= __null_value__=NULL __null_index__=NULL __user_array__= __no_fallback_option__=
     __args__=()
@@ -2587,7 +2604,7 @@ _zetopt::data::iterate()
                 __action__=has-next
                 shift;;
             -E | --extra | --extra-argv)
-                __field__=$ZETOPT_DATAID_EXTRA_ARGV
+                __dataid__=$ZETOPT_DATAID_EXTRA_ARGV
                 shift;;
             -N | --no-fallback) __no_fallback_option__=--no-fallback
                 shift;;
@@ -2700,7 +2717,7 @@ _zetopt::data::iterate()
         _zetopt::msg::script_error "Number of Variables Mismatch:" "--value=$__usrvar_value__ --index=$__usrvar_index__"
         return 1
     fi
-    IFS=$' \n\t'
+    IFS=' '
 
     # initialize if unbound
     if [[ ! -n $(eval 'echo ${'$__intlvar_array__'+x}') || ! -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
@@ -2727,7 +2744,7 @@ _zetopt::data::iterate()
 
         # use parsed data array
         else
-            if _zetopt::data::output $__field__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__ $__no_fallback_option__; then
+            if _zetopt::data::output $__dataid__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__ $__no_fallback_option__; then
                 eval $__intlvar_index__'=$INIT_IDX'
 
             # unset and return error if failed
