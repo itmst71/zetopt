@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-03 14:00)
+# Version     : 1.2.0a (2020-03-05 06:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-03 14:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-05 06:30)"
 
 
 #------------------------------------------------------------
@@ -1390,11 +1390,6 @@ _zetopt::parser::parse()
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
 
-    if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
-        return 1
-    fi
-
     args=()
     while [[ $# -ne 0 ]]
     do
@@ -1507,10 +1502,9 @@ _zetopt::parser::parse()
                 fi
 
                 # Change namespace
-                if _zetopt::parser::setsub $ns; then
-                    namespace=$ns
-                    ZETOPT_LAST_COMMAND=$namespace
-                fi
+                namespace=$ns
+                ZETOPT_LAST_COMMAND=$namespace
+
                 shift
                 continue
             fi
@@ -1526,11 +1520,14 @@ _zetopt::parser::parse()
         fi
     done
 
+    # update command count
+    _zetopt::parser::setcmd $ZETOPT_LAST_COMMAND ||:
+
     # assign positional args
     _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
-    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true && $ZETOPT_PARSE_ERRORS -ne 0 ]]; then
         IFS=$' \t\n'
         local subcmdstr="$ZETOPT_CALLER_NAME${namespace//\// }" msg=
         subcmdstr=${subcmdstr% }
@@ -1569,17 +1566,17 @@ _zetopt::parser::parse()
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
-# setsub(): Increment the set count of a sub-command. 
+# setcmd(): Increment the set count of a sub-command. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::setsub {NAMESPACE}
-# e.g.) _zetopt::parser::setsub /sub
+# def.) _zetopt::parser::setcmd {NAMESPACE}
+# e.g.) _zetopt::parser::setcmd /sub
 # STDOUT: NONE
-_zetopt::parser::setsub()
+_zetopt::parser::setcmd()
 {
     local id=${1-}
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
-        return $ZETOPT_STATUS_UNDEFINED_SUBCMD
+        return 1
     fi
 
     local head_lines="${BASH_REMATCH[$((1 + $INIT_IDX))]:1}"
@@ -2440,7 +2437,7 @@ _zetopt::data::output()
     # complement pickup-key
     local __keys__="${__args__[@]:1}"
     if [[ -z $__keys__ ]]; then
-        [[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
+        [[ $__dataid__ =~ ^($ZETOPT_DATAID_ARGV|$ZETOPT_DATAID_EXTRA_ARGV|$ZETOPT_DATAID_DEFAULT)$ ]] \
         && __keys__=@ \
         || __keys__=$
     fi
@@ -2467,7 +2464,7 @@ _zetopt::data::output()
     fi
 
     # indexes to refer target data in array
-    local __refmode__=$([[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] && echo true || echo false)
+    local __refmode__=$([[ $__dataid__ =~ ^($ZETOPT_DATAID_ARGV|$ZETOPT_DATAID_PSEUDO|$ZETOPT_DATAID_EXTRA_ARGV|$ZETOPT_DATAID_DEFAULT)$ ]] && echo true || echo false)
     for __idx__ in "$@"
     do
         case $__out_mode__ in

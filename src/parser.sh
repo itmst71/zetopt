@@ -51,11 +51,6 @@ _zetopt::parser::parse()
     # internal global variables
     declare -i _CONSUMED_ARGS_COUNT=0
 
-    if ! _zetopt::parser::setsub $namespace; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Root Namespace Not Found"
-        return 1
-    fi
-
     args=()
     while [[ $# -ne 0 ]]
     do
@@ -168,10 +163,9 @@ _zetopt::parser::parse()
                 fi
 
                 # Change namespace
-                if _zetopt::parser::setsub $ns; then
-                    namespace=$ns
-                    ZETOPT_LAST_COMMAND=$namespace
-                fi
+                namespace=$ns
+                ZETOPT_LAST_COMMAND=$namespace
+
                 shift
                 continue
             fi
@@ -187,11 +181,14 @@ _zetopt::parser::parse()
         fi
     done
 
+    # update command count
+    _zetopt::parser::setcmd $ZETOPT_LAST_COMMAND ||:
+
     # assign positional args
     _zetopt::parser::assign_args "$namespace" ||:
     
     # show errors
-    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true ]]; then
+    if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true && $ZETOPT_PARSE_ERRORS -ne 0 ]]; then
         IFS=$' \t\n'
         local subcmdstr="$ZETOPT_CALLER_NAME${namespace//\// }" msg=
         subcmdstr=${subcmdstr% }
@@ -230,17 +227,17 @@ _zetopt::parser::parse()
     [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]
 }
 
-# setsub(): Increment the set count of a sub-command. 
+# setcmd(): Increment the set count of a sub-command. 
 # ** Must be executed in the current shell **
-# def.) _zetopt::parser::setsub {NAMESPACE}
-# e.g.) _zetopt::parser::setsub /sub
+# def.) _zetopt::parser::setcmd {NAMESPACE}
+# e.g.) _zetopt::parser::setcmd /sub
 # STDOUT: NONE
-_zetopt::parser::setsub()
+_zetopt::parser::setcmd()
 {
     local id=${1-}
     if [[ ! $LF$_ZETOPT_PARSED =~ (.*$LF)(($id):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*))($LF.*) ]]; then
         ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_UNDEFINED_SUBCMD))
-        return $ZETOPT_STATUS_UNDEFINED_SUBCMD
+        return 1
     fi
 
     local head_lines="${BASH_REMATCH[$((1 + $INIT_IDX))]:1}"

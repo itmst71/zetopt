@@ -441,7 +441,7 @@ _zetopt::data::output()
     # complement pickup-key
     local __keys__="${__args__[@]:1}"
     if [[ -z $__keys__ ]]; then
-        [[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] \
+        [[ $__dataid__ =~ ^($ZETOPT_DATAID_ARGV|$ZETOPT_DATAID_EXTRA_ARGV|$ZETOPT_DATAID_DEFAULT)$ ]] \
         && __keys__=@ \
         || __keys__=$
     fi
@@ -468,7 +468,7 @@ _zetopt::data::output()
     fi
 
     # indexes to refer target data in array
-    local __refmode__=$([[ $__dataid__ =~ ^[$ZETOPT_DATAID_ARGV$ZETOPT_DATAID_PSEUDO$ZETOPT_DATAID_EXTRA_ARGV$ZETOPT_DATAID_DEFAULT]$ ]] && echo true || echo false)
+    local __refmode__=$([[ $__dataid__ =~ ^($ZETOPT_DATAID_ARGV|$ZETOPT_DATAID_PSEUDO|$ZETOPT_DATAID_EXTRA_ARGV|$ZETOPT_DATAID_DEFAULT)$ ]] && echo true || echo false)
     for __idx__ in "$@"
     do
         case $__out_mode__ in
