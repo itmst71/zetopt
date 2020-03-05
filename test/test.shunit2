@@ -454,7 +454,7 @@ test_argv_array_newlines() {
 # validator
 #------------------------------------------------
 test_def_validator() {
-    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
     zetopt def alph:A @TEXT~ALPH
     zetopt parse -A "CAPITAL ALPHABET"
     assertTrue $?
@@ -463,14 +463,14 @@ test_def_validator() {
 }
 
 test_def_validator_with_ignore_case_flag() {
-    zetopt def-validator -i ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator -i ALPH '^[A-Z][A-Z\ ]+$'
     zetopt def alph:A @TEXT~ALPH
     zetopt parse -A "capital alphabet"
     assertTrue $?
 }
 
 test_def_validator_with_not_flag() {
-    zetopt def-validator -n ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator -n ALPH '^[A-Z][A-Z\ ]+$'
     zetopt def alph:A @TEXT~ALPH
     zetopt parse -A "capital alphabet"
     assertTrue "[validator] capital alphabets" $?
@@ -480,7 +480,7 @@ test_def_validator_with_not_flag() {
 
 validator_wkport(){ [[ ${1-} =~ ^[0-9]+$ && $1 -ge 1024 && $1 -le 65535 ]]; }
 test_def_validator_with_func_flag() {
-    zetopt def-validator -f wkport validator_wkport
+    zetopt validator -f wkport validator_wkport
     zetopt def port:p @PORT~wkport
     zetopt parse -p 1024
     assertTrue $?
@@ -493,8 +493,8 @@ test_def_validator_with_func_flag() {
 }
 
 test_def_validator_chain() {
-    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
-    zetopt def-validator MAX5 '^.{1,5}$'
+    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator MAX5 '^.{1,5}$'
     zetopt def alph:A @TEXT~ALPH,MAX5
     zetopt def char:C "@TEXT[=~ALPH,MAX5]"
     zetopt parse -A "ALPHA"
@@ -511,8 +511,8 @@ test_def_validator_chain() {
 # validator Error
 #------------------------------------------------
 test_def_validator_ERR_duplicate_name() {
-    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
-    zetopt def-validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
+    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
     assertFalse $?
 }
 

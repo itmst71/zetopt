@@ -403,20 +403,18 @@ _zetopt::def::define()
             if $ZETOPT_CFG_AUTOVAR; then
                 # build variable name
                 if [[ $var_param_len == 1 ]]; then
-                    if [[ $deftype == c ]]; then
-                        var_name=$var_base_name$var_param_name
-                    else
-                        var_name=$var_base_name
-                    fi
+                    [[ $deftype == c ]] \
+                    && var_name=$var_base_name$var_param_name \
+                    || var_name=$var_base_name
                 else
-                    if [[ $deftype == c ]]; then
-                        var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name
-                    else
-                        var_name=${var_base_name}_$var_param_name
-                    fi
+                    [[ $deftype == c ]] \
+                    && var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name \
+                    || var_name=${var_base_name}_$var_param_name
                 fi
-                #var_name=$(_zetopt::utils::lowercase "$var_name")
-
+                if [[ $var_name =~ [A-Z] ]]; then
+                    var_name=$(_zetopt::utils::lowercase "$var_name")
+                fi
+                
                 # check variable name conflict
                 if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
                     _ZETOPT_DEF_ERROR=true
@@ -426,11 +424,9 @@ _zetopt::def::define()
                 _ZETOPT_VARIABLE_NAMES+=($var_name)
 
                 # subsititue default value to variable
-                if [[ -n $param_varlen ]]; then
-                    eval $var_name'=("$var_param_default")'
-                else
-                    eval $var_name'=$var_param_default'
-                fi
+                [[ -n $param_varlen ]] \
+                && eval $var_name'=("$var_param_default")' \
+                || eval $var_name'=$var_param_default'
                 var_name_list+="$var_name "
             fi
         done
@@ -443,7 +439,9 @@ _zetopt::def::define()
         # autovar
         if $ZETOPT_CFG_AUTOVAR; then
             var_name="$var_base_name"
-            #var_name=$(_zetopt::utils::lowercase "$var_name")
+            if [[ $var_name =~ [A-Z] ]]; then
+                var_name=$(_zetopt::utils::lowercase "$var_name")
+            fi
 
             # check variable name conflict
             if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then

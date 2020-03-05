@@ -312,7 +312,7 @@ _zetopt::utils::lowercase()
     
     # zsh
     if $ZETOPT_ZSH; then
-        printf -- "%s" $1:l
+        printf -- "%s" ${1:l}
         return 0
     fi
 

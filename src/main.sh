@@ -68,14 +68,16 @@ zetopt()
         # def
         define | def)
             _zetopt::def::define "$@";;
-        def-validator | define-validator | validator)
-            _zetopt::validator::def "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
         defined)
             _zetopt::def::defined "$@";;
+
+        # validator
+        validator)
+            _zetopt::validator::def "$@";;
 
         # parser
         parse)

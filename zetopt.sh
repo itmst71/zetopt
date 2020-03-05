@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-05 06:30)
+# Version     : 1.2.0a (2020-03-06 05:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-05 06:30)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-06 05:00)"
 
 
 #------------------------------------------------------------
@@ -280,14 +280,16 @@ zetopt()
         # def
         define | def)
             _zetopt::def::define "$@";;
-        def-validator | define-validator | validator)
-            _zetopt::validator::def "$@";;
         paramidx | pidx)
             _zetopt::def::paramidx "$@";;
         paramlen | plen)
             _zetopt::def::paramlen "$@";;
         defined)
             _zetopt::def::defined "$@";;
+
+        # validator
+        validator)
+            _zetopt::validator::def "$@";;
 
         # parser
         parse)
@@ -740,20 +742,18 @@ _zetopt::def::define()
             if $ZETOPT_CFG_AUTOVAR; then
                 # build variable name
                 if [[ $var_param_len == 1 ]]; then
-                    if [[ $deftype == c ]]; then
-                        var_name=$var_base_name$var_param_name
-                    else
-                        var_name=$var_base_name
-                    fi
+                    [[ $deftype == c ]] \
+                    && var_name=$var_base_name$var_param_name \
+                    || var_name=$var_base_name
                 else
-                    if [[ $deftype == c ]]; then
-                        var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name
-                    else
-                        var_name=${var_base_name}_$var_param_name
-                    fi
+                    [[ $deftype == c ]] \
+                    && var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name \
+                    || var_name=${var_base_name}_$var_param_name
                 fi
-                #var_name=$(_zetopt::utils::lowercase "$var_name")
-
+                if [[ $var_name =~ [A-Z] ]]; then
+                    var_name=$(_zetopt::utils::lowercase "$var_name")
+                fi
+                
                 # check variable name conflict
                 if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
                     _ZETOPT_DEF_ERROR=true
@@ -763,11 +763,9 @@ _zetopt::def::define()
                 _ZETOPT_VARIABLE_NAMES+=($var_name)
 
                 # subsititue default value to variable
-                if [[ -n $param_varlen ]]; then
-                    eval $var_name'=("$var_param_default")'
-                else
-                    eval $var_name'=$var_param_default'
-                fi
+                [[ -n $param_varlen ]] \
+                && eval $var_name'=("$var_param_default")' \
+                || eval $var_name'=$var_param_default'
                 var_name_list+="$var_name "
             fi
         done
@@ -780,7 +778,9 @@ _zetopt::def::define()
         # autovar
         if $ZETOPT_CFG_AUTOVAR; then
             var_name="$var_base_name"
-            #var_name=$(_zetopt::utils::lowercase "$var_name")
+            if [[ $var_name =~ [A-Z] ]]; then
+                var_name=$(_zetopt::utils::lowercase "$var_name")
+            fi
 
             # check variable name conflict
             if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
@@ -3252,7 +3252,7 @@ _zetopt::utils::lowercase()
     
     # zsh
     if $ZETOPT_ZSH; then
-        printf -- "%s" $1:l
+        printf -- "%s" ${1:l}
         return 0
     fi
 
