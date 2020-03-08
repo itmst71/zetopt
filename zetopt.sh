@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-06 05:00)
+# Version     : 1.2.0a (2020-03-09 08:30)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-06 05:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-09 08:30)"
 
 
 #------------------------------------------------------------
@@ -1673,68 +1673,72 @@ _zetopt::parser::setopt()
             fi
 
             # there are available args
-            if [[ $arg_idx -lt $arg_max_idx ]]; then
-                arg="${args[$arg_idx]}"
-                if [[ $arg == "" && $ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
-                    arg_idx+=1
-                    continue
-                fi
-
-                # check arg format
-                if [[ $arg =~ ^[^-+]
-                    || $arg =~ ^[-+]$
-                    || $arg == ""
-                    || ($arg =~ ^-[^-] && $def =~ ^-[^-])
-                    || ($arg != "--" && $arg =~ ^- && $def =~ ^--)
-                    || ($arg =~ ^[+] && $def =~ ^--? && $ZETOPT_CFG_OPTTYPE_PLUS == true)
-                    || ($arg == "--" && $ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN -eq 0)
-                ]]; then
-                    # validate
-                    if ! _zetopt::validator::validate "$def" "$arg"; then
-                        ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_VALIDATOR_FAILED))
-                        return 1
-                    fi
-
-                    if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
-                        varlen_mode=true
-                        arg_def_max=$(_zetopt::def::paramlen $id max)
-
-                        # autovar
-                        if $ZETOPT_CFG_AUTOVAR; then
-                            eval $var_name'=()'
-                        fi
-                    fi
-
-                    _ZETOPT_DATA+=("$arg")
-
-                    # autovar
-                    if $ZETOPT_CFG_AUTOVAR; then
-                        [[ $varlen_mode == true ]] \
-                        && eval $var_name'+=("$arg")' \
-                        || eval $var_name'=$arg'
-                    fi
-
-                    ref_arr+=($optarg_idx)
-                    arg_cnt+=1
-                    _CONSUMED_ARGS_COUNT+=1
-
-                    arg_idx+=1
-                    optarg_idx+=1
-
-                    if [[ $varlen_mode == true && $arg_cnt -ge $arg_def_max ]]; then
-                        break
-                    fi
-
-                    # increment def_idx if def is not a variable-length argument
-                    if [[ $varlen_mode == false ]]; then
-                        def_idx+=1
-                    fi
-                else
-                    no_avail_args=true
-                    break
-                fi
-            else
+            if [[ $arg_idx -ge $arg_max_idx ]]; then
                 no_avail_args=true
+                break
+            fi
+
+            arg="${args[$arg_idx]}"
+
+            # ignore blank string
+            if [[ -z $arg && $ZETOPT_CFG_IGNORE_BLANK_STRING == true ]]; then
+                arg_idx+=1
+                continue
+            fi
+
+            # check arg format
+            if [[ ! (
+                    $arg =~ ^[^-+]
+                || $arg =~ ^[-+]$
+                || $arg == ""
+                || ($arg =~ ^-[^-] && $def =~ ^-[^-])
+                || ($arg =~ ^--.+ && $def =~ ^--)
+                || ($ZETOPT_CFG_OPTTYPE_PLUS == true
+                    && (   ($arg =~ ^[+][^+] && $def =~ ^-[^-])
+                        || ($arg =~ ^[+][+].+ && $def =~ ^--)
+                    ))
+                || ($arg == "--" && $ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN == true)
+            ) ]]; then
+                no_avail_args=true
+                break
+            fi
+
+            # validate
+            if ! _zetopt::validator::validate "$def" "$arg"; then
+                ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_VALIDATOR_FAILED))
+                return 1
+            fi
+
+            if [[ $varlen_mode == false && $def =~ [.]{3,3} ]]; then
+                varlen_mode=true
+                arg_def_max=$(_zetopt::def::paramlen $id max)
+
+                # autovar
+                if $ZETOPT_CFG_AUTOVAR; then
+                    eval $var_name'=()'
+                fi
+            fi
+
+            _ZETOPT_DATA+=("$arg")
+
+            # autovar
+            if $ZETOPT_CFG_AUTOVAR; then
+                [[ $varlen_mode == true ]] \
+                && eval $var_name'+=("$arg")' \
+                || eval $var_name'=$arg'
+            fi
+
+            ref_arr+=($optarg_idx)
+            arg_cnt+=1
+            _CONSUMED_ARGS_COUNT+=1
+
+            arg_idx+=1
+            optarg_idx+=1
+
+            # increment def_idx if def is not a variable-length argument
+            if [[ $varlen_mode == false ]]; then
+                def_idx+=1
+            elif [[ $arg_cnt -ge $arg_def_max ]]; then
                 break
             fi
         done
