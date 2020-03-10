@@ -85,7 +85,10 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # Long option
-        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
+        elif [[ $1 =~ ^--[^-]
+                || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && $1 =~ ^-[^-] )
+                || ($ZETOPT_CFG_PREFIX_PLUS == true && (($1 =~ ^[+][+][^+] ) || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && $1 =~ ^[+][^+] )))
+            ]]; then
             if [[ ! $1 =~ ^([-+]{1,2})([a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)((:[a-zA-Z0-9_]+)*)(=(.*$))?$ ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -108,7 +111,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # short option(s)
-        elif [[ $1 =~ ^([+-])([^+-].*)$ ]]; then
+        elif [[ $1 =~ ^(-)([^-].*)$ || ($ZETOPT_CFG_PREFIX_PLUS == true && $1 =~ ^([+])([^+].*)$) ]]; then
             opt_prefix=${BASH_REMATCH[$((1 + INIT_IDX))]}
             optnames=${BASH_REMATCH[$((2 + INIT_IDX))]}
             optnames_len=${#optnames}
@@ -357,7 +360,7 @@ _zetopt::parser::setopt()
                 || $arg == ""
                 || ($arg =~ ^-[^-] && $def =~ ^-[^-])
                 || ($arg =~ ^--.+ && $def =~ ^--)
-                || ($ZETOPT_CFG_OPTTYPE_PLUS == true
+                || ($ZETOPT_CFG_PREFIX_PLUS == true
                     && (   ($arg =~ ^[+][^+] && $def =~ ^-[^-])
                         || ($arg =~ ^[+][+].+ && $def =~ ^--)
                     ))

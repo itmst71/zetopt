@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-10 14:00)
+# Version     : 1.2.0a (2020-03-10 21:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-10 14:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-10 21:00)"
 
 
 #------------------------------------------------------------
@@ -171,7 +171,7 @@ _zetopt::init::init_config()
     ZETOPT_CFG_ABBREVIATED_LONG=true
     ZETOPT_CFG_IGNORE_BLANK_STRING=false
     ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
-    ZETOPT_CFG_OPTTYPE_PLUS=false
+    ZETOPT_CFG_PREFIX_PLUS=false
 
     # Parsed data related configs: Set before refering parsed data
     ZETOPT_CFG_VALUE_IFS=" "
@@ -461,11 +461,6 @@ _zetopt::def::define()
                 has_param=true
             elif [[ $arg =~ ^\# ]]; then
                 help_only=true
-            else
-                #_ZETOPT_DEF_ERROR=true
-                #_zetopt::msg::script_error "Invalid Definition"
-                #return 1
-                :
             fi
         fi
     fi
@@ -1479,7 +1474,10 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # Long option
-        elif [[ $1 =~ ^(--|[+][+])[^+-] || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && ($1 =~ ^-[^-]. || $1 =~ ^[+][^+]. )) ]]; then
+        elif [[ $1 =~ ^--[^-]
+                || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && $1 =~ ^-[^-] )
+                || ($ZETOPT_CFG_PREFIX_PLUS == true && (($1 =~ ^[+][+][^+] ) || ($ZETOPT_CFG_SINGLE_PREFIX_LONG == true && $1 =~ ^[+][^+] )))
+            ]]; then
             if [[ ! $1 =~ ^([-+]{1,2})([a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)((:[a-zA-Z0-9_]+)*)(=(.*$))?$ ]]; then
                 ZETOPT_OPTERR_INVALID+=("$1")
                 ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | ZETOPT_STATUS_INVALID_OPTFORMAT))
@@ -1502,7 +1500,7 @@ _zetopt::parser::parse()
             check_subcmd=false
 
         # short option(s)
-        elif [[ $1 =~ ^([+-])([^+-].*)$ ]]; then
+        elif [[ $1 =~ ^(-)([^-].*)$ || ($ZETOPT_CFG_PREFIX_PLUS == true && $1 =~ ^([+])([^+].*)$) ]]; then
             opt_prefix=${BASH_REMATCH[$((1 + INIT_IDX))]}
             optnames=${BASH_REMATCH[$((2 + INIT_IDX))]}
             optnames_len=${#optnames}
@@ -1751,7 +1749,7 @@ _zetopt::parser::setopt()
                 || $arg == ""
                 || ($arg =~ ^-[^-] && $def =~ ^-[^-])
                 || ($arg =~ ^--.+ && $def =~ ^--)
-                || ($ZETOPT_CFG_OPTTYPE_PLUS == true
+                || ($ZETOPT_CFG_PREFIX_PLUS == true
                     && (   ($arg =~ ^[+][^+] && $def =~ ^-[^-])
                         || ($arg =~ ^[+][+].+ && $def =~ ^--)
                     ))

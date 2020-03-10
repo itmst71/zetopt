@@ -592,7 +592,7 @@ test_pseudo() {
 # count
 #------------------------------------------------
 test_count() {
-    ZETOPT_CFG_OPTTYPE_PLUS=true
+    ZETOPT_CFG_PREFIX_PLUS=true
     zetopt def verbose:v
     zetopt parse -v -vvv +v +vvv
     local v=$(zetopt count verbose)
@@ -669,7 +669,7 @@ test_argc_notset() {
 # type
 #------------------------------------------------
 test_type() {
-    ZETOPT_CFG_OPTTYPE_PLUS=true
+    ZETOPT_CFG_PREFIX_PLUS=true
     zetopt def /sub %FOO
     zetopt def verbose:v:verbose
     zetopt parse sub foo

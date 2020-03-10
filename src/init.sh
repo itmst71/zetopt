@@ -135,7 +135,7 @@ _zetopt::init::init_config()
     ZETOPT_CFG_ABBREVIATED_LONG=true
     ZETOPT_CFG_IGNORE_BLANK_STRING=false
     ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR=false
-    ZETOPT_CFG_OPTTYPE_PLUS=false
+    ZETOPT_CFG_PREFIX_PLUS=false
 
     # Parsed data related configs: Set before refering parsed data
     ZETOPT_CFG_VALUE_IFS=" "

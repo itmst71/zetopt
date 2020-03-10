@@ -117,11 +117,6 @@ _zetopt::def::define()
                 has_param=true
             elif [[ $arg =~ ^\# ]]; then
                 help_only=true
-            else
-                #_ZETOPT_DEF_ERROR=true
-                #_zetopt::msg::script_error "Invalid Definition"
-                #return 1
-                :
             fi
         fi
     fi
