@@ -111,6 +111,9 @@ zetopt()
         iterate)
             _zetopt::data::iterate "$@";;
 
+        utils)
+            _zetopt::utils::interface "$@";;
+            
         # help
         def-help | define-help)
             _zetopt::help::define "$@";;

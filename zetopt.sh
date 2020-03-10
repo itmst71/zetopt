@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-10 21:00)
+# Version     : 1.2.0a (2020-03-10 22:00)
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-10 21:00)"
+readonly ZETOPT_VERSION="1.2.0a (2020-03-10 22:00)"
 
 
 #------------------------------------------------------------
@@ -328,6 +328,9 @@ zetopt()
         iterate)
             _zetopt::data::iterate "$@";;
 
+        utils)
+            _zetopt::utils::interface "$@";;
+            
         # help
         def-help | define-help)
             _zetopt::help::define "$@";;
@@ -3001,6 +3004,33 @@ _zetopt::msg::should_decorate()
 #------------------------------------------------------------
 # _zetopt::utils
 #------------------------------------------------------------
+_zetopt::utils::interface()
+{
+    if [[ -z ${@-} ]]; then
+        _zetopt::msg::script_error "No Argument:" "_zetopt::utils::interface <UTIL_NAME> [<ARGS>]"
+        return 1
+    fi
+    local funcname=$1
+    shift
+    case $funcname in
+        funcname)       _zetopt::utils::funcname "$@";;
+        stack_trace)    _zetopt::utils::stack_trace "$@";;
+        viewfile)       _zetopt::utils::viewfile "$@";;
+        repeat)         _zetopt::utils::repeat "$@";;
+        seq)            _zetopt::utils::seq "$@";;
+        isLangCJK)      _zetopt::utils::isLangCJK "$@";;
+        fold)           _zetopt::utils::fold "$@";;
+        undecorate)     _zetopt::utils::undecorate "$@";;
+        quote)          _zetopt::utils::quote "$@";;
+        max)            _zetopt::utils::max "$@";;
+        min)            _zetopt::utils::min "$@";;
+        lowercase)      _zetopt::utils::lowercase "$@";;
+        abspath)        _zetopt::utils::abspath "$@";;
+        *)  _zetopt::msg::script_error "utils:" "funcname stack_trace viewfile repeat seq isLangCJK fold undecorate quote max min lowercase abspath"
+            return 1;;
+    esac
+}
+
 _zetopt::utils::funcname()
 {
     local skip_stack_count=0
@@ -3341,6 +3371,24 @@ _zetopt::utils::lowercase()
     done
 }
 
+_zetopt::utils::abspath()
+{
+    [[ -z ${1-} ]] && return 1
+
+    local abs_path="/" rel_path
+    [[ "$1" =~ ^/ ]] && rel_path="$1" || rel_path="$PWD/$1"
+
+    local IFS="/" comp
+    for comp in $rel_path
+    do
+        case "$comp" in
+            '.' | '') continue;;
+            '..')     abs_path=$(\dirname -- "$abs_path");;
+            *)        [[ $abs_path == / ]] && abs_path="/$comp" || abs_path="$abs_path/$comp";;
+        esac
+    done
+    \printf -- "%s\n" "$abs_path"
+}
 
 #------------------------------------------------------------
 # _zetopt::help
