@@ -27,7 +27,7 @@ else
     return 1
 fi
 
-# field numbers for definition
+# field numbers for defined data
 readonly ZETOPT_DEFID_ALL=0
 readonly ZETOPT_DEFID_ID=1
 readonly ZETOPT_DEFID_TYPE=2
