@@ -299,16 +299,19 @@ _zetopt::parser::setopt()
     fi
 
     # options requiring NO argument
-    if [[ -z $paramdef_str ]]; then
-        [[ $opt_prefix =~ ^--?$ ]] \
-        && _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_TRUE") \
-        || _ZETOPT_DATA+=("$ZETOPT_CFG_FLAGVAL_FALSE")
+    if [[ $paramdef_str =~ ^d=([0-9]+)\ t=([0-9]+)\ f=([0-9]+)$ ]]; then
+        local val=
+        case $opt_prefix in
+            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 1 + INIT_IDX))]}]};;
+            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 2 + INIT_IDX))]}]};;
+        esac
+        _ZETOPT_DATA+=("$val")
         ref_arr=($optarg_idx)
 
         # autovar
         if $ZETOPT_CFG_AUTOVAR; then
             var_name=$var_names_str
-            eval $var_name'=true'
+            eval $var_name'=$val'
         fi
 
     # options requiring arguments

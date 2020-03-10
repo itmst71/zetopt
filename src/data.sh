@@ -505,7 +505,7 @@ _zetopt::data::output()
         for (( ; $__vmax__ >= $__vi__; __vi__++ ))
         do
             __varname__=${__usrvar_names__[$__vi__]}
-            eval $__varname__'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
+            eval $__varname__'=$ZETOPT_CFG_ARG_DEFAULT'
         done
     fi
 }

@@ -42,8 +42,8 @@
     * [ZETOPT_CFG_SINGLE_PREFIX_LONG](#zetopt_cfg_single_prefix_long)
     * [ZETOPT_CFG_IGNORE_SUBCMD_UNDEFERR](#zetopt_cfg_ignore_subcmd_undeferr)
     * [ZETOPT_CFG_TYPE_PLUS](#zetopt_cfg_type_plus)
-    * [ZETOPT_CFG_FLAGVAL_TRUE](#zetopt_cfg_flagval_true)
-    * [ZETOPT_CFG_FLAGVAL_FALSE](#zetopt_cfg_flagval_false)
+    * [ZETOPT_CFG_FLAG_TRUE](#zetopt_cfg_flag_true)
+    * [ZETOPT_CFG_FLAG_FALSE](#zetopt_cfg_flag_false)
     * [ZETOPT_CFG_ERRMSG_USER_ERROR](#zetopt_cfg_errmsg_user_error)
     * [ZETOPT_CFG_ERRMSG_APPNAME](#zetopt_cfg_errmsg_appname)
     * [ZETOPT_CFG_ERRMSG_COL_MODE](#zetopt_cfg_errmsg_col_mode)
@@ -791,13 +791,13 @@ $ cmd +o
 +o is set
 ```
 
-#### ZETOPT_CFG_FLAGVAL_TRUE
-#### ZETOPT_CFG_FLAGVAL_FALSE  
+#### ZETOPT_CFG_FLAG_TRUE
+#### ZETOPT_CFG_FLAG_FALSE  
 
 **Default**
 ```bash
-ZETOPT_CFG_FLAGVAL_TRUE=0
-ZETOPT_CFG_FLAGVAL_FALSE=1
+ZETOPT_CFG_FLAG_TRUE=true
+ZETOPT_CFG_FLAG_FALSE=false
 ```
 
 **Example**
@@ -805,8 +805,8 @@ ZETOPT_CFG_FLAGVAL_FALSE=1
 zetopt def "opt:o"
 ZETOPT_CFG_TYPE_PLUS=true
 
-ZETOPT_CFG_FLAGVAL_TRUE=0
-ZETOPT_CFG_FLAGVAL_FALSE=1
+ZETOPT_CFG_FLAG_TRUE=true
+ZETOPT_CFG_FLAG_FALSE=false
 zetopt parse "$@"
 if zetopt isset opt; then
     zetopt val opt
@@ -814,8 +814,8 @@ fi
 
 zetopt reset
 
-ZETOPT_CFG_FLAGVAL_TRUE=true
-ZETOPT_CFG_FLAGVAL_FALSE=false
+ZETOPT_CFG_FLAG_TRUE=true
+ZETOPT_CFG_FLAG_FALSE=false
 zetopt parse "$@"
 if zetopt isset opt; then
     zetopt val opt

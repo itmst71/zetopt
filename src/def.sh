@@ -29,10 +29,12 @@ _zetopt::def::reset()
             for ((idx=$INIT_IDX; idx<$((${#vars[@]} + $INIT_IDX)); idx++ ))
             do
                 var=${vars[$idx]}
-                if [[ ${#args[@]} -eq 0 ]]; then
-                    eval $var'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
+                arg=${args[$idx]}
+                if [[ ! $arg =~ [@%] ]]; then
+                    dfnum=${arg#d=}
+                    df=${_ZETOPT_DEFAULTS[$dfnum]}
+                    eval $var'=$df'
                 else
-                    arg=${args[$idx]}
                     if [[ $arg =~ \=([1-9][0-9]*) ]]; then
                         dfnum=${BASH_REMATCH[$(($INIT_IDX + 1))]}
                     else
@@ -68,7 +70,7 @@ _zetopt::def::define()
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
         _ZETOPT_OPTHELPS=("")
-        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_AUTOVAR_DEFAULT")
+        _ZETOPT_DEFAULTS=("$ZETOPT_CFG_ARG_DEFAULT" "$ZETOPT_CFG_FLAG_DEFAULT" "$ZETOPT_CFG_FLAG_TRUE" "$ZETOPT_CFG_FLAG_FALSE")
     fi
 
     if [[ -z $@ ]]; then
@@ -116,9 +118,10 @@ _zetopt::def::define()
             elif [[ $arg =~ ^\# ]]; then
                 help_only=true
             else
-                _ZETOPT_DEF_ERROR=true
-                _zetopt::msg::script_error "Invalid Definition"
-                return 1
+                #_ZETOPT_DEF_ERROR=true
+                #_zetopt::msg::script_error "Invalid Definition"
+                #return 1
+                :
             fi
         fi
     fi
@@ -205,6 +208,9 @@ _zetopt::def::define()
 
             # remove auto defined namespace
             if [[ $tmp_line == "${id}:c:::%.0~0...=0:::0 0$LF" ]]; then
+                if [[ $has_param == false && $help_only == false ]]; then
+                    return 0
+                fi
                 _ZETOPT_DEFINED="$head_lines$tail_lines"
             
             elif [[ $has_param == true && $tmp_line =~ [@%] ]] || [[ $help_only == true && $tmp_line =~ :[1-9][0-9]*\ [0-9]+$LF$ ]]; then
@@ -385,7 +391,7 @@ _zetopt::def::define()
             fi
 
             # save default value
-            var_param_default=$ZETOPT_CFG_AUTOVAR_DEFAULT
+            var_param_default=$ZETOPT_CFG_ARG_DEFAULT
             if [[ -n $param_default ]]; then
                 var_param_default=${param_default#*=}
                 _ZETOPT_DEFAULTS+=("$var_param_default")
@@ -436,6 +442,48 @@ _zetopt::def::define()
 
     # Flag option
     else
+        for ((; idx<maxloop; idx++))
+        do
+            if [[ ! ${args[$idx]} =~ ^([dtf])=(.*) ]]; then
+                _ZETOPT_DEF_ERROR=true
+                _zetopt::msg::script_error "Invalid Definition"
+                return 1
+            fi
+
+            case ${BASH_REMATCH[$((1 + $INIT_IDX))]} in
+                d) local flag_default=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                t) local flag_true=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                f) local flag_false=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+            esac
+        done
+
+        # default
+        if [[ ! -n ${flag_default+x} ]]; then
+            local flag_default=$ZETOPT_CFG_FLAG_DEFAULT
+            local flag_default_idx=$ZETOPT_IDX_FLAG_DEFAULT
+        else
+            _ZETOPT_DEFAULTS+=("$flag_default")
+            local flag_default_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
+        fi
+
+        # true
+        if [[ ! -n ${flag_true+x} ]]; then
+            local flag_true=$ZETOPT_CFG_FLAG_TRUE
+            local flag_true_idx=$ZETOPT_IDX_FLAG_TRUE
+        else
+            _ZETOPT_DEFAULTS+=("$flag_true")
+            local flag_true_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
+        fi
+
+        # false
+        if [[ ! -n ${flag_false+x} ]]; then
+            local flag_false=$ZETOPT_CFG_FLAG_FALSE
+            local flag_false_idx=$ZETOPT_IDX_FLAG_FALSE
+        else
+            _ZETOPT_DEFAULTS+=("$flag_false")
+            local flag_false_idx=$((${#_ZETOPT_DEFAULTS[@]} - 1 + INIT_IDX))
+        fi
+
         # autovar
         if $ZETOPT_CFG_AUTOVAR; then
             var_name="$var_base_name"
@@ -450,9 +498,11 @@ _zetopt::def::define()
                 return 1
             fi
             _ZETOPT_VARIABLE_NAMES+=($var_name)
-            eval $var_name'=$ZETOPT_CFG_AUTOVAR_DEFAULT'
+            eval $var_name'=$flag_default'
             var_name_list=$var_name
         fi
+
+        param_def="d=$flag_default_idx t=$flag_true_idx f=$flag_false_idx"
     fi
 
     if [[ -n "$helpdef" ]]; then
@@ -710,9 +760,6 @@ _zetopt::def::paramidx()
     local id="$1"
     [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local def_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
-    if [[ -z $def_str ]]; then
-        return 1
-    fi
     if [[ $def_str =~ [@%]${2}[.]([0-9]+) ]]; then
         printf -- "%s" ${BASH_REMATCH[$((1 + INIT_IDX))]}
         return 0
@@ -733,7 +780,7 @@ _zetopt::def::keyparams2idx()
     [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local key="$2" head tail name
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
-    if [[ -n $def_args ]]; then
+    if [[ $def_args =~ [@%] ]]; then
         while true
         do
             if [[ $key =~ ^([0-9\^\$@,\ \-:]*)($REG_VNAME)(.*)$ ]]; then
@@ -765,7 +812,7 @@ _zetopt::def::paramlen()
         echo 0; return 1
     fi
     local def="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
-    if [[ -z $def ]]; then
+    if [[ ! $def =~ [@%] ]]; then
         echo 0; return 0
     fi
 
@@ -795,9 +842,9 @@ _zetopt::def::paramlen()
 }
 
 # default(): Print default values
-# def.) _zetopt::def::default {ID} [ONE-DIMENSIONAL-KEY]
-# e.g.) _zetopt::def::default /foo @ FOO $ FOO,$
-# STDOUT: default values separated with $ZETOPT_CFG_VALUE_IFS
+# def.) _zetopt::def::default {ID}
+# e.g.) _zetopt::def::default /foo
+# STDOUT: default ref numbers separated with space
 _zetopt::def::default()
 {
     if [[ -z ${_ZETOPT_DEFINED:-} || -z ${1-} ]]; then
@@ -818,7 +865,10 @@ _zetopt::def::default()
     local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
-        printf "%s\n" $INIT_IDX
+        printf -- "%s\n" $INIT_IDX
+        return 0
+    elif [[ ! $def_args =~ [%@] ]]; then
+        printf -- "%s\n" "${params[$INIT_IDX]#d=}"
         return 0
     fi
     local defaults_idx_string="$(printf -- " %s " "${params[@]#*=}")"

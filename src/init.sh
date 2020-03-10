@@ -71,6 +71,10 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$ZETOPT_STATUS_EXTRA_ARGS
 
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
+readonly ZETOPT_IDX_DEFAULT_VALUE=$((ZETOPT_ARRAY_INITIAL_IDX + 0))
+readonly ZETOPT_IDX_FLAG_DEFAULT=$((ZETOPT_ARRAY_INITIAL_IDX + 1))
+readonly ZETOPT_IDX_FLAG_TRUE=$((ZETOPT_ARRAY_INITIAL_IDX + 2))
+readonly ZETOPT_IDX_FLAG_FALSE=$((ZETOPT_ARRAY_INITIAL_IDX + 3))
 
 # __NULL is default value for auto-defined variable
 __NULL(){ return 1; }
@@ -118,11 +122,12 @@ _zetopt::init::init_config()
     # Autovar related configs: Set before "def"
     ZETOPT_CFG_AUTOVAR=true
     ZETOPT_CFG_AUTOVAR_PREFIX=zv_
-    ZETOPT_CFG_AUTOVAR_DEFAULT=__NULL
+    ZETOPT_CFG_ARG_DEFAULT=__NULL
+    ZETOPT_CFG_FLAG_DEFAULT=__NULL
+    ZETOPT_CFG_FLAG_TRUE=true
+    ZETOPT_CFG_FLAG_FALSE=false
 
     # Parser related configs: Set before "parse"
-    ZETOPT_CFG_FLAGVAL_TRUE=true
-    ZETOPT_CFG_FLAGVAL_FALSE=false
     ZETOPT_CFG_ESCAPE_DOUBLE_HYPHEN=false
     ZETOPT_CFG_SINGLE_PREFIX_LONG=false
     ZETOPT_CFG_PSEUDO_OPTION=false
