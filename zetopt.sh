@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a (2020-03-10 22:00)
+# Version     : 1.2.0a.202003141230
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a (2020-03-10 22:00)"
+readonly ZETOPT_VERSION="1.2.0a.202003141230"
 
 
 #------------------------------------------------------------
@@ -328,6 +328,7 @@ zetopt()
         iterate)
             _zetopt::data::iterate "$@";;
 
+        # utils
         utils)
             _zetopt::utils::interface "$@";;
             
@@ -3025,6 +3026,7 @@ _zetopt::utils::interface()
         max)            _zetopt::utils::max "$@";;
         min)            _zetopt::utils::min "$@";;
         lowercase)      _zetopt::utils::lowercase "$@";;
+        uppercase)      _zetopt::utils::uppercase "$@";;
         abspath)        _zetopt::utils::abspath "$@";;
         *)  _zetopt::msg::script_error "utils:" "funcname stack_trace viewfile repeat seq isLangCJK fold undecorate quote max min lowercase abspath"
             return 1;;
@@ -3342,7 +3344,7 @@ _zetopt::utils::lowercase()
     
     # zsh
     if $ZETOPT_ZSH; then
-        printf -- "%s" ${1:l}
+        printf -- "%s" "${1:l}"
         return 0
     fi
 
@@ -3362,9 +3364,52 @@ _zetopt::utils::lowercase()
         char=${1:$idx:1}
         case "$char" in
             [A-Z])
-                ascii_code=$(printf "%d" "'$char")
+                ascii_code=$(printf -- "%d" "'$char")
                 ascii_code+=32
-                printf -- "%o" $ascii_code
+                printf -- "%b" "$(printf -- "\\%o" $ascii_code)"
+                ;;
+            *) printf -- "%s" "$char";;
+        esac
+    done
+}
+
+_zetopt::utils::uppercase()
+{
+    if [[ $# -eq 0 ]]; then
+        return 0
+    fi
+
+    # bash4
+    if $ZETOPT_BASH && ! $ZETOPT_OLDBASH; then
+        printf -- "%s" "${1^^}"
+        return 0
+    fi
+    
+    # zsh
+    if $ZETOPT_ZSH; then
+        printf -- "%s" "${1:u}"
+        return 0
+    fi
+
+    # bash3
+    declare -i len=${#1}
+
+    # use tr if it's long
+    if [[ $len -gt 100 ]]; then
+        <<< "$1" tr '[a-z]' '[A-Z]'
+        return 0
+    fi
+
+    declare -i idx ascii_code
+    local char
+    for (( idx=0; idx<len; idx++ ))
+    do
+        char=${1:$idx:1}
+        case "$char" in
+            [a-z])
+                ascii_code=$(printf -- "%d" "'$char")
+                ascii_code=$((ascii_code - 32))
+                printf -- "%b" $(printf -- "\\%o" $ascii_code)
                 ;;
             *) printf -- "%s" "$char";;
         esac
