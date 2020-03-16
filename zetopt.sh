@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a.202003141230
+# Version     : 1.2.0a.202003170600
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a.202003141230"
+readonly ZETOPT_VERSION="1.2.0a.202003170600"
 
 
 #------------------------------------------------------------
@@ -787,16 +787,16 @@ _zetopt::def::define()
     else
         for ((; idx<maxloop; idx++))
         do
-            if [[ ! ${args[$idx]} =~ ^([dtf])=(.*) ]]; then
+            if [[ ! ${args[$idx]} =~ ^(d|default|t|true|f|false)=(.*)$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Definition"
                 return 1
             fi
 
             case ${BASH_REMATCH[$((1 + $INIT_IDX))]} in
-                d) local flag_default=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
-                t) local flag_true=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
-                f) local flag_false=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                d | default) local flag_default=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                t | true) local flag_true=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                f | false) local flag_false=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
             esac
         done
 
@@ -3352,7 +3352,7 @@ _zetopt::utils::lowercase()
     declare -i len=${#1}
 
     # use tr if it's long
-    if [[ $len -gt 500 ]]; then
+    if [[ $len -ge 50 ]]; then
         <<< "$1" tr '[A-Z]' '[a-z]'
         return 0
     fi
@@ -3395,7 +3395,7 @@ _zetopt::utils::uppercase()
     declare -i len=${#1}
 
     # use tr if it's long
-    if [[ $len -gt 100 ]]; then
+    if [[ $len -ge 50 ]]; then
         <<< "$1" tr '[a-z]' '[A-Z]'
         return 0
     fi
@@ -3842,6 +3842,7 @@ _zetopt::help::fmtcmdopt()
             indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
             indent=$(printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
+            desc=("")
             if [[ $helpidx -ne 0 ]]; then
                 desc=($(printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
             fi

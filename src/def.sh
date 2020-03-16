@@ -439,16 +439,16 @@ _zetopt::def::define()
     else
         for ((; idx<maxloop; idx++))
         do
-            if [[ ! ${args[$idx]} =~ ^([dtf])=(.*) ]]; then
+            if [[ ! ${args[$idx]} =~ ^(d|default|t|true|f|false)=(.*)$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Definition"
                 return 1
             fi
 
             case ${BASH_REMATCH[$((1 + $INIT_IDX))]} in
-                d) local flag_default=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
-                t) local flag_true=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
-                f) local flag_false=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                d | default) local flag_default=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                t | true) local flag_true=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
+                f | false) local flag_false=${BASH_REMATCH[$((2 + $INIT_IDX))]};;
             esac
         done
 

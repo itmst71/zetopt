@@ -405,6 +405,7 @@ _zetopt::help::fmtcmdopt()
             indent_count=$((_BASE_COLS + _OPT_COLS + _OPT_DESC_MARGIN + _INDENT_STEP * _INDENT_LEVEL))
             indent=$(printf -- "%${indent_count}s" "")
             cols=$(($_MAX_COLS - $indent_count))
+            desc=("")
             if [[ $helpidx -ne 0 ]]; then
                 desc=($(printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
             fi
