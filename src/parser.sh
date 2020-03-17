@@ -25,24 +25,12 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if $ZETOPT_CFG_AUTOVAR; then
-        if [[ -z $ZETOPT_CFG_AUTOVAR_PREFIX || ! $ZETOPT_CFG_AUTOVAR_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_AUTOVAR_PREFIX == _ ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_AUTOVAR_PREFIX=$ZETOPT_CFG_AUTOVAR_PREFIX"
-            return 1
-        fi
-    fi
-
-    if [[ $_ZETOPT_DEF_ERROR == true ]]; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
-        return 1
-    fi
-
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
     fi
-    _zetopt::parser::init
-    _zetopt::data::init
+    _zetopt::def::is_ready || return 1
+    _zetopt::parser::init || return 1
+    _zetopt::data::init || return 1
     
     local optname= optnames_len= optarg= idx= opt_prefix= pseudoname=
     local additional_args_count=0 consumed_args_count= args

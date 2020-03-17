@@ -374,10 +374,15 @@ _zetopt::def::define()
                 while [[ $# -ne 0 ]]
                 do
                     param_validator_name=$1
+                    # check the validator exists
                     if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
-                        _ZETOPT_DEF_ERROR=true
-                        _zetopt::msg::script_error "Undefined Validator:" "$param_validator_name"
-                        return 1
+                        # define validator with blank data
+                        if ! _zetopt::validator::def "$param_validator_name"; then
+                            _ZETOPT_DEF_ERROR=true
+                            return 1
+                        fi
+                        # re-matching to get the reference number of the validator just defined with blank data
+                        [[ $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]
                     fi
                     param_validator_idxs="$param_validator_idxs$param_validator_separator${BASH_REMATCH[$((1 + INIT_IDX))]}"
                     param_validator_separator=,
@@ -522,6 +527,21 @@ _zetopt::def::define()
         [[ $LF$_ZETOPT_DEFINED =~ $LF${curr_ns}:c: ]] && return 0
         _ZETOPT_DEFINED+="${curr_ns}:c:::%.0~0...=0:::0 0$LF"
     done
+}
+
+# is_ready(): Is definition data ready for parse?
+# def.) _zetopt::def::is_ready
+# e.g.) _zetopt::def::is_ready
+# STDOUT: NONE
+_zetopt::def::is_ready()
+{
+    _zetopt::validator::is_ready || return 1
+
+    if [[ $_ZETOPT_DEF_ERROR == true ]]; then
+        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
+        return 1
+    fi
+    return 0
 }
 
 # defined(): Print the defined data. Print all if ID not given.

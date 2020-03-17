@@ -510,15 +510,10 @@ test_def_validator_chain() {
 #------------------------------------------------
 # validator Error
 #------------------------------------------------
-test_def_validator_ERR_duplicate_name() {
-    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
-    zetopt validator ALPH '^[A-Z][A-Z\ ]+$'
-    assertFalse $?
-}
-
 test_def_validator_ERR_undefined() {
-    zetopt def alph:A @TEXT~ALPH 
-    assertFalse $?
+    zetopt def alph:A @TEXT~ALPH
+    zetopt parse -A "ALPHABET"
+    assertFalse 1
 }
 
 #------------------------------------------------

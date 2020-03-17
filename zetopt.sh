@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a.202003171030
+# Version     : 1.2.0a.202003171530
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a.202003171030"
+readonly ZETOPT_VERSION="1.2.0a.202003171530"
 
 
 #------------------------------------------------------------
@@ -128,8 +128,8 @@ _zetopt::init::init()
     _ZETOPT_HELPS=()
     _ZETOPT_HELPS_CUSTOM=
     _ZETOPT_VALIDATOR_KEYS=
-    _ZETOPT_VALIDATOR_DATA=
-    _ZETOPT_VALIDATOR_ERRMSG=
+    _ZETOPT_VALIDATOR_DATA=()
+    _ZETOPT_VALIDATOR_ERRMSG=()
     _ZETOPT_PARSED=
     _ZETOPT_DATA=()
     _ZETOPT_DEFAULTS=()
@@ -722,10 +722,15 @@ _zetopt::def::define()
                 while [[ $# -ne 0 ]]
                 do
                     param_validator_name=$1
+                    # check the validator exists
                     if [[ ! $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]; then
-                        _ZETOPT_DEF_ERROR=true
-                        _zetopt::msg::script_error "Undefined Validator:" "$param_validator_name"
-                        return 1
+                        # define validator with blank data
+                        if ! _zetopt::validator::def "$param_validator_name"; then
+                            _ZETOPT_DEF_ERROR=true
+                            return 1
+                        fi
+                        # re-matching to get the reference number of the validator just defined with blank data
+                        [[ $LF${_ZETOPT_VALIDATOR_KEYS-} =~ $LF$param_validator_name:([0-9]+)$LF ]]
                     fi
                     param_validator_idxs="$param_validator_idxs$param_validator_separator${BASH_REMATCH[$((1 + INIT_IDX))]}"
                     param_validator_separator=,
@@ -870,6 +875,21 @@ _zetopt::def::define()
         [[ $LF$_ZETOPT_DEFINED =~ $LF${curr_ns}:c: ]] && return 0
         _ZETOPT_DEFINED+="${curr_ns}:c:::%.0~0...=0:::0 0$LF"
     done
+}
+
+# is_ready(): Is definition data ready for parse?
+# def.) _zetopt::def::is_ready
+# e.g.) _zetopt::def::is_ready
+# STDOUT: NONE
+_zetopt::def::is_ready()
+{
+    _zetopt::validator::is_ready || return 1
+
+    if [[ $_ZETOPT_DEF_ERROR == true ]]; then
+        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
+        return 1
+    fi
+    return 0
 }
 
 # defined(): Print the defined data. Print all if ID not given.
@@ -1232,8 +1252,8 @@ _zetopt::validator::def()
 {
     if [[ -z ${_ZETOPT_VALIDATOR_KEYS:-} ]]; then
         _ZETOPT_VALIDATOR_KEYS=
-        _ZETOPT_VALIDATOR_DATA=
-        _ZETOPT_VALIDATOR_ERRMSG=
+        _ZETOPT_VALIDATOR_DATA=("")
+        _ZETOPT_VALIDATOR_ERRMSG=()
     fi
 
     declare -i validator_idx=0 msg_idx=0
@@ -1243,6 +1263,8 @@ _zetopt::validator::def()
         case "$1" in
             -f | --function)
                 type=f; shift;;
+            -r | --regexp)
+                type=r; shift;;
             -i | --ignore-case)
                 flags+=i; shift;;
             -n | --not)
@@ -1250,28 +1272,23 @@ _zetopt::validator::def()
             --*)
                 error=true; break;;
             -*)
-                if [[ ! $1 =~ ^-[fin]+$ ]]; then
+                if [[ ! $1 =~ ^-[finr]+$ ]]; then
                     error=true; break
                 fi
                 [[ $1 =~ f ]] && type=f
+                [[ $1 =~ r ]] && type=r
                 [[ $1 =~ i ]] && flags+=i
                 [[ $1 =~ n ]] && flags+=n
                 shift;;
             *)
-                if [[ -n $name ]]; then
-                    error=true; break
+                if [[ -z $name ]]; then
+                    name=$1; shift; continue
+                elif [[ -z $validator ]]; then
+                    validator=$1; shift; continue
+                elif [[ -z $errmsg ]]; then
+                    errmsg=$1; shift; continue
                 fi
-                name=$1
-                if [[ -z ${2-} ]]; then
-                    error=true; break
-                fi
-                validator=$2
-                if [[ -n ${3-} ]]; then
-                    errmsg=$3
-                    if [[ -n ${4-} ]]; then
-                        error=true; break
-                    fi
-                fi
+                error=true
                 break;;
         esac
     done
@@ -1279,7 +1296,7 @@ _zetopt::validator::def()
     # check errors
     if [[ $error == true ]]; then
         _ZETOPT_DEF_ERROR=true
-        _zetopt::msg::script_error "zetopt def-validator [-f | --function] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
+        _zetopt::msg::script_error "zetopt def-validator [-f | --function] [-r | --regexp] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
     if [[ ! $name =~ ^$REG_VNAME$ ]]; then
@@ -1287,21 +1304,7 @@ _zetopt::validator::def()
         _zetopt::msg::script_error "Invalid Validator Name:" "$name"
         return 1
     fi
-    if [[ $type == f ]]; then
-        [[ -n ${ZSH_VERSION-} ]] \
-        && local _type=$(whence -w "$validator") \
-        || local _type=$(type -t "$validator")
-        if [[ ! ${_type#*:} =~ function ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "No Such Shell Function:" "$validator"
-            return 1
-        fi
-    fi
-    if [[ $LF$_ZETOPT_VALIDATOR_KEYS =~ $LF$name: ]]; then
-        _ZETOPT_DEF_ERROR=true
-        _zetopt::msg::script_error "Duplicate Validator Name:" "$name"
-        return 1
-    fi
+    
     if [[ -n $errmsg && $errmsg =~ ^[^\#] ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Help message should start with \"#\""
@@ -1313,9 +1316,17 @@ _zetopt::validator::def()
         _ZETOPT_VALIDATOR_ERRMSG+=("${errmsg:1}")
         msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $INIT_IDX))
     fi
-    _ZETOPT_VALIDATOR_DATA+=("$name:$type:$flags:$msg_idx:$validator")
-    validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $INIT_IDX))
-    _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
+    
+    # update: already defined
+    if [[ $LF$_ZETOPT_VALIDATOR_KEYS =~ $LF${name}:([0-9]+)$LF ]]; then
+        validator_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
+        _ZETOPT_VALIDATOR_DATA[$validator_idx]="$name:$type:$flags:$msg_idx:$validator"
+    # new
+    else
+        _ZETOPT_VALIDATOR_DATA+=("$name:$type:$flags:$msg_idx:$validator")
+        validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $INIT_IDX))
+        _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
+    fi
 }
 
 # validate(): Validate value
@@ -1393,6 +1404,42 @@ _zetopt::validator::validate()
     return 0
 }
 
+# is_ready(): Is validator ready for parse?
+# def.) _zetopt::validator::is_ready
+# e.g.) _zetopt::validator::is_ready
+# STDOUT: NONE
+_zetopt::validator::is_ready()
+{   
+    local len=${#_ZETOPT_VALIDATOR_DATA[@]}
+    if [[ $len -eq 0 ]]; then
+        return 0
+    fi
+    
+    local validator_name validator_type validator
+    declare -i i=$INIT_IDX max=$(($len - 1 + $INIT_IDX))
+    for (( ; i<max; i++ ))
+    do
+        if [[ "${_ZETOPT_VALIDATOR_DATA[$i]}" =~ ^([^:]+):([rf]):[in]*:[0-9]+:(.*)$ ]]; then
+            validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"
+            validator_type="${BASH_REMATCH[$((2 + INIT_IDX))]}"
+            validator="${BASH_REMATCH[$((3 + INIT_IDX))]}"
+            if [[ -z $validator ]]; then
+                _zetopt::msg::script_error "Undefined Validator:" "$validator_name"
+                return 1
+            fi
+            if [[ $validator_type == f ]]; then
+                [[ -n ${ZSH_VERSION-} ]] \
+                && local _type=$(whence -w "$validator") \
+                || local _type=$(type -t "$validator")
+                if [[ ! ${_type#*:} =~ function ]]; then
+                    _zetopt::msg::script_error "No Such Shell Function:" "$validator"
+                    return 1
+                fi
+            fi
+        fi
+    done
+}
+
 
 #------------------------------------------------------------
 # _zetopt::parser
@@ -1421,24 +1468,12 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if $ZETOPT_CFG_AUTOVAR; then
-        if [[ -z $ZETOPT_CFG_AUTOVAR_PREFIX || ! $ZETOPT_CFG_AUTOVAR_PREFIX =~ ^$REG_VNAME$ || $ZETOPT_CFG_AUTOVAR_PREFIX == _ ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "Invalid Variable Prefix:" "ZETOPT_CFG_AUTOVAR_PREFIX=$ZETOPT_CFG_AUTOVAR_PREFIX"
-            return 1
-        fi
-    fi
-
-    if [[ $_ZETOPT_DEF_ERROR == true ]]; then
-        _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
-        return 1
-    fi
-
     if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
         _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
     fi
-    _zetopt::parser::init
-    _zetopt::data::init
+    _zetopt::def::is_ready || return 1
+    _zetopt::parser::init || return 1
+    _zetopt::data::init || return 1
     
     local optname= optnames_len= optarg= idx= opt_prefix= pseudoname=
     local additional_args_count=0 consumed_args_count= args
