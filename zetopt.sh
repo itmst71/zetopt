@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a.202003170600
+# Version     : 1.2.0a.202003171030
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a.202003170600"
+readonly ZETOPT_VERSION="1.2.0a.202003171030"
 
 
 #------------------------------------------------------------
@@ -1362,26 +1362,29 @@ _zetopt::validator::validate()
             # r: regexp
             if [[ $validator_type == r ]]; then
                 if [[ ! $validator_flags =~ n ]]; then
-                    [[ $arg =~ $validator ]] && echo true || echo false
+                    [[ $arg =~ $validator ]] && printf -- "%s" true: || printf -- "%s" false:
                 else
-                    [[ $arg =~ $validator ]] && echo false || echo true
+                    [[ $arg =~ $validator ]] && printf -- "%s" false: || printf -- "%s" true:
                 fi
             # f: function
             else
-                local _path=$PATH _lc_all=$LC_ALL _lang=$LANG
                 local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
                 if [[ ! $validator_flags =~ n ]]; then
-                    "$validator" "$arg" && echo true || echo false
+                    printf -- "%s" "$(out=$("$validator" "$arg" 2>&1) && printf -- "%s" "true:" || printf -- "%s" "false:$out")"
                 else
-                    "$validator" "$arg" && echo false || echo true
+                    printf -- "%s" "$(out=$("$validator" "$arg" 2>&1) && printf -- "%s" "false:$out" || printf -- "%s" "true:")"
                 fi
-                PATH=$_path LC_ALL=$_lc_all LANG=$_lang
             fi
         )
 
-        if [[ $result == false ]]; then
-            if [[ $validator_msgidx -ne 0 ]]; then
-                local errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
+        if [[ ${result%%:*} == false ]]; then
+            # overwrite default error message with output of validator function
+            local errmsg=${result#*:}
+            if [[ -z $errmsg && $validator_msgidx -ne 0 ]]; then
+                errmsg="${_ZETOPT_VALIDATOR_ERRMSG[validator_msgidx]}"
+            fi
+
+            if [[ -n $errmsg ]]; then
                 _zetopt::msg::user_error Error "$arg:" "$errmsg"
             fi
             return 1
