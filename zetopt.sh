@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a.202003171530
+# Version     : 1.2.0a.202003172030
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a.202003171530"
+readonly ZETOPT_VERSION="1.2.0a.202003172030"
 
 
 #------------------------------------------------------------
@@ -586,57 +586,61 @@ _zetopt::def::define()
         shift
         IFS=,
         \set -- $*
-
+        local optname
         while [[ $# -ne 0 ]]
         do
             if [[ -z $1 ]]; then
                 shift
                 continue
             fi
-            
+            optname=$1
+            if [[ $optname =~ ^-*(.*) ]]; then
+                optname=${BASH_REMATCH[$((1 + $INIT_IDX))]}
+            fi
+
             # short option
-            if [[ ${#1} -eq 1 ]]; then
+            if [[ ${#optname} -eq 1 ]]; then
                 if [[ -n $short ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "2 Short Options at once:" "$1"
+                    _zetopt::msg::script_error "2 Short Options at once:" "$optname"
                     return 1
                 fi
 
-                if [[ ! $1 =~ ^[a-zA-Z0-9_]$ ]]; then
+                if [[ ! $optname =~ ^[a-zA-Z0-9_]$ ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "Invalid Short Option Name:" "$1"
+                    _zetopt::msg::script_error "Invalid Short Option Name:" "$optname"
                     return 1
                 fi
                 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:$optname: ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "Already Defined:" "-$1"
+                    _zetopt::msg::script_error "Already Defined:" "-$optname"
                     return 1
                 fi
-                short=$1
+                short=$optname
 
             # long option
             else
                 if [[ -n $long ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "2 Long Options at once:" "$1"
+                    _zetopt::msg::script_error "2 Long Options at once:" "$optname"
                     return 1
                 fi
 
-                if [[ ! $1 =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
+                if [[ ! $optname =~ ^[a-zA-Z0-9_]+(-[a-zA-Z0-9_]*)*$ ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "Invalid Long Option Name:" "$1"
+                    _zetopt::msg::script_error "Invalid Long Option Name:" "$optname"
                     return 1
                 fi
 
                 # subcommand scope option
-                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:[^:]?:$1: ]]; then
+                if [[ $LF$_ZETOPT_DEFINED =~ $LF${namespace}[a-zA-Z0-9_]*:o:[^:]?:$optname: ]]; then
                     _ZETOPT_DEF_ERROR=true
-                    _zetopt::msg::script_error "Already Defined:" "--$1"
+                    _zetopt::msg::script_error "Already Defined:" "--$optname"
                     return 1
                 fi
-                long=$1
+                long=$optname
             fi
             shift
         done
