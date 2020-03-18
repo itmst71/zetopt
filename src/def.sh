@@ -533,17 +533,21 @@ _zetopt::def::define()
     done
 }
 
-# is_ready(): Is definition data ready for parse?
-# def.) _zetopt::def::is_ready
-# e.g.) _zetopt::def::is_ready
+# prepare_parse(): Is definition data ready for parse?
+# def.) _zetopt::def::prepare_parse
+# e.g.) _zetopt::def::prepare_parse
 # STDOUT: NONE
-_zetopt::def::is_ready()
+_zetopt::def::prepare_parse()
 {
     _zetopt::validator::is_ready || return 1
 
     if [[ $_ZETOPT_DEF_ERROR == true ]]; then
         _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
         return 1
+    fi
+    
+    if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
+        _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
     fi
     return 0
 }

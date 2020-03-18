@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 1.2.0a.202003172030
+# Version     : 1.2.0a.202003190530
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="1.2.0a.202003172030"
+readonly ZETOPT_VERSION="1.2.0a.202003190530"
 
 
 #------------------------------------------------------------
@@ -881,17 +881,21 @@ _zetopt::def::define()
     done
 }
 
-# is_ready(): Is definition data ready for parse?
-# def.) _zetopt::def::is_ready
-# e.g.) _zetopt::def::is_ready
+# prepare_parse(): Is definition data ready for parse?
+# def.) _zetopt::def::prepare_parse
+# e.g.) _zetopt::def::prepare_parse
 # STDOUT: NONE
-_zetopt::def::is_ready()
+_zetopt::def::prepare_parse()
 {
     _zetopt::validator::is_ready || return 1
 
     if [[ $_ZETOPT_DEF_ERROR == true ]]; then
         _zetopt::msg::script_error "Invalid Definition Data:" "Fix definition error before parse"
         return 1
+    fi
+    
+    if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
+        _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
     fi
     return 0
 }
@@ -1472,10 +1476,7 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
-    fi
-    _zetopt::def::is_ready || return 1
+    _zetopt::def::prepare_parse || return 1
     _zetopt::parser::init || return 1
     _zetopt::data::init || return 1
     
@@ -2616,7 +2617,7 @@ _zetopt::data::output()
 _zetopt::data::iterate()
 {
     local __args__ __action__=next __dataid__=$ZETOPT_DATAID_ARGV
-    local __usrvar_value__=ZV_VALUE __usrvar_index__= __usrvar_last_index__= __usrvar_array__= __usrvar_count__=
+    local __usrvar_value__= __usrvar_index__= __usrvar_last_index__= __usrvar_array__= __usrvar_count__=
     local __itr_id__= __null_value__=NULL __null_index__=NULL __user_array__= __no_fallback_option__=
     __args__=()
     while [[ $# -ne 0 ]]
@@ -2772,36 +2773,38 @@ _zetopt::data::iterate()
     local __intlvar_array__=_zetopt_iterator_array_$__var_id_suffix__
     local __intlvar_index__=_zetopt_iterator_index_$__var_id_suffix__
 
-    # --has-next checks next item existence
-    if [[ $__action__ == has-next ]]; then
-        if [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') && -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
-            if [[ $__intlvar_index__ -ge $(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))') ]]; then
+    # already exists ?
+    local __intlvar_exists__="$( [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') || -n $(eval 'echo ${'$__intlvar_index__'+x}') ]] && echo true || echo false)"
+
+    case $__action__ in
+        # --reset resets index
+        reset)
+            if [[ $__intlvar_exists__ == true ]]; then
+                eval $__intlvar_index__'=$INIT_IDX'
+                return 0
+            fi
+            return 1;;
+
+        # --unset unsets array and index
+        unset)
+            unset $__intlvar_array__ ||:
+            unset $__intlvar_index__ ||:
+            return 0;;
+
+        # --has-next checks next item existence
+        has-next)
+            if [[ $__intlvar_exists__ == false ]]; then
+                return 1
+            fi
+            local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + INIT_IDX))')
+            if [[ $(($(eval 'echo $'$__intlvar_index__) + 1 )) -gt $__max__ ]]; then
                 return 1
             else
                 return 0
             fi
-        else
-            return 1
-        fi
-    fi
-
-    # --reset resets index
-    if [[ $__action__ == reset ]]; then
-        if [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') && -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
-            eval $__intlvar_index__'=$INIT_IDX'
-            return 0
-        else
-            return 1
-        fi
-    fi
-
-    # --unset unsets array and index
-    if [[ $__action__ == unset ]]; then
-        unset $__intlvar_array__ ||:
-        unset $__intlvar_index__ ||:
-        return 0
-    fi
-
+            ;;
+    esac
+    
     # check the user defined variable name before eval to avoid invalid characters and overwriting local variables
     local IFS=,
     set -- $__usrvar_value__ $__usrvar_index__ $__usrvar_last_index__ $__usrvar_array__ $__usrvar_count__
@@ -2822,8 +2825,8 @@ _zetopt::data::iterate()
     fi
     IFS=' '
 
-    # initialize if unbound
-    if [[ ! -n $(eval 'echo ${'$__intlvar_array__'+x}') || ! -n $(eval 'echo ${'$__intlvar_index__'+x}') ]]; then
+    # initialize
+    if [[ $__intlvar_exists__ == false || $__action__ == init ]]; then
         # use user specified array
         if [[ -n $__user_array__ ]]; then
             if [[ -n ${__args__[@]-} && ! "${__args__[*]}" =~ [0-9,:$^\ ] ]]; then
@@ -2857,20 +2860,26 @@ _zetopt::data::iterate()
                 return 1
             fi
         fi
-    fi
 
-    # init returns at this point
-    if [[ $__action__ == init ]]; then
-        return 0
+        # init returns at this point
+        if [[ $__action__ == init ]]; then
+            return 0
+        fi
+    else
+        # increment index only if -v option specified and already initialized
+        if [[ -n $__usrvar_value__ ]]; then
+            eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
+        fi
     fi
     
     # has no next
     local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))')
-    if [[ $__intlvar_index__ -ge $__max__ ]]; then
+    if [[ $(eval 'echo $'$__intlvar_index__) -ge $__max__ ]]; then
         unset $__intlvar_array__ ||:
         unset $__intlvar_index__ ||:
         return 1
     fi
+
 
     # last-index / array / count
     [[ -n $__usrvar_last_index__ ]] && eval $__usrvar_last_index__'=$((${#'$__intlvar_array__'[@]} - 1 + $INIT_IDX))' ||:
@@ -2879,24 +2888,26 @@ _zetopt::data::iterate()
 
     # value / index : Iterate with multiple values/indexs
     if [[ -n $__usrvar_value__ || -n $__usrvar_index__ ]]; then
-        local __idx__=
+        local __idx__= __first_loop__=true
         local __max_idx__=$(($([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]}) + $INIT_IDX))
         for (( __idx__=INIT_IDX; __idx__<__max_idx__; __idx__++ ))
         do
-            # value
-            if [[ -n $__usrvar_value__ ]]; then
-                eval ${__usrvar_value_names__[$__idx__]}'="${'$__intlvar_array__'[$'$__intlvar_index__']}"' ||:
-            fi
-
             # index
             if [[ -n $__usrvar_index__ ]]; then
                 eval ${__usrvar_index_names__[$__idx__]}'=$'$__intlvar_index__ ||:
             fi
 
-            # increment index
-            eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
-            if [[ $__intlvar_index__ -ge $__max__ ]]; then
-                break
+            # value
+            if [[ -n $__usrvar_value__ ]]; then
+                # increment index only when first loop
+                if [[ $__first_loop__ == false ]]; then
+                    eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
+                    if [[ $(eval 'echo $'$__intlvar_index__) -ge $__max__ ]]; then
+                        break
+                    fi
+                fi
+                eval ${__usrvar_value_names__[$__idx__]}'="${'$__intlvar_array__'[$'$__intlvar_index__']}"' ||:
+                __first_loop__=false
             fi
         done
 
@@ -2913,9 +2924,6 @@ _zetopt::data::iterate()
                 eval ${__usrvar_index_names__[$__idx__]}'=$__null_index__' ||:
             fi
         done
-    else
-        # increment for using last-key / array / count only
-        eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
     fi
     return 0
 }
@@ -2927,14 +2935,10 @@ _zetopt::data::iterate()
 _zetopt::data::setids()
 {
     local lines="$_ZETOPT_PARSED"
-    while :
+    while [[ $LF$lines =~ $LF([^:]+):[^$LF]+:[1-9][0-9]*$LF(.*) ]]
     do
-        if [[ $LF$lines =~ $LF([^:]+):[^$LF]+:[1-9][0-9]*$LF(.*) ]]; then
-            printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
-            lines=${BASH_REMATCH[$((2 + $INIT_IDX))]}
-        else
-            break
-        fi
+        printf -- "%s\n" "${BASH_REMATCH[$((1 + $INIT_IDX))]}"
+        lines=${BASH_REMATCH[$((2 + $INIT_IDX))]}
     done
 }
 

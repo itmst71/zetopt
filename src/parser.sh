@@ -25,10 +25,7 @@ _zetopt::parser::init()
 # STDOUT: NONE
 _zetopt::parser::parse()
 {
-    if [[ -z ${_ZETOPT_DEFINED:-} ]]; then
-        _ZETOPT_DEFINED="/:c:::%.0~0...=0:::0 0$LF"
-    fi
-    _zetopt::def::is_ready || return 1
+    _zetopt::def::prepare_parse || return 1
     _zetopt::parser::init || return 1
     _zetopt::data::init || return 1
     
