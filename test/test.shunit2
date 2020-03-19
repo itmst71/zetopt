@@ -513,7 +513,7 @@ test_def_validator_chain() {
 test_def_validator_ERR_undefined() {
     zetopt def alph:A @TEXT~ALPH
     zetopt parse -A "ALPHABET"
-    assertFalse 1
+    assertFalse $?
 }
 
 #------------------------------------------------

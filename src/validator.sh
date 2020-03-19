@@ -168,15 +168,15 @@ _zetopt::validator::validate()
 # e.g.) _zetopt::validator::is_ready
 # STDOUT: NONE
 _zetopt::validator::is_ready()
-{   
+{
     local len=${#_ZETOPT_VALIDATOR_DATA[@]}
     if [[ $len -eq 0 ]]; then
         return 0
     fi
-    
+
     local validator_name validator_type validator
-    declare -i i=$INIT_IDX max=$(($len - 1 + $INIT_IDX))
-    for (( ; i<max; i++ ))
+    declare -i i=$INIT_IDX max_idx=$(($len - 1 + $INIT_IDX))
+    for (( ; i<=max_idx; i++ ))
     do
         if [[ "${_ZETOPT_VALIDATOR_DATA[$i]}" =~ ^([^:]+):([rf]):[in]*:[0-9]+:(.*)$ ]]; then
             validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"

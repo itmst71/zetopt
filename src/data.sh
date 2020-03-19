@@ -669,6 +669,7 @@ _zetopt::data::iterate()
     __var_id_suffix__=${__var_id_suffix__//[!a-zA-Z0-9_]/}
     local __intlvar_array__=_zetopt_iterator_array_$__var_id_suffix__
     local __intlvar_index__=_zetopt_iterator_index_$__var_id_suffix__
+    local __intlvar_iterated__=_zetopt_iterator_iterated_$__var_id_suffix__
 
     # already exists ?
     local __intlvar_exists__="$( [[ -n $(eval 'echo ${'$__intlvar_array__'+x}') || -n $(eval 'echo ${'$__intlvar_index__'+x}') ]] && echo true || echo false)"
@@ -678,6 +679,7 @@ _zetopt::data::iterate()
         reset)
             if [[ $__intlvar_exists__ == true ]]; then
                 eval $__intlvar_index__'=$INIT_IDX'
+                eval $__intlvar_iterated__'=false'
                 return 0
             fi
             return 1;;
@@ -686,6 +688,7 @@ _zetopt::data::iterate()
         unset)
             unset $__intlvar_array__ ||:
             unset $__intlvar_index__ ||:
+            unset $__intlvar_iterated__ ||:
             return 0;;
 
         # --has-next checks next item existence
@@ -693,8 +696,9 @@ _zetopt::data::iterate()
             if [[ $__intlvar_exists__ == false ]]; then
                 return 1
             fi
-            local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + INIT_IDX))')
-            if [[ $(($(eval 'echo $'$__intlvar_index__) + 1 )) -gt $__max__ ]]; then
+            local __increment__="$([[ $(eval 'echo $'$__intlvar_iterated__) == true ]] && echo 1 || echo 0)"
+            local __max_idx__="$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + INIT_IDX))')"
+            if [[ $(($(eval 'echo $'$__intlvar_index__) + $__increment__)) -gt $__max_idx__ ]]; then
                 return 1
             else
                 return 0
@@ -738,6 +742,7 @@ _zetopt::data::iterate()
             declare -i __idx__= __i__=$INIT_IDX
             eval $__intlvar_index__'=$INIT_IDX'
             eval $__intlvar_array__'=()'
+            eval $__intlvar_iterated__'=false'
             set -- $__list_str__
             for __idx__ in "$@"
             do
@@ -749,11 +754,13 @@ _zetopt::data::iterate()
         else
             if _zetopt::data::output $__dataid__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__ $__no_fallback_option__; then
                 eval $__intlvar_index__'=$INIT_IDX'
+                eval $__intlvar_iterated__'=false'
 
             # unset and return error if failed
             else
                 unset $__intlvar_array__ ||:
                 unset $__intlvar_index__ ||:
+                unset $__intlvar_iterated__ ||:
                 return 1
             fi
         fi
@@ -762,21 +769,18 @@ _zetopt::data::iterate()
         if [[ $__action__ == init ]]; then
             return 0
         fi
-    else
-        # increment index only if -v option specified and already initialized
-        if [[ -n $__usrvar_value__ ]]; then
-            eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
-        fi
     fi
     
     # has no next
-    local __max__=$(eval 'echo $((${#'$__intlvar_array__'[@]} + INIT_IDX))')
-    if [[ $(eval 'echo $'$__intlvar_index__) -ge $__max__ ]]; then
+    local __iterated__="$(eval 'echo $'$__intlvar_iterated__)"
+    local __increment__="$([[ $__iterated__ == true ]] && echo 1 || echo 0)"
+    local __max_intlvar_idx__=$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + $INIT_IDX))')
+    if [[ -n $__usrvar_value__ && $(($(eval 'echo $'$__intlvar_index__) + $__increment__)) -gt $__max_intlvar_idx__ ]]; then
         unset $__intlvar_array__ ||:
         unset $__intlvar_index__ ||:
+        unset $__intlvar_iterated__ ||:
         return 1
     fi
-
 
     # last-index / array / count
     [[ -n $__usrvar_last_index__ ]] && eval $__usrvar_last_index__'=$((${#'$__intlvar_array__'[@]} - 1 + $INIT_IDX))' ||:
@@ -785,27 +789,29 @@ _zetopt::data::iterate()
 
     # value / index : Iterate with multiple values/indexs
     if [[ -n $__usrvar_value__ || -n $__usrvar_index__ ]]; then
-        local __idx__= __first_loop__=true
-        local __max_idx__=$(($([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]}) + $INIT_IDX))
+        local __idx__= __max_idx__=$(($([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]}) + $INIT_IDX))
         for (( __idx__=INIT_IDX; __idx__<__max_idx__; __idx__++ ))
         do
-            # index
-            if [[ -n $__usrvar_index__ ]]; then
-                eval ${__usrvar_index_names__[$__idx__]}'=$'$__intlvar_index__ ||:
-            fi
-
             # value
             if [[ -n $__usrvar_value__ ]]; then
-                # increment index only when first loop
-                if [[ $__first_loop__ == false ]]; then
-                    eval $__intlvar_index__'=$(('$__intlvar_index__' + 1))'
-                    if [[ $(eval 'echo $'$__intlvar_index__) -ge $__max__ ]]; then
-                        break
+                # increment index only if -v option specified
+                if [[ $__iterated__ == true ]]; then
+                    eval $__intlvar_index__'=$(($'$__intlvar_index__' + 1))'
+                    if [[ $(eval 'echo $'$__intlvar_index__) -gt $__max_intlvar_idx__ ]]; then
+                        return 1
                     fi
+                else
+                    eval $__intlvar_iterated__'=true'
+                    __iterated__=true
                 fi
-                eval ${__usrvar_value_names__[$__idx__]}'="${'$__intlvar_array__'[$'$__intlvar_index__']}"' ||:
-                __first_loop__=false
+                eval ${__usrvar_value_names__[$__idx__]}'="${'$__intlvar_array__'[$'$__intlvar_index__']}"'
             fi
+
+            # index
+            if [[ -n $__usrvar_index__ ]]; then
+                eval ${__usrvar_index_names__[$__idx__]}'=$'$__intlvar_index__
+            fi
+
         done
 
         # substitute NULL_VALUE/NULL_KEY if breaking the previous loop because of __intlvar_array__ being short
@@ -813,12 +819,12 @@ _zetopt::data::iterate()
         do
             # value
             if [[ -n $__usrvar_value__ ]]; then
-                eval ${__usrvar_value_names__[$__idx__]}'=$__null_value__' ||:
+                eval ${__usrvar_value_names__[$__idx__]}'=$__null_value__'
             fi
 
             # key
             if [[ -n $__usrvar_index__ ]]; then
-                eval ${__usrvar_index_names__[$__idx__]}'=$__null_index__' ||:
+                eval ${__usrvar_index_names__[$__idx__]}'=$__null_index__'
             fi
         done
     fi
@@ -828,7 +834,7 @@ _zetopt::data::iterate()
 # setids(): Print the list of IDs set
 # def.) _zetopt::data::setids
 # e.g.) _zetopt::data::setids
-# STDOUT: string separated with \n
+# STDOUT: ID string separated with \n
 _zetopt::data::setids()
 {
     local lines="$_ZETOPT_PARSED"
