@@ -796,7 +796,7 @@ _zetopt::def::define()
     else
         for ((; idx<maxloop; idx++))
         do
-            if [[ ! ${args[$idx]} =~ ^(d|default|t|true|f|false)=(.*)$ ]]; then
+            if [[ ! ${args[$idx]} =~ ^-{0,2}(d|default|t|true|f|false)=(.*)$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Definition"
                 return 1
