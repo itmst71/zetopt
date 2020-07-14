@@ -12,7 +12,7 @@ _zetopt::validator::def()
     if [[ -z ${_ZETOPT_VALIDATOR_KEYS:-} ]]; then
         _ZETOPT_VALIDATOR_KEYS=
         _ZETOPT_VALIDATOR_DATA=("")
-        _ZETOPT_VALIDATOR_ERRMSG=()
+        _ZETOPT_VALIDATOR_ERRMSG=("")
     fi
 
     declare -i validator_idx=0 msg_idx=0
