@@ -592,17 +592,8 @@ _zetopt::data::iterate()
                 fi
                 __itr_id__=_$1
                 shift;;
-            --init)
-                __action__=init
-                shift;;
-            --reset)
-                __action__=reset
-                shift;;
-            --unset)
-                __action__=unset
-                shift;;
-            --has-next)
-                __action__=has-next
+            --init | --reset | --unset | --has-next)
+                __action__=${1#--}
                 shift;;
             -E | --extra | --extra-argv)
                 __dataid__=$ZETOPT_DATAID_EXTRA_ARGV

@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202003190930
+# Version     : 2.0.0a.202007142030
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202003190930"
+readonly ZETOPT_VERSION="2.0.0a.202007142030"
 
 
 #------------------------------------------------------------
@@ -2695,17 +2695,8 @@ _zetopt::data::iterate()
                 fi
                 __itr_id__=_$1
                 shift;;
-            --init)
-                __action__=init
-                shift;;
-            --reset)
-                __action__=reset
-                shift;;
-            --unset)
-                __action__=unset
-                shift;;
-            --has-next)
-                __action__=has-next
+            --init | --reset | --unset | --has-next)
+                __action__=${1#--}
                 shift;;
             -E | --extra | --extra-argv)
                 __dataid__=$ZETOPT_DATAID_EXTRA_ARGV
