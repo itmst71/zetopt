@@ -428,8 +428,13 @@ _zetopt::data::output()
         __default_data__=($(_zetopt::def::default $__id__))
 
         # merge parsed data with default data if parsed is short
-        if [[ ${#__data__[@]} -lt ${#__default_data__[@]} ]]; then
-            __data__=($(echo "${__data__[@]}" "${__default_data__[@]:${#__data__[@]}:$((${#__default_data__[@]} - ${#__data__[@]}))}"))
+        local __data_len__=${#__data__[@]}
+        if [[ $__data_len__ -lt ${#__default_data__[@]} ]]; then
+            if [[ $__data_len__ -ne 0 ]]; then
+                __data__=($(echo "${__data__[@]}" "${__default_data__[@]:$__data_len__:$((${#__default_data__[@]} - $__data_len__))}"))
+            else
+                __data__=($(echo "${__default_data__[@]}"))
+            fi
         fi
     fi
 
