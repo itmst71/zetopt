@@ -326,7 +326,7 @@ _zetopt::def::define()
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
@@ -336,9 +336,9 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + INIT_IDX))]}
             param_name=${BASH_REMATCH[$((3 + INIT_IDX))]}
             param_validator=${BASH_REMATCH[$((4 + INIT_IDX))]}
-            param_varlen=${BASH_REMATCH[$((9 + INIT_IDX))]}
-            param_varlen_max=${BASH_REMATCH[$((10 + INIT_IDX))]}
-            param_default=${BASH_REMATCH[$((11 + INIT_IDX))]}
+            param_varlen=${BASH_REMATCH[$((10 + INIT_IDX))]}
+            param_varlen_max=${BASH_REMATCH[$((11 + INIT_IDX))]}
+            param_default=${BASH_REMATCH[$((12 + INIT_IDX))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -366,6 +366,35 @@ _zetopt::def::define()
                 fi
                 param_names+=" $param_name "
                 var_param_name=$param_name
+            fi
+
+            # define choice-validator automatically
+            if [[ $param_validator == '~' ]]; then
+                local choice_note="Note: If a validator is specified with \"~\" and no name is given like \"~vldt_name\", then comma-separated words after \"=\" are used as choices. However, if there is only one choice, it is treated as an array variable containing the choices. The first choice is used as the default value."
+                if [[ -z $param_default ]]; then
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "No Choice Defined:" "$param\n $choice_note"
+                    return 1
+                fi
+
+                param_validator="__AUTO_VLDT_${#_ZETOPT_VALIDATOR_DATA[*]}"
+                local choice_str=${param_default#*=} choice_help choice_arr
+                IFS=,
+                choice_arr=($choice_str)
+                if [[ ${#choice_arr[*]} -ge 2 ]]; then
+                    param_default=${choice_arr[$INIT_IDX]} #the first choice is the default value
+                    choice_help="#Choose from: [$(IFS=\| && echo "${choice_arr[*]}")]"
+                    _zetopt::validator::def -c "$param_validator" "$choice_str" "$choice_help"
+                else
+                    if [[ ! ${choice_arr[$INIT_IDX]} =~ ^$REG_VNAME$ || -z $(eval 'echo ${'${choice_arr[$INIT_IDX]}'+x}') ]]; then
+                        _ZETOPT_DEF_ERROR=true
+                        _zetopt::msg::script_error "\"${choice_arr[$INIT_IDX]}\" is not an array variable.\n $choice_note"
+                        return 1
+                    fi
+                    eval 'param_default=${'${choice_arr[$INIT_IDX]}'[$INIT_IDX]}' #the first choice is the default value
+                    eval 'choice_help="#Choose from: [$(IFS=\| && echo "${'${choice_arr[$INIT_IDX]}'[*]}")]"'
+                    _zetopt::validator::def -a "$param_validator" "$choice_str" "$choice_help"
+                fi
             fi
 
             # translate validator name to indexes

@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202007142030
+# Version     : 2.0.0a.202007181830
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202007142030"
+readonly ZETOPT_VERSION="2.0.0a.202007181830"
 
 
 #------------------------------------------------------------
@@ -674,7 +674,7 @@ _zetopt::def::define()
         do
             param=${args[$idx]}
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
                 return 1
@@ -684,9 +684,9 @@ _zetopt::def::define()
             param_type=${BASH_REMATCH[$((2 + INIT_IDX))]}
             param_name=${BASH_REMATCH[$((3 + INIT_IDX))]}
             param_validator=${BASH_REMATCH[$((4 + INIT_IDX))]}
-            param_varlen=${BASH_REMATCH[$((9 + INIT_IDX))]}
-            param_varlen_max=${BASH_REMATCH[$((10 + INIT_IDX))]}
-            param_default=${BASH_REMATCH[$((11 + INIT_IDX))]}
+            param_varlen=${BASH_REMATCH[$((10 + INIT_IDX))]}
+            param_varlen_max=${BASH_REMATCH[$((11 + INIT_IDX))]}
+            param_default=${BASH_REMATCH[$((12 + INIT_IDX))]}
 
             if [[ $param_type == @ ]]; then
                 if [[ $param_optional == true ]]; then
@@ -714,6 +714,35 @@ _zetopt::def::define()
                 fi
                 param_names+=" $param_name "
                 var_param_name=$param_name
+            fi
+
+            # define choice-validator automatically
+            if [[ $param_validator == '~' ]]; then
+                local choice_note="Note: If a validator is specified with \"~\" and no name is given like \"~vldt_name\", then comma-separated words after \"=\" are used as choices. However, if there is only one choice, it is treated as an array variable containing the choices. The first choice is used as the default value."
+                if [[ -z $param_default ]]; then
+                    _ZETOPT_DEF_ERROR=true
+                    _zetopt::msg::script_error "No Choice Defined:" "$param\n $choice_note"
+                    return 1
+                fi
+
+                param_validator="__AUTO_VLDT_${#_ZETOPT_VALIDATOR_DATA[*]}"
+                local choice_str=${param_default#*=} choice_help choice_arr
+                IFS=,
+                choice_arr=($choice_str)
+                if [[ ${#choice_arr[*]} -ge 2 ]]; then
+                    param_default=${choice_arr[$INIT_IDX]} #the first choice is the default value
+                    choice_help="#Choose from: [$(IFS=\| && echo "${choice_arr[*]}")]"
+                    _zetopt::validator::def -c "$param_validator" "$choice_str" "$choice_help"
+                else
+                    if [[ ! ${choice_arr[$INIT_IDX]} =~ ^$REG_VNAME$ || -z $(eval 'echo ${'${choice_arr[$INIT_IDX]}'+x}') ]]; then
+                        _ZETOPT_DEF_ERROR=true
+                        _zetopt::msg::script_error "\"${choice_arr[$INIT_IDX]}\" is not an array variable.\n $choice_note"
+                        return 1
+                    fi
+                    eval 'param_default=${'${choice_arr[$INIT_IDX]}'[$INIT_IDX]}' #the first choice is the default value
+                    eval 'choice_help="#Choose from: [$(IFS=\| && echo "${'${choice_arr[$INIT_IDX]}'[*]}")]"'
+                    _zetopt::validator::def -a "$param_validator" "$choice_str" "$choice_help"
+                fi
             fi
 
             # translate validator name to indexes
@@ -1273,6 +1302,10 @@ _zetopt::validator::def()
                 type=f; shift;;
             -r | --regexp)
                 type=r; shift;;
+            -c | --choice)
+                type=c; shift;;
+            -a | --array)
+                type=a; shift;;
             -i | --ignore-case)
                 flags+=i; shift;;
             -n | --not)
@@ -1280,11 +1313,13 @@ _zetopt::validator::def()
             --*)
                 error=true; break;;
             -*)
-                if [[ ! $1 =~ ^-[finr]+$ ]]; then
+                if [[ ! $1 =~ ^-[cfinr]+$ ]]; then
                     error=true; break
                 fi
                 [[ $1 =~ f ]] && type=f
                 [[ $1 =~ r ]] && type=r
+                [[ $1 =~ c ]] && type=c
+                [[ $1 =~ a ]] && type=a
                 [[ $1 =~ i ]] && flags+=i
                 [[ $1 =~ n ]] && flags+=n
                 shift;;
@@ -1304,7 +1339,7 @@ _zetopt::validator::def()
     # check errors
     if [[ $error == true ]]; then
         _ZETOPT_DEF_ERROR=true
-        _zetopt::msg::script_error "zetopt def-validator [-f | --function] [-r | --regexp] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
+        _zetopt::msg::script_error "zetopt def-validator [-r | --regexp] [-f | --function] [-c | --choice] [-a | --array] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
     if [[ ! $name =~ ^$REG_VNAME$ ]]; then
@@ -1360,7 +1395,7 @@ _zetopt::validator::validate()
         declare -i validator_idx=$1
         shift 1
 
-        if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([rf]):([in]*):([0-9]+):(.*)$ ]]; then
+        if [[ ! ${_ZETOPT_VALIDATOR_DATA[$validator_idx]} =~ ^([^:]+):([acrf]):([in]*):([0-9]+):(.*)$ ]]; then
             _zetopt::msg::script_error "Internal Error:" "Validator Broken"
             return 1
         fi
@@ -1386,13 +1421,46 @@ _zetopt::validator::validate()
                     [[ $arg =~ $validator ]] && printf -- "%s" false: || printf -- "%s" true:
                 fi
             # f: function
-            else
+            elif [[ $validator_type == f ]]; then
                 local PATH=$_PATH LC_ALL=$_LC_ALL LANG=$_LANG
                 if [[ ! $validator_flags =~ n ]]; then
                     printf -- "%s" "$(out=$("$validator" "$arg" 2>&1) && printf -- "%s" "true:" || printf -- "%s" "false:$out")"
                 else
                     printf -- "%s" "$(out=$("$validator" "$arg" 2>&1) && printf -- "%s" "false:$out" || printf -- "%s" "true:")"
                 fi
+
+            # c: choice
+            elif [[ $validator_type == c ]]; then
+                local IFS=, arr valid=false
+                arr=($validator)
+                IFS=$' \t\n'
+                for (( i=$INIT_IDX; i<$((${#arr[*]} + $INIT_IDX)); i++ ))
+                do
+                    if [[ "${arr[$i]}" == "$arg" ]]; then
+                        valid=true
+                        break
+                    fi
+                done
+                if [[ $validator_flags =~ n ]]; then
+                    $valid && valid=false || valid=true
+                fi
+                printf -- "%s" "$valid:"
+            
+            # a: array
+            elif [[ $validator_type == a ]]; then
+                local arr valid=false
+                eval 'arr=("${'$validator'[@]}")'
+                for (( i=$INIT_IDX; i<$((${#arr[*]} + $INIT_IDX)); i++ ))
+                do
+                    if [[ "${arr[$i]}" == "$arg" ]]; then
+                        valid=true
+                        break
+                    fi
+                done
+                if [[ $validator_flags =~ n ]]; then
+                    $valid && valid=false || valid=true
+                fi
+                printf -- "%s" "$valid:"
             fi
         )
 
@@ -1427,7 +1495,7 @@ _zetopt::validator::is_ready()
     declare -i i=$INIT_IDX max_idx=$(($len - 1 + $INIT_IDX))
     for (( ; i<=max_idx; i++ ))
     do
-        if [[ "${_ZETOPT_VALIDATOR_DATA[$i]}" =~ ^([^:]+):([rf]):[in]*:[0-9]+:(.*)$ ]]; then
+        if [[ "${_ZETOPT_VALIDATOR_DATA[$i]}" =~ ^([^:]+):([acrf]):[in]*:[0-9]+:(.*)$ ]]; then
             validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"
             validator_type="${BASH_REMATCH[$((2 + INIT_IDX))]}"
             validator="${BASH_REMATCH[$((3 + INIT_IDX))]}"
@@ -2531,8 +2599,13 @@ _zetopt::data::output()
         __default_data__=($(_zetopt::def::default $__id__))
 
         # merge parsed data with default data if parsed is short
-        if [[ ${#__data__[@]} -lt ${#__default_data__[@]} ]]; then
-            __data__=($(echo "${__data__[@]}" "${__default_data__[@]:${#__data__[@]}:$((${#__default_data__[@]} - ${#__data__[@]}))}"))
+        local __data_len__=${#__data__[@]}
+        if [[ $__data_len__ -lt ${#__default_data__[@]} ]]; then
+            if [[ $__data_len__ -ne 0 ]]; then
+                __data__=($(echo "${__data__[@]}" "${__default_data__[@]:$__data_len__:$((${#__default_data__[@]} - $__data_len__))}"))
+            else
+                __data__=($(echo "${__default_data__[@]}"))
+            fi
         fi
     fi
 
