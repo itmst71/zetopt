@@ -332,7 +332,7 @@ _zetopt::data::output()
     local __dataid__=$1
     shift
     local __out_mode__=stdout __usrvar_name__= __newline__=$_LF __fallback__=true
-    local __args__ __ifs__=${ZETOPT_CFG_VALUE_IFS-$' '}
+    local __args__ __ifs__=${ZETOPT_CFG_VALUE_IFS- }
     __args__=()
 
     while [[ $# -ne 0 ]]

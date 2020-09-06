@@ -45,7 +45,7 @@ _zetopt::utils::funcname()
 
 _zetopt::utils::stack_trace()
 {
-    local IFS=$' '
+    local IFS=" "
     local skip_stack_count=1
     if [[ -n ${1-} ]]; then
         skip_stack_count=$1
@@ -115,7 +115,7 @@ _zetopt::utils::repeat()
         _zetopt::msg::script_error "Invalid Argument:" "_zetopt::utils::repeat <REPEAT_COUNT> <STRING>"
         return 1
     fi
-    local IFS=$' '
+    local IFS=" "
     local repstr="${2//\//\\/}"
     printf -- "%0*d" $1 | \sed -e "s/0/$repstr/g"
 }
@@ -302,7 +302,7 @@ _zetopt::utils::quote()
     for str in "$@"; do
         arr+=("'${str//$q/$q$qq$q$qq$q}'")
     done
-    local IFS=$' '
+    local IFS=" "
     printf -- "%s\n" "${arr[*]}"
 }
 

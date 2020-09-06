@@ -16,7 +16,7 @@ _zetopt::validator::def()
     fi
 
     declare -i validator_idx=0 msg_idx=0
-    local IFS=$' \n\t' name= validator= type=r errmsg= flags= error=false 
+    local IFS=$_IFS_DEFAULT name= validator= type=r errmsg= flags= error=false
     while [[ $# -ne 0 ]]
     do
         case "$1" in
@@ -110,7 +110,7 @@ _zetopt::validator::validate()
 
     local IFS=,
     set -- ${BASH_REMATCH[$((1 + _INIT_IDX))]}
-    IFS=$' \t\n'
+    IFS=$_IFS_DEFAULT
 
     while [[ $# -ne 0 ]]
     do
@@ -155,7 +155,7 @@ _zetopt::validator::validate()
             elif [[ $validator_type == c ]]; then
                 local IFS=, arr valid=false
                 arr=($validator)
-                IFS=$' \t\n'
+                IFS=$_IFS_DEFAULT
                 for (( i=$_INIT_IDX; i<$((${#arr[*]} + $_INIT_IDX)); i++ ))
                 do
                     if [[ "${arr[$i]}" == "$arg" ]]; then

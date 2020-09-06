@@ -3,7 +3,7 @@
 #------------------------------------------------------------
 _zetopt::help::init()
 {
-    local IFS=$' '
+    local IFS=" "
     _ZETOPT_HELPS_IDX=(
         "0:NAME"
         "1:VERSION"
@@ -64,7 +64,7 @@ _zetopt::help::define()
     local refidx=$(($idx + $_INIT_IDX))
     _ZETOPT_HELPS_IDX[$refidx]="$idx:$title"
     shift 1
-    local IFS=$''
+    local IFS=
     _ZETOPT_HELPS[$refidx]="$*"
 }
 
@@ -99,7 +99,7 @@ _zetopt::help::show()
     fi
     declare -i idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=0
     declare -i _TERM_MAX_COLS=$(($(\tput cols) - 3))
-    declare -i default_max_cols=120
+    declare -i default_max_cols=1000
     declare -i _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
     declare -i _BASE_COLS=0
     declare -i _OPT_COLS=4
@@ -135,7 +135,7 @@ _zetopt::help::show()
         _zetopt::msg::script_error "Usage:" "zetopt show-help [--lang <LANG>] [HELP_TITLE ...]"
         return 1
     fi
-    IFS=$' '
+    IFS=" "
     if [[ -z "${titles[@]-}" ]]; then
         titles=("${_ZETOPT_HELPS_IDX[@]#*:}")
     fi
@@ -246,7 +246,7 @@ _zetopt::help::synopsis()
 
         cmdcol=${#cmd}+1
         if [[ $_DECORATION == true ]]; then
-            cmd=$(IFS=$' '; printf -- "$_DECO_BOLD%s$_DECO_END " $cmd)
+            cmd=$(IFS=" "; printf -- "$_DECO_BOLD%s$_DECO_END " $cmd)
         fi
         cmd=${cmd% }
         
@@ -378,7 +378,7 @@ _zetopt::help::fmtcmdopt()
             optlen=$((${#optarg} + $cmdcol))
 
             if [[ $prev_ns != $ns ]]; then 
-                subcmd_title=$(IFS=$' '; printf -- "$sub_title_deco%s$_DECO_END " $cmd)
+                subcmd_title=$(IFS=" "; printf -- "$sub_title_deco%s$_DECO_END " $cmd)
                 printf -- "$(_zetopt::help::indent)%b\n" "$subcmd_title"
                 _INDENT_LEVEL+=1
                 prev_ns=$ns
@@ -396,7 +396,7 @@ _zetopt::help::fmtcmdopt()
                 if [[ $optlen == $cmdcol ]]; then
                     continue
                 fi
-                cmd=$(IFS=$' '; printf -- "$sub_deco%s$_DECO_END " $cmd)
+                cmd=$(IFS=" "; printf -- "$sub_deco%s$_DECO_END " $cmd)
             fi
 
             optarg="$cmd${optarg# }"
@@ -475,7 +475,7 @@ _zetopt::help::format()
 
     if [[ -n $args ]]; then
         args=${args//-/}
-        IFS=$' '
+        IFS=" "
         declare -i cnt=1
         local arg param default_idx default_value=
         for arg in $args

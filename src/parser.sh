@@ -177,7 +177,7 @@ _zetopt::parser::parse()
     
     # show errors
     if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true && $ZETOPT_PARSE_ERRORS -ne 0 ]]; then
-        IFS=$' \t\n'
+        IFS=$_IFS_DEFAULT
         local subcmdstr="$ZETOPT_CALLER_NAME${namespace//\// }" msg=
         subcmdstr=${subcmdstr% }
 
@@ -305,7 +305,7 @@ _zetopt::parser::setopt()
     # options requiring arguments
     else
         local arg def def_arr varlen_mode=false no_avail_args=false
-        IFS=$' '
+        IFS=" "
         def_arr=($paramdef_str)
         declare -i def_len=$((${#def_arr[@]} + _INIT_IDX)) def_idx=$_INIT_IDX
         declare -i arg_def_max arg_idx=$_INIT_IDX arg_max_idx=$((${#args[@]} + $_INIT_IDX))
@@ -448,7 +448,7 @@ _zetopt::parser::setopt()
     _ZETOPT_DATA+=("$pseudoname")
     local pseudoidx=$((${#_ZETOPT_DATA[@]} - 1 + $_INIT_IDX))
 
-    IFS=$' '
+    IFS=" "
     if [[ $cnt -eq 0 ]]; then
         stat="$curr_stat"
         refs_str="${ref_arr[*]-}"

@@ -18,7 +18,7 @@ _zetopt::def::reset()
     vars=()
     local IFS=$'\n'
     lines=($_ZETOPT_DEFINED)
-    IFS=$' \n\t'
+    IFS=$_IFS_DEFAULT
 
     for line in "${lines[@]}"
     do
@@ -79,7 +79,7 @@ _zetopt::def::define()
         return 1
     fi
 
-    local IFS=$' \n\t' args
+    local IFS=$_IFS_DEFAULT args
     declare -i arglen=$#
     args=("$@")
     declare -i idx=$_INIT_IDX maxloop=$arglen+$_INIT_IDX
@@ -110,7 +110,7 @@ _zetopt::def::define()
             namedef=/
             IFS=
             helpdef="${args[*]}"
-            IFS=$' \n\t'
+            IFS=$_IFS_DEFAULT
             helpdef=${helpdef###}
             help_only=true
         else
@@ -145,7 +145,7 @@ _zetopt::def::define()
 
     IFS=:
     \set -- $namedef
-    IFS=$' \t\n'
+    IFS=$_IFS_DEFAULT
     if [[ $# -gt 3 ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Invalid Definition"
@@ -481,7 +481,7 @@ _zetopt::def::define()
                 var_name_list+="$var_name "
             fi
         done
-        IFS=$' '
+        IFS=" "
         param_def="${params[*]}"
         var_name_list=${var_name_list% }
 
@@ -577,7 +577,7 @@ _zetopt::def::define()
     _ZETOPT_DEFINED+="$id:$deftype:$short:$long:$param_def:$var_name_list:$flags:$helpidx$_LF"
 
     # defines parent subcommands automatically
-    IFS=$' '
+    IFS=" "
     local ns= curr_ns=
     for ns in ${namespace//\// }
     do
