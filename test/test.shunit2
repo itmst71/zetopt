@@ -6,7 +6,7 @@
 if [ -n "${ZSH_VERSION-}" ]; then
     SHUNIT_PARENT=$0
     setopt SH_WORD_SPLIT
-    #setopt KSH_ARRAYS
+    setopt KSH_ARRAYS
 fi
 . "$ZETOPT_DIST_FILE"
 type zetopt >/dev/null 2>&1 || return 1

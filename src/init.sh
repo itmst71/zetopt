@@ -11,9 +11,12 @@ if [ -n "${BASH_VERSION-}" ]; then
     readonly ZETOPT_BASH=true
     readonly ZETOPT_ZSH=false
     readonly ZETOPT_OLDBASH="$([[ ${BASH_VERSION:0:1} -le 3 ]] && echo true || echo false)"
-    readonly ZETOPT_ARRAY_INITIAL_IDX=0
 # zsh
 elif [ -n "${ZSH_VERSION-}" ]; then
+    if [[ ! $'\n'$(setopt) =~ $'\n'ksharrays ]]; then
+        setopt KSH_ARRAYS
+        echo >&2 "zetopt: Warning: KSH_ARRAYS has been enabled automatically."
+    fi
     readonly ZETOPT_SOURCE_FILE_PATH="$0"
     readonly ZETOPT_ROOT="${${(%):-%x}:A:h}"
     readonly ZETOPT_CALLER_FILE_PATH="${funcfiletrace%:*}"
@@ -21,7 +24,6 @@ elif [ -n "${ZSH_VERSION-}" ]; then
     readonly ZETOPT_BASH=false
     readonly ZETOPT_ZSH=true
     readonly ZETOPT_OLDBASH=false
-    readonly ZETOPT_ARRAY_INITIAL_IDX="$([[ $'\n'$(setopt) =~ $'\n'ksharrays ]] && echo 0 || echo 1)"
 else
     echo >&2 "zetopt: Fatal Error: Bash 3.2+ / Zsh 5.0+ Required"
     return 1
@@ -71,10 +73,10 @@ readonly ZETOPT_STATUS_ERROR_THRESHOLD=$ZETOPT_STATUS_EXTRA_ARGS
 
 # misc
 readonly ZETOPT_IDX_NOT_FOUND=-1
-readonly ZETOPT_IDX_DEFAULT_VALUE=$((ZETOPT_ARRAY_INITIAL_IDX + 0))
-readonly ZETOPT_IDX_FLAG_DEFAULT=$((ZETOPT_ARRAY_INITIAL_IDX + 1))
-readonly ZETOPT_IDX_FLAG_TRUE=$((ZETOPT_ARRAY_INITIAL_IDX + 2))
-readonly ZETOPT_IDX_FLAG_FALSE=$((ZETOPT_ARRAY_INITIAL_IDX + 3))
+readonly ZETOPT_IDX_DEFAULT_VALUE=0
+readonly ZETOPT_IDX_FLAG_DEFAULT=1
+readonly ZETOPT_IDX_FLAG_TRUE=2
+readonly ZETOPT_IDX_FLAG_FALSE=3
 
 # __NULL is default value for auto-defined variable
 __NULL(){ return 1; }

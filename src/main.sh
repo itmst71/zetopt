@@ -16,7 +16,6 @@ zetopt()
     local _IFS_DEFAULT=$' \t\n'
     local IFS=$_IFS_DEFAULT
     local _LF=$'\n'
-    local _INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
     local _REG_VARNAME='[a-zA-Z_][a-zA-Z0-9_]*'
 
     # setup for zsh

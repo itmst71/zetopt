@@ -29,7 +29,7 @@ _zetopt::help::search()
         || shopt -s nocasematch
         local IFS=$_LF
         [[ "$_LF${_ZETOPT_HELPS_IDX[*]}$_LF" =~ $_LF([0-9]+):$title$_LF ]] \
-        && printf -- "%s" ${BASH_REMATCH[$((1 + $_INIT_IDX))]} \
+        && printf -- "%s" ${BASH_REMATCH[1]} \
         || printf -- "%s" $ZETOPT_IDX_NOT_FOUND
     )"
 }
@@ -39,7 +39,7 @@ _zetopt::help::body()
     local title="${1-}"
     local idx=$(_zetopt::help::search "$title")
     if [[ $idx != $ZETOPT_IDX_NOT_FOUND ]]; then
-        printf -- "%s\n" "${_ZETOPT_HELPS[$(($idx + $_INIT_IDX))]}"
+        printf -- "%s\n" "${_ZETOPT_HELPS[$idx]}"
     fi
 }
 
@@ -61,7 +61,7 @@ _zetopt::help::define()
         idx=${#_ZETOPT_HELPS[@]}
     fi
     _ZETOPT_HELPS_CUSTOM="${_ZETOPT_HELPS_CUSTOM%:}:$idx:"
-    local refidx=$(($idx + $_INIT_IDX))
+    local refidx=$idx
     _ZETOPT_HELPS_IDX[$refidx]="$idx:$title"
     shift 1
     local IFS=
@@ -88,7 +88,7 @@ _zetopt::help::rename()
         _zetopt::msg::script_error "Already Exists: $newtitle"
         return 1
     fi
-    local refidx=$(($idx + $_INIT_IDX))
+    local refidx=$idx
     _ZETOPT_HELPS_IDX[$refidx]="$idx:$newtitle"
 }
 
@@ -144,7 +144,7 @@ _zetopt::help::show()
     for title in "${titles[@]}"
     do
         idx=$(_zetopt::help::search "$title")
-        if [[ $idx -eq $ZETOPT_IDX_NOT_FOUND || -z "${_ZETOPT_HELPS[$(($idx + $_INIT_IDX))]-}" ]]; then
+        if [[ $idx -eq $ZETOPT_IDX_NOT_FOUND || -z "${_ZETOPT_HELPS[$idx]-}" ]]; then
             continue
         fi
 
@@ -167,7 +167,7 @@ _zetopt::help::show()
 
         # User Customized Helps
         else
-            body="${_ZETOPT_HELPS[$(($idx + $_INIT_IDX))]}"
+            body="${_ZETOPT_HELPS[$idx]}"
             _zetopt::help::general "$title" "$body"
         fi
     done
@@ -265,7 +265,7 @@ _zetopt::help::synopsis()
         for ((idx=0; idx<$loop; idx++))
         do
             bodyarr=($(printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
-            printf -- "$base_indent%b\n" "$cmd ${bodyarr[$_INIT_IDX]# *}"
+            printf -- "$base_indent%b\n" "$cmd ${bodyarr[0]# *}"
             if [[ ${#bodyarr[@]} -gt 1 ]]; then
                 if [[ $ZETOPT_OLDBASH == true ]]; then
                     unset bodyarr[0]
@@ -410,13 +410,13 @@ _zetopt::help::fmtcmdopt()
                 desc=($(printf -- "%b" "${_ZETOPT_OPTHELPS[$helpidx]}" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
             fi
             if [[ $optlen -le $(($_OPT_COLS)) ]]; then
-                printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[$((0 + $_INIT_IDX))]}"
+                printf -- "$(_zetopt::help::indent)%-$(($_OPT_COLS + $_OPT_DESC_MARGIN))s%s\n" "$optarg" "${desc[0]}"
                 if [[ ${#desc[@]} -gt 1 ]]; then
                     if [[ $ZETOPT_OLDBASH == true ]]; then
                         unset desc[0]
                         printf -- "$indent%s\n" "${desc[@]}"
                     else
-                        printf -- "$indent%s\n" "${desc[@]:$((1 + $_INIT_IDX))}"
+                        printf -- "$indent%s\n" "${desc[@]:1}"
                     fi
                 fi
             else
@@ -499,7 +499,7 @@ _zetopt::help::format()
         done
         # variable length
         if [[ $arg =~ ([.]{3,3}[0-9]*)= ]]; then
-            optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[$((1 + _INIT_IDX))]}]"
+            optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[1]}]"
         fi
         IFS=$_LF
     fi

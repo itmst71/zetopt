@@ -59,14 +59,14 @@ _zetopt::data::field()
         return 1
     fi
     case "$field" in
-        $ZETOPT_DATAID_ALL)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_ALL))]}";;
-        $ZETOPT_DATAID_ID)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_ID))]}";;
-        $ZETOPT_DATAID_ARGV)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_ARGV))]}";;
-        $ZETOPT_DATAID_ARGC)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_ARGC))]}";;
-        $ZETOPT_DATAID_TYPE)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_TYPE))]}";;
-        $ZETOPT_DATAID_PSEUDO) printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_PSEUDO))]}";;
-        $ZETOPT_DATAID_STATUS) printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_STATUS))]}";;
-        $ZETOPT_DATAID_COUNT)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX + $ZETOPT_DATAID_COUNT))]}";;
+        $ZETOPT_DATAID_ALL)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_ALL))]}";;
+        $ZETOPT_DATAID_ID)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_ID))]}";;
+        $ZETOPT_DATAID_ARGV)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_ARGV))]}";;
+        $ZETOPT_DATAID_ARGC)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_ARGC))]}";;
+        $ZETOPT_DATAID_TYPE)   printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_TYPE))]}";;
+        $ZETOPT_DATAID_PSEUDO) printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_PSEUDO))]}";;
+        $ZETOPT_DATAID_STATUS) printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_STATUS))]}";;
+        $ZETOPT_DATAID_COUNT)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DATAID_COUNT))]}";;
         $ZETOPT_DATAID_EXTRA_ARGV) printf -- "%s\n" "$(_zetopt::data::extra_field $id)";;
         *) return 1;;
     esac
@@ -145,7 +145,7 @@ _zetopt::data::pickup()
     
     local output_list
     output_list=()
-    local lists_last_idx="$((${#lists[@]} - 1 + $_INIT_IDX))"
+    local lists_last_idx="$((${#lists[@]} - 1))"
     
     IFS=' '
     if [[ $# -eq 0 ]]; then
@@ -153,23 +153,23 @@ _zetopt::data::pickup()
     else
         local list_last_vals
         list_last_vals=(${lists[$lists_last_idx]})
-        local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1 + $_INIT_IDX))
+        local val_lastlist_lastidx=$((${#list_last_vals[@]} - 1))
 
         local input_idx= tmp_list
         for input_idx in "$@"
         do
-            if [[ ! $input_idx =~ ^(@|([$\^$_INIT_IDX]|-?[1-9][0-9]*)?(,([$\^$_INIT_IDX]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^$_INIT_IDX]|-?[1-9][0-9]*)?(,([$\^$_INIT_IDX]|-?[1-9][0-9]*)?)?)?)?)?$ ]]; then
+            if [[ ! $input_idx =~ ^(@|([$\^0]|-?[1-9][0-9]*)?(,([$\^0]|-?[1-9][0-9]*)?)?)?(:?(@|(([$\^0]|-?[1-9][0-9]*)?(,([$\^0]|-?[1-9][0-9]*)?)?)?)?)?$ ]]; then
                 _zetopt::msg::script_error "Bad Key:" "$input_idx"
                 return 1
             fi
 
             # shortcuts for improving performance
             # @ / 0,$ / ^,$
-            if [[ $input_idx =~ ^(@|[${_INIT_IDX}\^],[\$${val_lastlist_lastidx}])$ ]]; then
+            if [[ $input_idx =~ ^(@|[0\^],[\$${val_lastlist_lastidx}])$ ]]; then
                 output_list+=(${list_last_vals[@]})
                 continue
             # @:@ / ^,$:@ / 0,$:@ / @:^,$ / @:0,$ / 0,$:0,$ / 0,$:^,$
-            elif [[ $input_idx =~ ^(@|\^,\$|${_INIT_IDX},\$):(@|\^,\$|${_INIT_IDX},\$)$ ]]; then
+            elif [[ $input_idx =~ ^(@|\^,\$|0,\$):(@|\^,\$|0,\$)$ ]]; then
                 output_list+=(${lists[*]})
                 continue
             fi
@@ -199,14 +199,14 @@ _zetopt::data::pickup()
             # determine the list start/end index
             local list_start_idx= list_end_idx=
             case "$tmp_list_start_idx" in
-                @)      list_start_idx=$_INIT_IDX;;
-                ^)      list_start_idx=$_INIT_IDX;;
+                @)      list_start_idx=0;;
+                ^)      list_start_idx=0;;
                 $|"")   list_start_idx=$lists_last_idx;;
                 *)      list_start_idx=$tmp_list_start_idx;;
             esac
             case "$tmp_list_end_idx" in
                 @)      list_end_idx=$lists_last_idx;;
-                ^)      list_end_idx=$_INIT_IDX;;
+                ^)      list_end_idx=0;;
                 $|"")   list_end_idx=$lists_last_idx;;
                 *)      list_end_idx=$tmp_list_end_idx
             esac
@@ -220,13 +220,13 @@ _zetopt::data::pickup()
             fi
             
             # check the range
-            if [[ $list_start_idx -lt $_INIT_IDX || $list_end_idx -gt $lists_last_idx
-                || $list_end_idx -lt $_INIT_IDX || $list_start_idx -gt $lists_last_idx
+            if [[ $list_start_idx -lt 0 || $list_end_idx -gt $lists_last_idx
+                || $list_end_idx -lt 0 || $list_start_idx -gt $lists_last_idx
             ]]; then
                 [[ $list_start_idx == $list_end_idx ]] \
                 && local translated_idx=$list_start_idx \
                 || local translated_idx=$list_start_idx~$list_end_idx
-                _zetopt::msg::script_error "List Index Out of Range ($_INIT_IDX~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
+                _zetopt::msg::script_error "List Index Out of Range (0~$lists_last_idx)" "Translate \"$tmp_list_idx\" -> $translated_idx"
                 return 1
             fi
 
@@ -243,14 +243,14 @@ _zetopt::data::pickup()
             fi
 
             case "$tmp_val_start_idx" in
-                @)      tmp_val_start_idx=$_INIT_IDX;;
-                ^)      tmp_val_start_idx=$_INIT_IDX;;
+                @)      tmp_val_start_idx=0;;
+                ^)      tmp_val_start_idx=0;;
                 $|"")   tmp_val_start_idx=$;; # the last index will be determined later
                 *)      tmp_val_start_idx=$tmp_val_start_idx;;
             esac
             case "$tmp_val_end_idx" in
                 @)      tmp_val_end_idx=$;; # the last index will be determined later
-                ^)      tmp_val_end_idx=$_INIT_IDX;;
+                ^)      tmp_val_end_idx=0;;
                 $|"")   tmp_val_end_idx=$;; # the last index will be determined later
                 *)      tmp_val_end_idx=$tmp_val_end_idx
             esac
@@ -265,7 +265,7 @@ _zetopt::data::pickup()
                 fi
                 
                 # determine the value start/end index
-                maxidx=$((${#tmp_list[@]} - 1 + $_INIT_IDX))
+                maxidx=$((${#tmp_list[@]} - 1))
                 if [[ $tmp_val_start_idx == $ ]]; then
                     val_start_idx=$maxidx  # set the last index
                 else
@@ -286,13 +286,13 @@ _zetopt::data::pickup()
                 fi
 
                 # check the range
-                if [[ $val_start_idx -lt $_INIT_IDX || $val_end_idx -gt $maxidx
-                    || $val_end_idx -lt $_INIT_IDX || $val_start_idx -gt $maxidx
+                if [[ $val_start_idx -lt 0 || $val_end_idx -gt $maxidx
+                    || $val_end_idx -lt 0 || $val_start_idx -gt $maxidx
                 ]]; then
                     [[ $val_start_idx == $val_end_idx ]] \
                     && local translated_idx=$val_start_idx \
                     || local translated_idx=$val_start_idx~$val_end_idx
-                    _zetopt::msg::script_error "Value Index Out of Range ($_INIT_IDX~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
+                    _zetopt::msg::script_error "Value Index Out of Range (0~$maxidx):" "Translate \"$tmp_val_idx\" -> $translated_idx"
                     return 1
                 fi
 
@@ -402,7 +402,7 @@ _zetopt::data::output()
         __usrvar_names__=($@)
     fi
 
-    local __id__="${__args__[$((0 + $_INIT_IDX))]=$ZETOPT_LAST_COMMAND}"
+    local __id__="${__args__[0]=$ZETOPT_LAST_COMMAND}"
     if ! _zetopt::def::exists "$__id__"; then
         # complement ID if the first arg looks a key
         if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
@@ -463,12 +463,12 @@ _zetopt::data::output()
     # output
     IFS=' '
     set -- $__list_str__
-    declare -i __idx__= __i__=$_INIT_IDX __max__=$(($# + _INIT_IDX - 1))
-    declare -i __vi__=$_INIT_IDX __vmax__=$((${#__usrvar_names__[@]} + _INIT_IDX - 1))
+    declare -i __idx__= __i__=0 __max__=$(($# - 1))
+    declare -i __vi__=0 __vmax__=$((${#__usrvar_names__[@]} - 1))
     local __varname__= __nl__=
 
     if [[ $__out_mode__ == array ]]; then
-        __varname__=${__usrvar_names__[$_INIT_IDX]}
+        __varname__=${__usrvar_names__[0]}
         eval "$__varname__=()"
     fi
 
@@ -629,7 +629,7 @@ _zetopt::data::iterate()
 
     # ID for getting parsed data array
     else
-        __id__="${__args__[$((0 + $_INIT_IDX))]=${ZETOPT_LAST_COMMAND}}"
+        __id__="${__args__[0]=${ZETOPT_LAST_COMMAND}}"
         if ! _zetopt::def::exists "$__id__"; then
             # complement ID if the first arg looks a key
             if [[ ! $__id__ =~ ^(/([a-zA-Z0-9_]+)?|^(/[a-zA-Z0-9_]+(-[a-zA-Z0-9_]+)*)+/([a-zA-Z0-9_]+)?)$ && $__id__ =~ [@,\^\$\-\:] ]]; then
@@ -674,7 +674,7 @@ _zetopt::data::iterate()
         # --reset resets index
         reset)
             if [[ $__intlvar_exists__ == true ]]; then
-                eval $__intlvar_index__'=$_INIT_IDX'
+                eval $__intlvar_index__'=0'
                 eval $__intlvar_iterated__'=false'
                 return 0
             fi
@@ -693,7 +693,7 @@ _zetopt::data::iterate()
                 return 1
             fi
             local __increment__="$([[ $(eval 'echo $'$__intlvar_iterated__) == true ]] && echo 1 || echo 0)"
-            local __max_idx__="$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + _INIT_IDX))')"
+            local __max_idx__="$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1))')"
             if [[ $(($(eval 'echo $'$__intlvar_index__) + $__increment__)) -gt $__max_idx__ ]]; then
                 return 1
             else
@@ -730,13 +730,13 @@ _zetopt::data::iterate()
                 _zetopt::msg::script_error "Invalid Access Key:" "${__args__[*]}"
                 return 1
             fi
-            local __end__=$(($(eval 'echo ${#'$__user_array__'[@]}') - 1 + $_INIT_IDX))
-            local __list_str__="$(_zetopt::data::pickup "$(eval 'echo {'$_INIT_IDX'..'$__end__'}')" "${__args__[@]}")"
+            local __end__=$(($(eval 'echo ${#'$__user_array__'[@]}') - 1))
+            local __list_str__="$(_zetopt::data::pickup "$(eval 'echo {0..'$__end__'}')" "${__args__[@]}")"
             if [[ -z "$__list_str__" ]]; then
                 return 1
             fi
-            declare -i __idx__= __i__=$_INIT_IDX
-            eval $__intlvar_index__'=$_INIT_IDX'
+            declare -i __idx__= __i__=0
+            eval $__intlvar_index__'=0'
             eval $__intlvar_array__'=()'
             eval $__intlvar_iterated__'=false'
             set -- $__list_str__
@@ -749,7 +749,7 @@ _zetopt::data::iterate()
         # use parsed data array
         else
             if _zetopt::data::output $__dataid__ $__complemented_id__ "${__args__[@]}" -a $__intlvar_array__ $__no_fallback_option__; then
-                eval $__intlvar_index__'=$_INIT_IDX'
+                eval $__intlvar_index__'=0'
                 eval $__intlvar_iterated__'=false'
 
             # unset and return error if failed
@@ -770,7 +770,7 @@ _zetopt::data::iterate()
     # has no next
     local __iterated__="$(eval 'echo $'$__intlvar_iterated__)"
     local __increment__="$([[ $__iterated__ == true ]] && echo 1 || echo 0)"
-    local __max_intlvar_idx__=$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1 + $_INIT_IDX))')
+    local __max_intlvar_idx__=$(eval 'echo $((${#'$__intlvar_array__'[@]} - 1))')
     if [[ -n $__usrvar_value__ && $(($(eval 'echo $'$__intlvar_index__) + $__increment__)) -gt $__max_intlvar_idx__ ]]; then
         unset $__intlvar_array__ ||:
         unset $__intlvar_index__ ||:
@@ -779,14 +779,14 @@ _zetopt::data::iterate()
     fi
 
     # last-index / array / count
-    [[ -n $__usrvar_last_index__ ]] && eval $__usrvar_last_index__'=$((${#'$__intlvar_array__'[@]} - 1 + $_INIT_IDX))' ||:
+    [[ -n $__usrvar_last_index__ ]] && eval $__usrvar_last_index__'=$((${#'$__intlvar_array__'[@]} - 1))' ||:
     [[ -n $__usrvar_array__ ]] && eval $__usrvar_array__'=("${'$__intlvar_array__'[@]}")' ||:
     [[ -n $__usrvar_count__ ]] && eval $__usrvar_count__'=${#'$__intlvar_array__'[@]}' ||:
 
     # value / index : Iterate with multiple values/indexs
     if [[ -n $__usrvar_value__ || -n $__usrvar_index__ ]]; then
-        local __idx__= __max_idx__=$(($([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]}) + $_INIT_IDX))
-        for (( __idx__=_INIT_IDX; __idx__<__max_idx__; __idx__++ ))
+        local __idx__= __max_idx__=$([[ -n $__usrvar_value__ ]] && echo ${#__usrvar_value_names__[@]} || echo ${#__usrvar_index_names__[@]})
+        for (( __idx__=0; __idx__<__max_idx__; __idx__++ ))
         do
             # value
             if [[ -n $__usrvar_value__ ]]; then
@@ -836,7 +836,7 @@ _zetopt::data::setids()
     local lines="$_ZETOPT_PARSED"
     while [[ $_LF$lines =~ $_LF([^:]+):[^$_LF]+:[1-9][0-9]*$_LF(.*) ]]
     do
-        printf -- "%s\n" "${BASH_REMATCH[$((1 + $_INIT_IDX))]}"
-        lines=${BASH_REMATCH[$((2 + $_INIT_IDX))]}
+        printf -- "%s\n" "${BASH_REMATCH[1]}"
+        lines=${BASH_REMATCH[2]}
     done
 }
