@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202007181830"
+readonly ZETOPT_VERSION="2.0.0a.202009070200"
 
 
 #------------------------------------------------------------
@@ -224,14 +224,15 @@ _zetopt::init::init
 # STDOUT: depending on each sub-commands
 zetopt()
 {
-    declare -r _PATH=$PATH
-    declare -r _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
+    local _PATH=$PATH
     local PATH="/usr/bin:/bin"
+    local _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
     local LC_ALL=C LANG=C
-    local IFS=$' \t\n'
-    declare -r LF=$'\n'
-    declare -r INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
-    declare -r REG_VNAME='[a-zA-Z_][a-zA-Z0-9_]*'
+    local _IFS_DEFAULT=$' \t\n'
+    local IFS=$_IFS_DEFAULT
+    local LF=$'\n'
+    local INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
+    local REG_VNAME='[a-zA-Z_][a-zA-Z0-9_]*'
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
@@ -245,19 +246,19 @@ zetopt()
 
     # save whether the stdin/out/err of the main function is TTY or not.
     [[ -t 0 ]] \
-    && declare -r TTY_STDIN=0 \
-    || declare -r TTY_STDIN=1
+    && local TTY_STDIN=0 \
+    || local TTY_STDIN=1
 
     [[ -t 1 ]] \
-    && declare -r TTY_STDOUT=0 \
-    || declare -r TTY_STDOUT=1
+    && local TTY_STDOUT=0 \
+    || local TTY_STDOUT=1
 
     [[ -t 2 ]] \
-    && declare -r TTY_STDERR=0 \
-    || declare -r TTY_STDERR=1
+    && local TTY_STDERR=0 \
+    || local TTY_STDERR=1
 
-    declare -r FD_STDOUT=1
-    declare -r FD_STDERR=2
+    local FD_STDOUT=1
+    local FD_STDERR=2
 
     # show help if subcommand not given
     if [[ $# -eq 0 ]]; then
@@ -443,6 +444,7 @@ _zetopt::def::define()
         # help only
         elif [[ $arg =~ ^\# ]]; then
             namedef=/
+            helpdef=${arg###}
             help_only=true
         # id only
         else
@@ -454,9 +456,12 @@ _zetopt::def::define()
             namedef=/
             has_param=true
         elif [[ $arg =~ ^\# ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "Help must be placed in the last argument"
-            return 1
+            namedef=/
+            IFS=
+            helpdef="${args[*]}"
+            IFS=$' \n\t'
+            helpdef=${helpdef###}
+            help_only=true
         else
             namedef=$arg
             idx+=1
@@ -467,12 +472,6 @@ _zetopt::def::define()
                 help_only=true
             fi
         fi
-    fi
-
-    arg=${args[$((arglen - 1 + INIT_IDX))]}
-    if [[ $arg =~ ^\# ]]; then
-        helpdef=${arg###}
-        maxloop=$maxloop-1
     fi
 
     # exclusive flag
@@ -506,6 +505,7 @@ _zetopt::def::define()
     namespace=${id%/*}/
     [[ $id != / ]] && id=${id%/} ||:
 
+    # global flag
     if [[ $id =~ [+]$ ]]; then
         flags+="g"
         id=${id//+/}
@@ -668,15 +668,28 @@ _zetopt::def::define()
         declare -i param_idx=$INIT_IDX param_default_idx
         local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_has_default param_names= param_validator= param_validator_name=
-        local var_param_name var_param_default var_param_len=$(($maxloop-$idx))
+        local var_param_name var_param_default var_param_len=0
+        local divided_help=false
         params=()
         for ((; idx<maxloop; idx++))
         do
-            param=${args[$idx]}
+            arg=${args[$idx]}
+            if [[ $divided_help == false && $arg =~ ^\# ]]; then
+                divided_help=true
+                helpdef=$arg
+                helpdef=${helpdef###}
+                continue
+            fi
+            if $divided_help; then
+                helpdef+=$arg
+                continue
+            fi
+
+            : $((var_param_len++))
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $arg =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _ZETOPT_DEF_ERROR=true
-                _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
+                _zetopt::msg::script_error "Invalid Parameter Definition:" "$arg"
                 return 1
             fi
 
@@ -698,7 +711,7 @@ _zetopt::def::define()
                 param_optional=true
             fi
 
-            if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then
+            if [[ -n $param_varlen && ($((idx + 1)) -ne $maxloop && ! ${args[$(($idx + 1))]} =~ ^\# ) ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Variable-length parameter must be at the last"
                 return 1
@@ -821,11 +834,24 @@ _zetopt::def::define()
         param_def="${params[*]}"
         var_name_list=${var_name_list% }
 
-    # Flag option
+    # No Param (Flag option)
     else
+        divided_help=false
         for ((; idx<maxloop; idx++))
         do
-            if [[ ! ${args[$idx]} =~ ^-{0,2}(d|default|t|true|f|false)=(.*)$ ]]; then
+            arg=${args[$idx]}
+            if [[ $divided_help == false && $arg =~ ^\# ]]; then
+                divided_help=true
+                helpdef=$arg
+                helpdef=${helpdef###}
+                continue
+            fi
+            if $divided_help; then
+                helpdef+=$arg
+                continue
+            fi
+
+            if [[ ! $arg =~ ^-{0,2}(d|default|t|true|f|false)=(.*)$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Definition"
                 return 1

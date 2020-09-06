@@ -95,6 +95,7 @@ _zetopt::def::define()
         # help only
         elif [[ $arg =~ ^\# ]]; then
             namedef=/
+            helpdef=${arg###}
             help_only=true
         # id only
         else
@@ -106,9 +107,12 @@ _zetopt::def::define()
             namedef=/
             has_param=true
         elif [[ $arg =~ ^\# ]]; then
-            _ZETOPT_DEF_ERROR=true
-            _zetopt::msg::script_error "Help must be placed in the last argument"
-            return 1
+            namedef=/
+            IFS=
+            helpdef="${args[*]}"
+            IFS=$' \n\t'
+            helpdef=${helpdef###}
+            help_only=true
         else
             namedef=$arg
             idx+=1
@@ -119,12 +123,6 @@ _zetopt::def::define()
                 help_only=true
             fi
         fi
-    fi
-
-    arg=${args[$((arglen - 1 + INIT_IDX))]}
-    if [[ $arg =~ ^\# ]]; then
-        helpdef=${arg###}
-        maxloop=$maxloop-1
     fi
 
     # exclusive flag
@@ -158,6 +156,7 @@ _zetopt::def::define()
     namespace=${id%/*}/
     [[ $id != / ]] && id=${id%/} ||:
 
+    # global flag
     if [[ $id =~ [+]$ ]]; then
         flags+="g"
         id=${id//+/}
@@ -320,15 +319,28 @@ _zetopt::def::define()
         declare -i param_idx=$INIT_IDX param_default_idx
         local param_validator_idxs param_validator_separator
         local param_hyphens param_type param_name param_varlen param_varlen_max param_default param_has_default param_names= param_validator= param_validator_name=
-        local var_param_name var_param_default var_param_len=$(($maxloop-$idx))
+        local var_param_name var_param_default var_param_len=0
+        local divided_help=false
         params=()
         for ((; idx<maxloop; idx++))
         do
-            param=${args[$idx]}
+            arg=${args[$idx]}
+            if [[ $divided_help == false && $arg =~ ^\# ]]; then
+                divided_help=true
+                helpdef=$arg
+                helpdef=${helpdef###}
+                continue
+            fi
+            if $divided_help; then
+                helpdef+=$arg
+                continue
+            fi
+
+            : $((var_param_len++))
             param_default_idx=0
-            if [[ ! $param =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
+            if [[ ! $arg =~ ^(-{0,2})([@%])($REG_VNAME)?(([~]$REG_VNAME(,$REG_VNAME)*)|([\[]=[~]$REG_VNAME(,$REG_VNAME)*[\]])|([~]))?([.]{3,3}([1-9][0-9]*)?)?(=.*)?$ ]]; then
                 _ZETOPT_DEF_ERROR=true
-                _zetopt::msg::script_error "Invalid Parameter Definition:" "$param"
+                _zetopt::msg::script_error "Invalid Parameter Definition:" "$arg"
                 return 1
             fi
 
@@ -350,7 +362,7 @@ _zetopt::def::define()
                 param_optional=true
             fi
 
-            if [[ -n $param_varlen && $((idx + 1)) -ne $maxloop ]]; then
+            if [[ -n $param_varlen && ($((idx + 1)) -ne $maxloop && ! ${args[$(($idx + 1))]} =~ ^\# ) ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Variable-length parameter must be at the last"
                 return 1
@@ -473,11 +485,24 @@ _zetopt::def::define()
         param_def="${params[*]}"
         var_name_list=${var_name_list% }
 
-    # Flag option
+    # No Param (Flag option)
     else
+        divided_help=false
         for ((; idx<maxloop; idx++))
         do
-            if [[ ! ${args[$idx]} =~ ^-{0,2}(d|default|t|true|f|false)=(.*)$ ]]; then
+            arg=${args[$idx]}
+            if [[ $divided_help == false && $arg =~ ^\# ]]; then
+                divided_help=true
+                helpdef=$arg
+                helpdef=${helpdef###}
+                continue
+            fi
+            if $divided_help; then
+                helpdef+=$arg
+                continue
+            fi
+
+            if [[ ! $arg =~ ^-{0,2}(d|default|t|true|f|false)=(.*)$ ]]; then
                 _ZETOPT_DEF_ERROR=true
                 _zetopt::msg::script_error "Invalid Definition"
                 return 1
