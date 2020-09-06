@@ -15,7 +15,7 @@ _zetopt::msg::user_error()
     local title="${1-}" text="${2-}" value="${3-}" col=
 
     # plain text message
-    if ! _zetopt::msg::should_decorate $FD_STDERR; then
+    if ! _zetopt::msg::should_decorate $_FD_STDERR; then
         printf >&2 "%b\n" "$ZETOPT_APPNAME: $title: $text$value"
         return 0
     fi
@@ -41,7 +41,7 @@ _zetopt::msg::script_error()
         return 0
     fi
     local text="${1-}" value="${2-}"
-    local src_lineno=${BASH_LINENO-${funcfiletrace[$((0 + $INIT_IDX))]##*:}}
+    local src_lineno=${BASH_LINENO-${funcfiletrace[$((0 + $_INIT_IDX))]##*:}}
     local appname="${ZETOPT_CFG_ERRMSG_APPNAME-$ZETOPT_APPNAME}"
     local filename="${ZETOPT_SOURCE_FILE_PATH##*/}"
     local title="Script Error"
@@ -49,12 +49,12 @@ _zetopt::msg::script_error()
     local col="${ZETOPT_CFG_ERRMSG_COL_SCRIPTERR:-"0;1;31"}"
     local textcol="${ZETOPT_CFG_ERRMSG_COL_DEFAULT:-"0;0;39"}"
     local before=2 after=2
-    local IFS=$LF
+    local IFS=$_LF
     if [[ $ZETOPT_CFG_ERRMSG_STACKTRACE == true ]]; then
         local stack=($(_zetopt::utils::stack_trace))
-        local caller_info="${stack[$((${#stack[@]} -1 + $INIT_IDX))]}"
+        local caller_info="${stack[$((${#stack[@]} -1 + $_INIT_IDX))]}"
         [[ $caller_info =~ \(([0-9]+)\).?$ ]] \
-        && local caller_lineno=${BASH_REMATCH[$((1 + $INIT_IDX))]} \
+        && local caller_lineno=${BASH_REMATCH[$((1 + $_INIT_IDX))]} \
         || local caller_lineno=0
     fi
     {
@@ -88,10 +88,10 @@ _zetopt::msg::should_decorate()
         && setopt localoptions NOCASEMATCH \
         || shopt -s nocasematch
         if [[ $colmode == auto ]]; then
-            if [[ $fd == $FD_STDOUT ]]; then
-                echo $TTY_STDOUT
-            elif [[ $fd == $FD_STDERR ]]; then
-                echo $TTY_STDERR
+            if [[ $fd == $_FD_STDOUT ]]; then
+                echo $_TTY_STDOUT
+            elif [[ $fd == $_FD_STDERR ]]; then
+                echo $_TTY_STDERR
             else
                 echo 1
             fi

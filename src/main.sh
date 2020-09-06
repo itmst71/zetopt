@@ -7,14 +7,17 @@
 # STDOUT: depending on each sub-commands
 zetopt()
 {
-    declare -r _PATH=$PATH
-    declare -r _LC_ALL="${LC_ALL-}" _LANG="${LANG-}"
+    local _PATH=$PATH
     local PATH="/usr/bin:/bin"
-    local LC_ALL=C LANG=C
-    local IFS=$' \t\n'
-    declare -r LF=$'\n'
-    declare -r INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
-    declare -r REG_VNAME='[a-zA-Z_][a-zA-Z0-9_]*'
+    local _LC_ALL="${LC_ALL-}"
+    local LC_ALL=C
+    local _LANG="${LANG-}"
+    local LANG=C
+    local _IFS_DEFAULT=$' \t\n'
+    local IFS=$_IFS_DEFAULT
+    local _LF=$'\n'
+    local _INIT_IDX=$ZETOPT_ARRAY_INITIAL_IDX
+    local _REG_VARNAME='[a-zA-Z_][a-zA-Z0-9_]*'
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
@@ -28,19 +31,19 @@ zetopt()
 
     # save whether the stdin/out/err of the main function is TTY or not.
     [[ -t 0 ]] \
-    && declare -r TTY_STDIN=0 \
-    || declare -r TTY_STDIN=1
+    && local _TTY_STDIN=0 \
+    || local _TTY_STDIN=1
 
     [[ -t 1 ]] \
-    && declare -r TTY_STDOUT=0 \
-    || declare -r TTY_STDOUT=1
+    && local _TTY_STDOUT=0 \
+    || local _TTY_STDOUT=1
 
     [[ -t 2 ]] \
-    && declare -r TTY_STDERR=0 \
-    || declare -r TTY_STDERR=1
+    && local _TTY_STDERR=0 \
+    || local _TTY_STDERR=1
 
-    declare -r FD_STDOUT=1
-    declare -r FD_STDERR=2
+    local _FD_STDOUT=1
+    local _FD_STDERR=2
 
     # show help if subcommand not given
     if [[ $# -eq 0 ]]; then

@@ -39,7 +39,7 @@ _zetopt::utils::funcname()
     if [[ -n ${BASH_VERSION-} ]]; then
         printf -- "%s" "${FUNCNAME[$((1 + $skip_stack_count))]}"
     elif [[ -n ${ZSH_VERSION-} ]]; then
-        printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $INIT_IDX))]}"
+        printf -- "%s" "${funcstack[$((1 + $skip_stack_count + $_INIT_IDX))]}"
     fi
 }
 
@@ -228,7 +228,7 @@ _zetopt::utils::fold()
     local LANG="en_US.UTF-8" #$(locale -a | grep -iE "^${lang//-/}$" || echo "en_US.UTF-8")
     declare -i wide_char_width=$(_zetopt::utils::isLangCJK "$lang" && echo 2 || echo 1)
     declare -i max_buff_size=$width buff_size curr mbcnt pointer=0 skip
-    local IFS=$LF
+    local IFS=$_LF
     local line tmp_buff buff indent=
     if [[ $indent_cnt -ne 0 ]]; then
         indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")

@@ -64,7 +64,7 @@ _zetopt::validator::def()
         _zetopt::msg::script_error "zetopt def-validator [-r | --regexp] [-f | --function] [-c | --choice] [-a | --array] [-i | --ignore-case] [-n | --not] {<NAME> <REGEXP | FUNCNAME> [#<ERROR_MESSAGE>]}"
         return 1
     fi
-    if [[ ! $name =~ ^$REG_VNAME$ ]]; then
+    if [[ ! $name =~ ^$_REG_VARNAME$ ]]; then
         _ZETOPT_DEF_ERROR=true
         _zetopt::msg::script_error "Invalid Validator Name:" "$name"
         return 1
@@ -79,18 +79,18 @@ _zetopt::validator::def()
     # save validator
     if [[ -n $errmsg ]]; then
         _ZETOPT_VALIDATOR_ERRMSG+=("${errmsg:1}")
-        msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $INIT_IDX))
+        msg_idx=$((${#_ZETOPT_VALIDATOR_ERRMSG[@]} - 1 + $_INIT_IDX))
     fi
     
     # update: already defined
-    if [[ $LF$_ZETOPT_VALIDATOR_KEYS =~ $LF${name}:([0-9]+)$LF ]]; then
-        validator_idx=${BASH_REMATCH[$((1 + INIT_IDX))]}
+    if [[ $_LF$_ZETOPT_VALIDATOR_KEYS =~ $_LF${name}:([0-9]+)$_LF ]]; then
+        validator_idx=${BASH_REMATCH[$((1 + _INIT_IDX))]}
         _ZETOPT_VALIDATOR_DATA[$validator_idx]="$name:$type:$flags:$msg_idx:$validator"
     # new
     else
         _ZETOPT_VALIDATOR_DATA+=("$name:$type:$flags:$msg_idx:$validator")
-        validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $INIT_IDX))
-        _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$LF
+        validator_idx=$((${#_ZETOPT_VALIDATOR_DATA[@]} - 1 + $_INIT_IDX))
+        _ZETOPT_VALIDATOR_KEYS+=$name:$validator_idx$_LF
     fi
 }
 
@@ -109,7 +109,7 @@ _zetopt::validator::validate()
     fi
 
     local IFS=,
-    set -- ${BASH_REMATCH[$((1 + INIT_IDX))]}
+    set -- ${BASH_REMATCH[$((1 + _INIT_IDX))]}
     IFS=$' \t\n'
 
     while [[ $# -ne 0 ]]
@@ -121,11 +121,11 @@ _zetopt::validator::validate()
             _zetopt::msg::script_error "Internal Error:" "Validator Broken"
             return 1
         fi
-        local validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"
-        local validator_type="${BASH_REMATCH[$((2 + INIT_IDX))]}"
-        local validator_flags="${BASH_REMATCH[$((3 + INIT_IDX))]}"
-        declare -i validator_msgidx="${BASH_REMATCH[$((4 + INIT_IDX))]}"
-        local validator="${BASH_REMATCH[$((5 + INIT_IDX))]}"
+        local validator_name="${BASH_REMATCH[$((1 + _INIT_IDX))]}"
+        local validator_type="${BASH_REMATCH[$((2 + _INIT_IDX))]}"
+        local validator_flags="${BASH_REMATCH[$((3 + _INIT_IDX))]}"
+        declare -i validator_msgidx="${BASH_REMATCH[$((4 + _INIT_IDX))]}"
+        local validator="${BASH_REMATCH[$((5 + _INIT_IDX))]}"
 
         local result=$(
             # set ignore case option temporally
@@ -156,7 +156,7 @@ _zetopt::validator::validate()
                 local IFS=, arr valid=false
                 arr=($validator)
                 IFS=$' \t\n'
-                for (( i=$INIT_IDX; i<$((${#arr[*]} + $INIT_IDX)); i++ ))
+                for (( i=$_INIT_IDX; i<$((${#arr[*]} + $_INIT_IDX)); i++ ))
                 do
                     if [[ "${arr[$i]}" == "$arg" ]]; then
                         valid=true
@@ -172,7 +172,7 @@ _zetopt::validator::validate()
             elif [[ $validator_type == a ]]; then
                 local arr valid=false
                 eval 'arr=("${'$validator'[@]}")'
-                for (( i=$INIT_IDX; i<$((${#arr[*]} + $INIT_IDX)); i++ ))
+                for (( i=$_INIT_IDX; i<$((${#arr[*]} + $_INIT_IDX)); i++ ))
                 do
                     if [[ "${arr[$i]}" == "$arg" ]]; then
                         valid=true
@@ -214,13 +214,13 @@ _zetopt::validator::is_ready()
     fi
 
     local validator_name validator_type validator
-    declare -i i=$INIT_IDX max_idx=$(($len - 1 + $INIT_IDX))
+    declare -i i=$_INIT_IDX max_idx=$(($len - 1 + $_INIT_IDX))
     for (( ; i<=max_idx; i++ ))
     do
         if [[ "${_ZETOPT_VALIDATOR_DATA[$i]}" =~ ^([^:]+):([acrf]):[in]*:[0-9]+:(.*)$ ]]; then
-            validator_name="${BASH_REMATCH[$((1 + INIT_IDX))]}"
-            validator_type="${BASH_REMATCH[$((2 + INIT_IDX))]}"
-            validator="${BASH_REMATCH[$((3 + INIT_IDX))]}"
+            validator_name="${BASH_REMATCH[$((1 + _INIT_IDX))]}"
+            validator_type="${BASH_REMATCH[$((2 + _INIT_IDX))]}"
+            validator="${BASH_REMATCH[$((3 + _INIT_IDX))]}"
             if [[ -z $validator ]]; then
                 _zetopt::msg::script_error "Undefined Validator:" "$validator_name"
                 return 1
