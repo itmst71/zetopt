@@ -290,8 +290,8 @@ _zetopt::parser::setopt()
     if [[ $paramdef_str =~ ^d=([0-9]+)\ t=([0-9]+)\ f=([0-9]+)$ ]]; then
         local val=
         case $opt_prefix in
-            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 1))]}]};;
-            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 2))]}]};;
+            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[2]}]};;
+            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[3]}]};;
         esac
         _ZETOPT_DATA+=("$val")
         ref_arr=($optarg_idx)

@@ -483,15 +483,15 @@ _zetopt::help::format()
             param=${arg%%.*}
             default_idx=${arg#*=}
             default_value=
-            if [[ $default_idx -ne 0 ]]; then
+            if [[ $default_idx -ne 0 && -n ${_ZETOPT_DATA[$default_idx]} ]]; then
                 default_value="=${_ZETOPT_DATA[$default_idx]}"
             fi
             if [[ $param == @ ]]; then
-                optargs+=" <$default_argname$cnt>"
+                optargs+=" <$default_argname$cnt$default_value>"
             elif [[ $param == % ]]; then
                 optargs+=" [<$default_argname$cnt$default_value>]"
             elif [[ ${param:0:1} == @ ]]; then
-                optargs+=" <${param:1}>"
+                optargs+=" <${param:1}$default_value>"
             elif [[ ${param:0:1} == % ]]; then
                 optargs+=" [<${param:1}$default_value>]"
             fi
@@ -499,7 +499,11 @@ _zetopt::help::format()
         done
         # variable length
         if [[ $arg =~ ([.]{3,3}[0-9]*)= ]]; then
-            optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[1]}]"
+            if [[ ${param:0:1} == % ]]; then
+                optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[1]}]"
+            else
+                optargs="${optargs} [${BASH_REMATCH[1]}]"
+            fi
         fi
         IFS=$_LF
     fi

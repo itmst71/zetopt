@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202009070530
+# Version     : 2.0.0a.202009100530
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202009070530"
+readonly ZETOPT_VERSION="2.0.0a.202009100530"
 
 
 #------------------------------------------------------------
@@ -239,7 +239,6 @@ zetopt()
 
     # setup for zsh
     if [[ -n ${ZSH_VERSION-} ]]; then
-        setopt localoptions KSH_ARRAYS
         setopt localoptions SH_WORD_SPLIT
         setopt localoptions BSD_ECHO
         setopt localoptions NO_NOMATCH
@@ -1839,8 +1838,8 @@ _zetopt::parser::setopt()
     if [[ $paramdef_str =~ ^d=([0-9]+)\ t=([0-9]+)\ f=([0-9]+)$ ]]; then
         local val=
         case $opt_prefix in
-            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 1))]}]};;
-            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[$((1 + 2))]}]};;
+            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[2]}]};;
+            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[3]}]};;
         esac
         _ZETOPT_DATA+=("$val")
         ref_arr=($optarg_idx)
@@ -4066,15 +4065,15 @@ _zetopt::help::format()
             param=${arg%%.*}
             default_idx=${arg#*=}
             default_value=
-            if [[ $default_idx -ne 0 ]]; then
+            if [[ $default_idx -ne 0 && -n ${_ZETOPT_DATA[$default_idx]} ]]; then
                 default_value="=${_ZETOPT_DATA[$default_idx]}"
             fi
             if [[ $param == @ ]]; then
-                optargs+=" <$default_argname$cnt>"
+                optargs+=" <$default_argname$cnt$default_value>"
             elif [[ $param == % ]]; then
                 optargs+=" [<$default_argname$cnt$default_value>]"
             elif [[ ${param:0:1} == @ ]]; then
-                optargs+=" <${param:1}>"
+                optargs+=" <${param:1}$default_value>"
             elif [[ ${param:0:1} == % ]]; then
                 optargs+=" [<${param:1}$default_value>]"
             fi
@@ -4082,7 +4081,11 @@ _zetopt::help::format()
         done
         # variable length
         if [[ $arg =~ ([.]{3,3}[0-9]*)= ]]; then
-            optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[1]}]"
+            if [[ ${param:0:1} == % ]]; then
+                optargs="${optargs:0:$((${#optargs} - 1))}${BASH_REMATCH[1]}]"
+            else
+                optargs="${optargs} [${BASH_REMATCH[1]}]"
+            fi
         fi
         IFS=$_LF
     fi
