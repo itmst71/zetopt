@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202009101730
+# Version     : 2.0.0a.202009101900
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202009101730"
+readonly ZETOPT_VERSION="2.0.0a.202009101900"
 
 
 #------------------------------------------------------------
@@ -337,10 +337,19 @@ zetopt()
             _zetopt::utils::interface "$@";;
             
         # help
-        def-help | define-help)
-            _zetopt::help::define "$@";;
-        show-help)
-            _zetopt::help::show "$@";;
+        help)
+            case ${1-} in
+                def|define)
+                    shift
+                    _zetopt::help::define "$@";;
+                show)
+                    shift
+                    _zetopt::help::show "$@";;
+                *)
+                    _zetopt::msg::script_error "Undefined Sub-Command:" "help ${1-}"
+                    return 1;;
+            esac
+            ;;
 
         *)
             _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"

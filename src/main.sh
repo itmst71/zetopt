@@ -118,10 +118,19 @@ zetopt()
             _zetopt::utils::interface "$@";;
             
         # help
-        def-help | define-help)
-            _zetopt::help::define "$@";;
-        show-help)
-            _zetopt::help::show "$@";;
+        help)
+            case ${1-} in
+                def|define)
+                    shift
+                    _zetopt::help::define "$@";;
+                show)
+                    shift
+                    _zetopt::help::show "$@";;
+                *)
+                    _zetopt::msg::script_error "Undefined Sub-Command:" "help ${1-}"
+                    return 1;;
+            esac
+            ;;
 
         *)
             _zetopt::msg::script_error "Undefined Sub-Command:" "$subcmd"
