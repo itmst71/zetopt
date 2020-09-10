@@ -262,7 +262,7 @@ _zetopt::help::synopsis()
         declare -i cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
         for ((idx=0; idx<$loop; idx++))
         do
-            bodyarr=($(printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
+            bodyarr=($(printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG" --no-hyphenate))
             printf -- "$base_indent%b\n" "$cmd ${bodyarr[0]# *}"
             if [[ ${#bodyarr[@]} -gt 1 ]]; then
                 if [[ $ZETOPT_OLDBASH == true ]]; then

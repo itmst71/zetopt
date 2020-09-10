@@ -176,7 +176,7 @@ _zetopt::utils::fold()
 {
     local lang="${_LC_ALL:-${_LANG:-en_US.UTF-8}}" indent_str=" "
     declare -i width=80 min_width=4 indent_cnt=0 tab_cnt=4
-    local error=false tab_spaces=
+    local error=false tab_spaces= hyphenate=true
     while [[ $# -ne 0 ]]
     do
         case "$1" in
@@ -215,6 +215,9 @@ _zetopt::utils::fold()
                     error=true; break
                 fi
                 shift 2;;
+            --no-hyphenate)
+                hyphenate=false
+                shift;;
             --) shift; break;;
             *)  shift; error=true; break;;
         esac
@@ -229,7 +232,7 @@ _zetopt::utils::fold()
     local isLangCJK=$(_zetopt::utils::isLangCJK "$lang" && echo true || echo false)
     declare -i wide_char_width=$($isLangCJK && echo 2 || echo 1)
     declare -i max_buff_size=$width-$($isLangCJK && echo 2 || echo 1) # take margin for smart-folding
-    declare -i buff_size curr mbcnt pointer=0 skip
+    declare -i buff_size rest_buff_size curr mbcnt pointer=0 skip
     local IFS=$_LF
     local line tmp_buff buff indent= hyphen
     if [[ $indent_cnt -ne 0 ]]; then
@@ -250,15 +253,15 @@ _zetopt::utils::fold()
             tmp_buff=${line:$pointer:$curr_buff_size}
             ascii=${tmp_buff//[! -\~]/}
             mbcnt=${#tmp_buff}-${#ascii}
-            rest_buff_size=$((rest_buff_size - mbcnt * wide_char_width - ${#ascii}))
+            rest_buff_size=$rest_buff_size-$mbcnt*$wide_char_width-${#ascii}
             pointer+=$curr_buff_size
             if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
                 continue
             fi
             
             if $isLangCJK && [[ $rest_buff_size -le 1 ]]; then
-                if [[ ${line:$pointer:$(($rest_buff_size + 1))} =~ ^[\ -\~]+$ ]]; then
-                    pointer=$pointer+$(($rest_buff_size + 1))
+                if [[ ${line:$pointer:$rest_buff_size+1} =~ ^[\ -\~]+$ ]]; then
+                    pointer=$pointer+$rest_buff_size+1
                 fi
             fi
 
@@ -266,18 +269,22 @@ _zetopt::utils::fold()
             skip=0
             hyphen=
             if [[ $rest_buff_size -le 1 ]]; then
-                if [[ ${line:$pointer:1} =~ [.,\ ] ]]; then
-                    pointer=$pointer+1
-                elif [[ ${line:$(($pointer-2)):3} =~ ^\ [\ -\~]$ ]]; then
+                if [[ ${line:$pointer:1} =~ [.,\ 。、，　\!-/:-@\[-\`\{-\~] ]]; then
+                    pointer+=1
+                elif [[ ${line:$pointer-2:1} =~ [.,\ 。　] ]]; then
                     pointer=$pointer-1
-                elif [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
-                    pointer=$pointer+1
-                    skip=$skip+1
-                elif [[ ${line:$(($pointer-1)):1} == " " ]]; then
+                elif [[ ${line:$pointer+1:1} =~ [.,\ 。　] ]]; then
+                    pointer+=1
+                    skip+=1
+                elif [[ ${line:$pointer-1:1} =~ [.,\ 。　] ]]; then
                     pointer=$pointer-1
-                    skip=$skip+1
-                elif [[ ${line:$(($pointer-1)):2} =~ ^[a-zA-Z]{2,2}$ ]]; then
-                    hyphen=-
+                    skip+=1
+                elif [[ ${line:$pointer-1:2} =~ ^[a-zA-Z]{2,2}$ ]]; then
+                    $hyphenate \
+                        && hyphen=- \
+                        || pointer+=1
+                else
+                    pointer+=1
                 fi
             fi
 

@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202009100930
+# Version     : 2.0.0a.202009101730
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202009100930"
+readonly ZETOPT_VERSION="2.0.0a.202009101730"
 
 
 #------------------------------------------------------------
@@ -3325,7 +3325,7 @@ _zetopt::utils::fold()
 {
     local lang="${_LC_ALL:-${_LANG:-en_US.UTF-8}}" indent_str=" "
     declare -i width=80 min_width=4 indent_cnt=0 tab_cnt=4
-    local error=false tab_spaces=
+    local error=false tab_spaces= hyphenate=true
     while [[ $# -ne 0 ]]
     do
         case "$1" in
@@ -3364,6 +3364,9 @@ _zetopt::utils::fold()
                     error=true; break
                 fi
                 shift 2;;
+            --no-hyphenate)
+                hyphenate=false
+                shift;;
             --) shift; break;;
             *)  shift; error=true; break;;
         esac
@@ -3378,7 +3381,7 @@ _zetopt::utils::fold()
     local isLangCJK=$(_zetopt::utils::isLangCJK "$lang" && echo true || echo false)
     declare -i wide_char_width=$($isLangCJK && echo 2 || echo 1)
     declare -i max_buff_size=$width-$($isLangCJK && echo 2 || echo 1) # take margin for smart-folding
-    declare -i buff_size curr mbcnt pointer=0 skip
+    declare -i buff_size rest_buff_size curr mbcnt pointer=0 skip
     local IFS=$_LF
     local line tmp_buff buff indent= hyphen
     if [[ $indent_cnt -ne 0 ]]; then
@@ -3399,15 +3402,15 @@ _zetopt::utils::fold()
             tmp_buff=${line:$pointer:$curr_buff_size}
             ascii=${tmp_buff//[! -\~]/}
             mbcnt=${#tmp_buff}-${#ascii}
-            rest_buff_size=$((rest_buff_size - mbcnt * wide_char_width - ${#ascii}))
+            rest_buff_size=$rest_buff_size-$mbcnt*$wide_char_width-${#ascii}
             pointer+=$curr_buff_size
             if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
                 continue
             fi
             
             if $isLangCJK && [[ $rest_buff_size -le 1 ]]; then
-                if [[ ${line:$pointer:$(($rest_buff_size + 1))} =~ ^[\ -\~]+$ ]]; then
-                    pointer=$pointer+$(($rest_buff_size + 1))
+                if [[ ${line:$pointer:$rest_buff_size+1} =~ ^[\ -\~]+$ ]]; then
+                    pointer=$pointer+$rest_buff_size+1
                 fi
             fi
 
@@ -3415,18 +3418,22 @@ _zetopt::utils::fold()
             skip=0
             hyphen=
             if [[ $rest_buff_size -le 1 ]]; then
-                if [[ ${line:$pointer:1} =~ [.,\ ] ]]; then
-                    pointer=$pointer+1
-                elif [[ ${line:$(($pointer-2)):3} =~ ^\ [\ -\~]$ ]]; then
+                if [[ ${line:$pointer:1} =~ [.,\ 。、，　\!-/:-@\[-\`\{-\~] ]]; then
+                    pointer+=1
+                elif [[ ${line:$pointer-2:1} =~ [.,\ 。　] ]]; then
                     pointer=$pointer-1
-                elif [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
-                    pointer=$pointer+1
-                    skip=$skip+1
-                elif [[ ${line:$(($pointer-1)):1} == " " ]]; then
+                elif [[ ${line:$pointer+1:1} =~ [.,\ 。　] ]]; then
+                    pointer+=1
+                    skip+=1
+                elif [[ ${line:$pointer-1:1} =~ [.,\ 。　] ]]; then
                     pointer=$pointer-1
-                    skip=$skip+1
-                elif [[ ${line:$(($pointer-1)):2} =~ ^[a-zA-Z]{2,2}$ ]]; then
-                    hyphen=-
+                    skip+=1
+                elif [[ ${line:$pointer-1:2} =~ ^[a-zA-Z]{2,2}$ ]]; then
+                    $hyphenate \
+                        && hyphen=- \
+                        || pointer+=1
+                else
+                    pointer+=1
                 fi
             fi
 
@@ -3854,7 +3861,7 @@ _zetopt::help::synopsis()
         declare -i cols=$((_MAX_COLS - _BASE_COLS - _INDENT_STEP * _INDENT_LEVEL - cmdcol))
         for ((idx=0; idx<$loop; idx++))
         do
-            bodyarr=($(printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG"))
+            bodyarr=($(printf -- "%b" "$line" | _zetopt::utils::fold --width $cols --lang "$_HELP_LANG" --no-hyphenate))
             printf -- "$base_indent%b\n" "$cmd ${bodyarr[0]# *}"
             if [[ ${#bodyarr[@]} -gt 1 ]]; then
                 if [[ $ZETOPT_OLDBASH == true ]]; then
