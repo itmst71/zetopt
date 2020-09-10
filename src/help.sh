@@ -98,9 +98,7 @@ _zetopt::help::show()
         _zetopt::help::init
     fi
     declare -i idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=0
-    declare -i _TERM_MAX_COLS=$(($(\tput cols) - 3))
-    declare -i default_max_cols=1000
-    declare -i _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
+    declare -i _MAX_COLS=$(tput cols)
     declare -i _BASE_COLS=0
     declare -i _OPT_COLS=4
     declare -i _OPT_DESC_MARGIN=2

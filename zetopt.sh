@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0a.202009100530
+# Version     : 2.0.0a.202009100930
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0a.202009100530"
+readonly ZETOPT_VERSION="2.0.0a.202009100930"
 
 
 #------------------------------------------------------------
@@ -3374,11 +3374,13 @@ _zetopt::utils::fold()
     fi
 
     local LC_ALL=
-    local LANG="en_US.UTF-8" #$(locale -a | grep -iE "^${lang//-/}$" || echo "en_US.UTF-8")
-    declare -i wide_char_width=$(_zetopt::utils::isLangCJK "$lang" && echo 2 || echo 1)
-    declare -i max_buff_size=$width buff_size curr mbcnt pointer=0 skip
+    local LANG=en_US.UTF-8
+    local isLangCJK=$(_zetopt::utils::isLangCJK "$lang" && echo true || echo false)
+    declare -i wide_char_width=$($isLangCJK && echo 2 || echo 1)
+    declare -i max_buff_size=$width-$($isLangCJK && echo 2 || echo 1) # take margin for smart-folding
+    declare -i buff_size curr mbcnt pointer=0 skip
     local IFS=$_LF
-    local line tmp_buff buff indent=
+    local line tmp_buff buff indent= hyphen
     if [[ $indent_cnt -ne 0 ]]; then
         indent=$(_zetopt::utils::repeat $indent_cnt "$indent_str")
     fi
@@ -3402,27 +3404,35 @@ _zetopt::utils::fold()
             if [[ $pointer -le $line_len && $rest_buff_size -ge 2 ]]; then
                 continue
             fi
-
-            # smart folding
-            skip=0
-            if [[ $rest_buff_size -eq 1 ]]; then
-                if [[ ${line:$pointer:1} =~ ^[\!-/:-@\{-\~]$ ]]; then
-                    pointer+=1
-                fi
-
-                if [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
-                    pointer+=1
+            
+            if $isLangCJK && [[ $rest_buff_size -le 1 ]]; then
+                if [[ ${line:$pointer:$(($rest_buff_size + 1))} =~ ^[\ -\~]+$ ]]; then
+                    pointer=$pointer+$(($rest_buff_size + 1))
                 fi
             fi
-            if [[ ${line:$((pointer - 2)):2} =~ ^\ [\ -\~]{1,2}$ ]]; then
-                pointer=$pointer-1
-            elif [[ ${line:$pointer:1} == " " ]]; then
-                skip=1
+
+            # smart-folding
+            skip=0
+            hyphen=
+            if [[ $rest_buff_size -le 1 ]]; then
+                if [[ ${line:$pointer:1} =~ [.,\ ] ]]; then
+                    pointer=$pointer+1
+                elif [[ ${line:$(($pointer-2)):3} =~ ^\ [\ -\~]$ ]]; then
+                    pointer=$pointer-1
+                elif [[ ${line:$pointer:2} =~ ^[\ -\~]\ $ ]]; then
+                    pointer=$pointer+1
+                    skip=$skip+1
+                elif [[ ${line:$(($pointer-1)):1} == " " ]]; then
+                    pointer=$pointer-1
+                    skip=$skip+1
+                elif [[ ${line:$(($pointer-1)):2} =~ ^[a-zA-Z]{2,2}$ ]]; then
+                    hyphen=-
+                fi
             fi
 
             total_buff_size=$pointer-$curr
             buff=${line:$curr:$total_buff_size}
-            printf -- "%s\n" "$indent$buff"
+            printf -- "%s\n" "$indent$buff$hyphen"
 
             curr+=$total_buff_size+$skip
             pointer=$curr
@@ -3680,9 +3690,7 @@ _zetopt::help::show()
         _zetopt::help::init
     fi
     declare -i idx_name=0 idx_synopsis=3 idx_options=5 idx_commands=6 idx=0
-    declare -i _TERM_MAX_COLS=$(($(\tput cols) - 3))
-    declare -i default_max_cols=1000
-    declare -i _MAX_COLS=$(_zetopt::utils::min $_TERM_MAX_COLS $default_max_cols)
+    declare -i _MAX_COLS=$(tput cols)
     declare -i _BASE_COLS=0
     declare -i _OPT_COLS=4
     declare -i _OPT_DESC_MARGIN=2
