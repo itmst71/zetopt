@@ -37,7 +37,7 @@ readonly ZETOPT_DEFID_SHORT=3
 readonly ZETOPT_DEFID_LONG=4
 readonly ZETOPT_DEFID_ARG=5
 readonly ZETOPT_DEFID_VARNAME=6
-readonly ZETOPT_DEFID_FLAGS=7
+readonly ZETOPT_DEFID_SETTINGS=7
 readonly ZETOPT_DEFID_HELP=8
 
 # field numbers for parsed data

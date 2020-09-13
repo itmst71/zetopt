@@ -121,7 +121,7 @@ _zetopt::parser::parse()
                                 break
                             fi
                         else
-                            _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@"||:
+                            _zetopt::parser::setopt $namespace $opt_prefix $optname "" "$@" ||:
                             [[ -n $ZETOPT_EXCLUSIVE_OPTION_ID ]] && return 0 ||:
                         fi
                     fi
@@ -173,7 +173,9 @@ _zetopt::parser::parse()
     _zetopt::parser::setcmd $ZETOPT_LAST_COMMAND ||:
 
     # assign positional args
-    _zetopt::parser::assign_args "$namespace" ||:
+    if [[ $ZETOPT_PARSE_ERRORS -le $ZETOPT_STATUS_ERROR_THRESHOLD ]]; then
+        _zetopt::parser::assign_args "$namespace" ||:
+    fi
     
     # show errors
     if [[ $ZETOPT_CFG_ERRMSG_USER_ERROR == true && $ZETOPT_PARSE_ERRORS -ne 0 ]]; then
@@ -258,7 +260,8 @@ _zetopt::parser::setopt()
     fi
 
     # exclusive option
-    if [[ "$(_zetopt::def::field "$id" $ZETOPT_DEFID_FLAGS)" =~ x ]]; then
+    local settings=$(_zetopt::def::field "$id" $ZETOPT_DEFID_SETTINGS)
+    if [[ " $settings " =~ \ flags=[^\ ]*x[^\ ]*\  ]]; then
         local lc=$ZETOPT_LAST_COMMAND
         _zetopt::def::reset
         _zetopt::data::init
@@ -282,27 +285,28 @@ _zetopt::parser::setopt()
     declare -i arg_cnt=0
     ref_arr=()
 
+    [[ " $settings " =~ \ t=([0-9]+)\ f=([0-9]+)\  ]]
+    local val=
+    case $opt_prefix in
+        -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[1]}]};;
+        +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[2]}]};;
+    esac
+
+    # autovar
     if $ZETOPT_CFG_AUTOVAR; then
         local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
+        IFS=" "
+        var_names=($var_names_str)
+        var_name=${var_names[0]}
+        eval $var_name'=$val'
     fi
 
-    # options requiring NO argument
-    if [[ $paramdef_str =~ ^d=([0-9]+)\ t=([0-9]+)\ f=([0-9]+)$ ]]; then
-        local val=
-        case $opt_prefix in
-            -*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[2]}]};;
-            +*) val=${_ZETOPT_DEFAULTS[${BASH_REMATCH[3]}]};;
-        esac
+    # no argument required
+    if [[ -z $paramdef_str ]]; then
         _ZETOPT_DATA+=("$val")
         ref_arr=($optarg_idx)
-
-        # autovar
-        if $ZETOPT_CFG_AUTOVAR; then
-            var_name=$var_names_str
-            eval $var_name'=$val'
-        fi
-
-    # options requiring arguments
+    
+    # argument required
     else
         local arg def def_arr varlen_mode=false no_avail_args=false
         IFS=" "
@@ -310,18 +314,13 @@ _zetopt::parser::setopt()
         declare -i def_len=${#def_arr[@]} def_idx=0
         declare -i arg_def_max arg_idx=0 arg_max_idx=${#args[@]}
 
-        # autovar
-        if $ZETOPT_CFG_AUTOVAR; then
-            var_names=($var_names_str)
-        fi
-
         while [[ $def_idx -lt $def_len ]]
         do
             def=${def_arr[$def_idx]}
 
             # autovar
             if $ZETOPT_CFG_AUTOVAR; then
-                var_name=${var_names[$def_idx]}
+                var_name=${var_names[def_idx+1]}
             fi
 
             # there are available args
@@ -329,7 +328,6 @@ _zetopt::parser::setopt()
                 no_avail_args=true
                 break
             fi
-
             arg="${args[$arg_idx]}"
 
             # ignore blank string
@@ -367,7 +365,7 @@ _zetopt::parser::setopt()
 
                 # autovar
                 if $ZETOPT_CFG_AUTOVAR; then
-                    eval $var_name'=()'
+                    eval $var_name'=()' # array
                 fi
             fi
 
@@ -413,11 +411,6 @@ _zetopt::parser::setopt()
                 do
                     def=${def_arr[$def_idx]}
 
-                    # autovar
-                    if $ZETOPT_CFG_AUTOVAR; then
-                        var_name=${var_names[$def_idx]}
-                    fi
-
                     # has default value
                     if [[ $def =~ ([.]{3,3}([1-9][0-9]*)?)?=([1-9][0-9]*) ]]; then
                         arg=${_ZETOPT_DATA[${BASH_REMATCH[3]}]}
@@ -429,6 +422,7 @@ _zetopt::parser::setopt()
 
                     # autovar
                     if $ZETOPT_CFG_AUTOVAR; then
+                        var_name=${var_names[def_idx+1]}
                         eval $var_name'=$arg'
                     fi
                     def_idx+=1
@@ -469,7 +463,7 @@ _zetopt::parser::setopt()
 }
 
 
-# assign_args(): Assign indices to subcommand parameters. 
+# assign_args(): Assign indexes to subcommand parameters. 
 # ** Must be executed in the current shell **
 # def.) _zetopt::parser::assign_args {NAMESPACE}
 # e.g.) _zetopt::parser::assign_args /sub/cmd/
@@ -497,6 +491,7 @@ _zetopt::parser::assign_args()
     if [[ $arg_len -ge $def_max_len ]]; then
         ref_arr=($(eval "echo {0..$((def_max_len - 1))}"))
         maxloop=$def_len
+
         # explicit defined arguments
         for ((idx=0; idx<maxloop; idx++))
         do
@@ -514,7 +509,7 @@ _zetopt::parser::assign_args()
             
             # autovar
             if $ZETOPT_CFG_AUTOVAR; then
-                var_name=${var_names[idx]}
+                var_name=${var_names[idx+1]}
                 if [[ $def =~ [.]{3,3} ]]; then
                     eval $var_name'=("$arg")'
                 else
@@ -560,24 +555,24 @@ _zetopt::parser::assign_args()
             local def=
             for ((idx=0; idx<maxloop; idx++))
             do
-                # validate
                 if [[ $idx -lt ${#def_arr[@]} ]]; then
                     def=${def_arr[idx]}
 
                     # autovar
                     if $ZETOPT_CFG_AUTOVAR; then
-                        var_name=${var_names[idx]}
+                        var_name=${var_names[idx+1]}
                     fi
                 else
                     def=${def_arr[$((${#def_arr[@]} - 1))]}
 
                     # autovar
                     if $ZETOPT_CFG_AUTOVAR; then
-                        var_name=${var_names[$((${#def_arr[@]} - 1))]}
+                        var_name=${var_names[$((${#def_arr[@]} - 1 + 1))]}
                     fi
                 fi
-                
                 arg=${_ZETOPT_TEMP_ARGV[ref_arr[idx]]}
+                
+                # validate
                 if ! _zetopt::validator::validate "$def" "$arg"; then
                     rtn=$((rtn | ZETOPT_STATUS_VALIDATOR_FAILED))
                     ZETOPT_PARSE_ERRORS=$((ZETOPT_PARSE_ERRORS | rtn))
@@ -636,11 +631,8 @@ _zetopt::parser::assign_args()
     local offset=2
     local line="${BASH_REMATCH[$((offset + ZETOPT_DATAID_ALL))]}"
     local id="${BASH_REMATCH[$((offset + ZETOPT_DATAID_ID))]}"
-    #local argv="${BASH_REMATCH[$((offset + ZETOPT_DATAID_ARGV))]}"
-    #local argc="${BASH_REMATCH[$((offset + ZETOPT_DATAID_ARGC))]}"
     local type="${BASH_REMATCH[$((offset + ZETOPT_DATAID_TYPE))]}"
     local pseudoname="${BASH_REMATCH[$((offset + ZETOPT_DATAID_PSEUDO))]}"
-    #local status="${BASH_REMATCH[$((offset + ZETOPT_DATAID_STATUS))]}"
     local count="${BASH_REMATCH[$((offset + ZETOPT_DATAID_COUNT))]}"
     IFS=' '
     local refs_str="${ref_arr[*]-}"

@@ -269,7 +269,7 @@ test_parse_Multiple() {
 
 test_parse_Concatenated_Arguments() {
     zetopt def val:v @ %      "#Help Message"
-    zetopt parse -vFOO BAR    "#Help Message"
+    zetopt parse -vFOO BAR
     assertTrue $?
     local v="$(zetopt value val)"
     assertEquals "[parse] Concatenated Arguments: parse -vFOO BAR" "FOO BAR" "$v"

@@ -211,7 +211,7 @@ _zetopt::data::pickup()
                 *)      list_end_idx=$tmp_list_end_idx
             esac
 
-            # convert negative indices to positive ones
+            # convert negative indexes to positive ones
             if [[ $list_start_idx =~ ^- ]]; then
                 list_start_idx=$((lists_last_idx - (list_start_idx * -1 - 1)))
             fi
@@ -277,7 +277,7 @@ _zetopt::data::pickup()
                     val_end_idx=$tmp_val_end_idx
                 fi
 
-                # convert negative indices to positive
+                # convert negative indexes to positive
                 if [[ $val_start_idx =~ ^- ]]; then
                     val_start_idx=$((maxidx - (val_start_idx * -1 - 1)))
                 fi
