@@ -124,6 +124,7 @@ _zetopt::init::init_config()
     # Autovar related configs: Set before "def"
     ZETOPT_CFG_AUTOVAR=true
     ZETOPT_CFG_AUTOVAR_PREFIX=zv_
+    ZETOPT_CFG_AUTOVAR_CASE=lower
     ZETOPT_CFG_ARG_DEFAULT=__NULL
     ZETOPT_CFG_FLAG_DEFAULT=__NULL
     ZETOPT_CFG_FLAG_TRUE=true

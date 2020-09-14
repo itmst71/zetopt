@@ -1,6 +1,6 @@
 #------------------------------------------------------------
 # Name        : zetopt -- An option parser for shell scripts
-# Version     : 2.0.0-dev202009140730
+# Version     : 2.0.0-dev202009140900
 # Required    : Bash 3.2+ / Zsh 5.0+, Some POSIX commands
 # License     : MIT License
 # Author      : itmst71@gmail.com
@@ -31,7 +31,7 @@
 
 # app info
 readonly ZETOPT_APPNAME="zetopt"
-readonly ZETOPT_VERSION="2.0.0-dev202009140730"
+readonly ZETOPT_VERSION="2.0.0-dev202009140900"
 
 
 #------------------------------------------------------------
@@ -160,6 +160,7 @@ _zetopt::init::init_config()
     # Autovar related configs: Set before "def"
     ZETOPT_CFG_AUTOVAR=true
     ZETOPT_CFG_AUTOVAR_PREFIX=zv_
+    ZETOPT_CFG_AUTOVAR_CASE=lower
     ZETOPT_CFG_ARG_DEFAULT=__NULL
     ZETOPT_CFG_FLAG_DEFAULT=__NULL
     ZETOPT_CFG_FLAG_TRUE=true
@@ -808,9 +809,7 @@ _zetopt::def::define()
                 [[ $deftype == c ]] \
                     && var_name=${var_base_name}$([[ $id != / ]] && echo _||:)$var_param_name \
                     || var_name=${var_base_name}_$var_param_name
-                if [[ $var_name =~ [A-Z] ]]; then
-                    var_name=$(_zetopt::utils::lowercase "$var_name")
-                fi
+                var_name=$(_zetopt::def::apply_case_config "$var_name")
                 
                 # check variable name conflict
                 if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
@@ -873,10 +872,7 @@ _zetopt::def::define()
 
     # autovar
     if $ZETOPT_CFG_AUTOVAR; then
-        var_name="$var_base_name"
-        if [[ $var_name =~ [A-Z] ]]; then
-            var_name=$(_zetopt::utils::lowercase "$var_name")
-        fi
+        var_name=$(_zetopt::def::apply_case_config "$var_base_name")
 
         # check variable name conflict
         if [[ -n $(eval 'echo ${'$var_name'+x}') ]]; then
@@ -927,6 +923,21 @@ _zetopt::def::define()
         [[ $_LF$_ZETOPT_DEFINED =~ $_LF${curr_ns}:c: ]] && return 0
         _ZETOPT_DEFINED+="${curr_ns}:c:::%.0~0...=0:::0 0$_LF"
     done
+}
+
+# Change the case of variable name accroding to ZETOPT_CFG_AUTOVAR_CASE
+# def.) _zetopt::def::apply_case_config {AUTOVAR_NAME}
+# e.g.) _zetopt::def::apply_case_config zv_foo
+# STDOUT: string of case changed variable name
+_zetopt::def::apply_case_config()
+{
+    local name=${1-}
+    case $ZETOPT_CFG_AUTOVAR_CASE in
+        none) :;;
+        lower) [[ $name =~ [A-Z] ]] && name=$(_zetopt::utils::lowercase "$name") ||:;;
+        upper) [[ $name =~ [a-z] ]] && name=$(_zetopt::utils::uppercase "$name") ||:;;
+    esac
+    echo "$name"
 }
 
 # prepare_parse(): Is definition data ready for parse?
