@@ -24,8 +24,8 @@ _zetopt::def::reset()
     do
         if [[ $line =~ ^([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*):([^:]*)$ ]]; then
             id=${BASH_REMATCH[$ZETOPT_DEFID_ID]}
-            args=(${BASH_REMATCH[$ZETOPT_DEFID_ARG]})
-            vars=(${BASH_REMATCH[$ZETOPT_DEFID_VARNAME]})
+            args=(${BASH_REMATCH[$ZETOPT_DEFID_PARAMS]})
+            vars=(${BASH_REMATCH[$ZETOPT_DEFID_VARNAMES]})
             settings=" ${BASH_REMATCH[$ZETOPT_DEFID_SETTINGS]} "
             for ((idx=0; idx<${#vars[@]}; idx++ ))
             do
@@ -615,7 +615,7 @@ _zetopt::def::defined()
 
 # field(): Search and print the definition.
 # def.) _zetopt::def::field {ID} [FIELD-DEF-NUMBER-TO-PRINT]
-# e.g.) _zetopt::def::field /foo $ZETOPT_DEFID_ARG
+# e.g.) _zetopt::def::field /foo $ZETOPT_DEFID_PARAMS
 # STDOUT: string
 _zetopt::def::field()
 {
@@ -633,8 +633,8 @@ _zetopt::def::field()
         $ZETOPT_DEFID_TYPE)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_TYPE))]}";;
         $ZETOPT_DEFID_SHORT)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_SHORT))]}";;
         $ZETOPT_DEFID_LONG)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_LONG))]}";;
-        $ZETOPT_DEFID_ARG)      printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_ARG))]}";;
-        $ZETOPT_DEFID_VARNAME)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_VARNAME))]}";;
+        $ZETOPT_DEFID_PARAMS)      printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_PARAMS))]}";;
+        $ZETOPT_DEFID_VARNAMES)  printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_VARNAMES))]}";;
         $ZETOPT_DEFID_SETTINGS)    printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_SETTINGS))]}";;
         $ZETOPT_DEFID_HELP)     printf -- "%s\n" "${BASH_REMATCH[$((1 + $ZETOPT_DEFID_HELP))]}";;
         *) return 1;;
@@ -827,7 +827,7 @@ _zetopt::def::paramidx()
     fi
     local id="$1"
     [[ ! $id =~ ^/ ]] && id="/$id" ||:
-    local def_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local def_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS)"
     if [[ $def_str =~ [@%]${2}[.]([0-9]+) ]]; then
         printf -- "%s" ${BASH_REMATCH[1]}
         return 0
@@ -847,7 +847,7 @@ _zetopt::def::keyparams2idx()
     local id="$1"
     [[ ! $id =~ ^/ ]] && id="/$id" ||:
     local key="$2" head tail name
-    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS)"
     if [[ $def_args =~ [@%] ]]; then
         while true
         do
@@ -879,7 +879,7 @@ _zetopt::def::paramlen()
     if ! _zetopt::def::exists "$id"; then
         echo 0; return 1
     fi
-    local def="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local def="$(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS)"
     if [[ ! $def =~ [@%] ]]; then
         echo 0; return 0
     fi
@@ -930,7 +930,7 @@ _zetopt::def::default()
 
     local IFS=' ' params output_list
     output_list=()
-    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local def_args="$(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS)"
     params=($def_args)
     if [[ ${#params[@]} -eq 0 ]]; then
         printf -- "%s\n" 0

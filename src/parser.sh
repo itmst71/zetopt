@@ -280,7 +280,7 @@ _zetopt::parser::setopt()
     local id="$1" refs_str="$2" argcs="$3" types="$4" pseudo_idexs="$5" stat="$6" cnt="$7"
     local curr_stat=$ZETOPT_STATUS_NORMAL
 
-    local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG)"
+    local ref_arr paramdef_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS)"
     declare -i optarg_idx=${#_ZETOPT_DATA[@]}
     declare -i arg_cnt=0
     ref_arr=()
@@ -294,7 +294,7 @@ _zetopt::parser::setopt()
 
     # autovar
     if $ZETOPT_CFG_AUTOVAR; then
-        local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
+        local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAMES)"
         IFS=" "
         var_names=($var_names_str)
         var_name=${var_names[0]}
@@ -477,10 +477,10 @@ _zetopt::parser::assign_args()
     fi
     local arg def_arr def ref_arr
     local IFS=' '
-    def_arr=($(_zetopt::def::field "$id" $ZETOPT_DEFID_ARG))
+    def_arr=($(_zetopt::def::field "$id" $ZETOPT_DEFID_PARAMS))
     ref_arr=()
     declare -i def_len=${#def_arr[@]} arg_len=${#_ZETOPT_TEMP_ARGV[@]} rtn=$ZETOPT_STATUS_NORMAL idx maxloop
-    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAME)"
+    local var_name var_names var_names_str="$(_zetopt::def::field "$id" $ZETOPT_DEFID_VARNAMES)"
     if [[ -z $var_names_str ]]; then
         var_names_str=${ZETOPT_CFG_AUTOVAR_PREFIX}${ZETOPT_LAST_COMMAND:1}
         var_names_str=${var_names_str//[\/\-]/_}0
